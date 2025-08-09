@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Solo Investigator — Cthulhu-esque Solo VTT (Client‑only)</title>
+<style>
+  :root{
+    --bg:#0b0e12;
+    --panel:#121721;
+    --panel-2:#0f141c;
+    --ink:#e9eef7;
+    --muted:#a7b0c0;
+    --brand:#7aa2ff;
+    --accent:#86f0d1;
+    --danger:#ff6b6b;
+    --warn:#ffc04d;
+    --ok:#59db7d;
+    --grid:#1c2230;
+    --grid-2:#151a25;
+    --glow:0 0 20px rgba(122,162,255,.25);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:radial-gradient(1200px 700px at 70% -10%,#182134 0,#0b0e12 55%,#070a0f 100%);
+    color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Cantarell,Noto Sans,sans-serif;
+    letter-spacing:.15px;
+  }
+  a{color:var(--brand)}
+  button,select,input,textarea{background:var(--panel);color:var(--ink);border:1px solid #212a3b;border-radius:8px;padding:.6rem .75rem}
+  button{cursor:pointer}
+  button.primary{background:linear-gradient(180deg,#1f2a44,#152037);border-color:#31405c;box-shadow:var(--glow)}
+  button.ghost{background:transparent;border-color:#2a3345}
+  button.warn{background:linear-gradient(180deg,#3a2a10,#2a1e0a);border-color:#624314;color:#ffd98a}
+  button.danger{background:linear-gradient(180deg,#3a1111,#260b0b);border-color:#652626;color:#ffc8c8}
+  button.success{background:linear-gradient(180deg,#0f2a1a,#0a2014);border-color:#26543c;color:#b2ffd2}
+  label{font-size:.9rem;color:var(--muted)}
+  .row{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;gap:.5rem}
+  .pill{display:inline-flex;align-items:center;gap:.5rem;padding:.2rem .55rem;border-radius:999px;background:#151b27;border:1px solid #2a3345;color:#b6c2d8;font-size:.8rem}
+  .tag{font-size:.75rem;color:#9cadc6;background:#101521;border:1px solid #263147;border-radius:6px;padding:.2rem .4rem}
+  .kbd{font-family:ui-monospace,Menlo,Consolas,monospace;border:1px solid #2a3345;background:#0d1220;border-radius:6px;padding:.1rem .35rem;color:#b9c7e6}
+  header.appbar{
+    position:sticky;top:0;z-index:50;background:rgba(10,14,20,.9);backdrop-filter:blur(6px);
+    border-bottom:1px solid #1b2332;display:flex;align-items:center;gap:1rem;padding:.75rem 1rem
+  }
+  header.appbar h1{margin:0;font-size:1rem;letter-spacing:.12rem;text-transform:uppercase;color:#bcd1ff}
+  header.appbar nav{display:flex;gap:.5rem;flex-wrap:wrap}
+  header.appbar nav button{padding:.45rem .6rem}
+  .container{display:grid;grid-template-columns:300px 1fr 360px;gap:1rem;padding:1rem;align-items:start}
+  .panel{background:linear-gradient(180deg, var(--panel), var(--panel-2));border:1px solid #1a2130;border-radius:12px;padding:1rem;box-shadow:var(--glow)}
+  .panel h2{margin:.25rem 0 1rem 0;font-size:1rem;color:#c9d6f7}
+  .leftcol,.rightcol{display:flex;flex-direction:column;gap:1rem}
+  /* Map */
+  #mapWrap{position:relative;border-radius:12px;overflow:hidden}
+  #map{position:relative;aspect-ratio:3/2;background:
+      linear-gradient(0deg, rgba(0,0,0,.25), rgba(0,0,0,.25)),
+      radial-gradient(1200px 800px at 80% -10%,rgba(134,240,209,.04),transparent 60%),
+      #0c1119;
+    outline:1px solid #1a2130}
+  #mapBg{position:absolute;inset:0;background-size:cover;background-position:center;filter:contrast(1.02) saturate(1.02) brightness(.9)}
+  #grid{position:absolute;inset:0;background-image:
+      linear-gradient(to right, var(--grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+    background-size:calc(100%/12) calc(100%/8);mix-blend-mode:overlay;opacity:.9;pointer-events:none}
+  #fog{position:absolute;inset:0;pointer-events:none}
+  .token{
+    position:absolute; width:calc(100%/12); height:calc(100%/8);
+    transform:translate(-50%,-50%); display:flex; align-items:center; justify-content:center; transition:transform .25s ease;
+  }
+  .token .bubble{
+    width:60%; aspect-ratio:1/1; border-radius:50%; border:2px solid #25324a;
+    background:radial-gradient(50% 50% at 30% 30%, #415379, #1a2333);
+    display:flex;align-items:center;justify-content:center;overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,.4);
+  }
+  .token .init{position:absolute;bottom:-.25rem;left:50%;transform:translateX(-50%);
+    font-size:.7rem;background:#0e1421;border:1px solid #223049;border-radius:6px;padding:.05rem .35rem;color:#cfe1ff}
+  .token img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .token .letters{font-weight:700;color:#d8e4ff}
+  .token.pc .bubble{background:radial-gradient(50% 50% at 30% 30%, #2e6a53, #15251f)}
+  .token.npc .bubble{background:radial-gradient(50% 50% at 30% 30%, #5a365a, #1f1521)}
+  .measure{position:absolute;border-top:2px dashed #6ea2ff;pointer-events:none;transform-origin:0 0}
+  .measure .label{position:absolute;top:-1.35rem;right:-.25rem;background:#0e1626;border:1px solid #24324c;border-radius:8px;padding:.1rem .35rem;
+    color:#cfe1ff;font-size:.75rem}
+  /* Chat */
+  #chat{display:flex;flex-direction:column;height:460px}
+  #chatLog{flex:1;overflow:auto;background:#0c121d;border:1px solid #1a2130;border-radius:8px;padding:.75rem;scroll-behavior:smooth}
+  #chatLog .line{margin:.35rem 0}
+  #chatLog .keeper{color:#cfe1ff}
+  #chatLog .you{color:#d5f7e7}
+  #chatEntry{display:flex;gap:.5rem;margin-top:.5rem}
+  #chatEntry input{flex:1}
+  /* Modals */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:90}
+  .modal.show{display:flex}
+  .modal .scrim{position:absolute;inset:0;background:rgba(6,8,12,.75);backdrop-filter:blur(6px)}
+  .modal .sheet{position:relative;max-width:1000px;width:min(1000px,96vw);max-height:90vh;overflow:auto;border-radius:14px;
+    background:linear-gradient(180deg,#0d1220,#0a0f19);border:1px solid #1a2231;padding:1rem;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem}
+  .thin{font-weight:500;color:#b6c1d6}
+  .small{font-size:.85rem;color:#9fb0c8}
+  .hr{height:1px;background:#1b2333;margin:.75rem 0}
+  .right{justify-content:flex-end}
+  .note{font-size:.85rem;color:#a6b4cc}
+  /* Dice tray */
+  #diceTray{position:relative; background:#0b101a;border:1px solid #1a2130;border-radius:12px; padding:0; overflow:hidden}
+  #diceCanvas{width:100%;height:280px;display:block;background:
+    radial-gradient(900px 380px at 50% -10%,rgba(122,162,255,.08),transparent 60%), #0b101a}
+  #diceOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  #diceOverlay .big{font-size:3.5rem;font-weight:800;color:#cfe1ff;text-shadow:0 0 24px rgba(122,162,255,.25)}
+  .fx{position:absolute;pointer-events:none}
+  /* Save slots */
+  .slots{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+  .slots .slot{display:flex;gap:.5rem;align-items:center;justify-content:space-between;border:1px dashed #2b3650;border-radius:10px;padding:.4rem .6rem;background:#0c121c}
+  .slots .meta{display:flex;flex-direction:column}
+  .slots .ts{font-size:.75rem;color:#8ea0bf}
+  /* Toast */
+  #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#0e1626;border:1px solid #26314b;border-radius:10px;padding:.5rem .75rem;
+    color:#cfe1ff;display:none;z-index:120}
+  #toast.show{display:block}
+</style>
+</head>
+<body>
+<header class="appbar">
+  <h1>Solo Investigator</h1>
+  <nav>
+    <button id="btnSettings">Settings</button>
+    <button id="btnScenes">Scenes</button>
+    <button id="btnParty">Party</button>
+    <button id="btnNPCs">NPCs</button>
+    <button id="btnDice">Dice</button>
+    <button id="btnSaveLoad">Save/Load</button>
+    <span class="pill">Shortcuts: <span class="kbd">V</span> select · <span class="kbd">R</span> ruler · <span class="kbd">F</span> reveal · <span class="kbd">H</span> hide · <span class="kbd">U</span> undo · <span class="kbd">D</span> roll d6</span>
+  </nav>
+</header>
+
+<div class="container">
+  <section class="leftcol">
+    <div class="panel">
+      <h2>Keeper & Chat</h2>
+      <div id="chat">
+        <div id="chatLog"></div>
+        <div id="chatEntry">
+          <input id="chatInput" placeholder="Say something… (use /roll 2d6+1, /move pc0 to 6,3, /help)" />
+          <button class="primary" id="chatSend">Send</button>
+        </div>
+        <div class="note small">Keeper will guide you and can request rolls. Toggle TTS in Settings.</div>
+      </div>
+    </div>
+
+    <div class="panel" id="diceTray">
+      <h2>3D Dice Tray</h2>
+      <canvas id="diceCanvas" width="1280" height="560"></canvas>
+      <div id="diceOverlay"></div>
+      <div class="row" style="padding: .5rem .75rem;">
+        <input id="rollExpr" placeholder="NdM±K (e.g., 1d20+3, 2d8, d100)" />
+        <button class="primary" id="btnRoll">Roll</button>
+        <button class="ghost" id="btnClearDice">Clear</button>
+        <span class="small">3D visuals: d6 / d8 / d10 / d20 (others numeric)</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="mapWrap">
+    <h2>Map</h2>
+    <div id="map">
+      <div id="mapBg"></div>
+      <div id="grid"></div>
+      <canvas id="fog"></canvas>
+      <!-- measurement line -->
+    </div>
+    <div class="row" style="margin-top:.5rem">
+      <div class="pill">Tool:
+        <select id="tool">
+          <option value="select">Select/Move (V)</option>
+          <option value="ruler">Ruler (R)</option>
+          <option value="reveal">Fog: Reveal (F)</option>
+          <option value="hide">Fog: Hide (H)</option>
+        </select>
+      </div>
+      <div class="pill">Brush:
+        <select id="brush">
+          <option value="1">1</option>
+          <option value="2" selected>2</option>
+          <option value="3">3</option>
+        </select>
+      </div>
+      <button id="btnUndo" class="ghost">Undo Fog (U)</button>
+      <span class="pill">Grid: 12 × 8</span>
+    </div>
+  </section>
+
+  <section class="rightcol">
+    <div class="panel">
+      <h2>Board Controls</h2>
+      <div class="row">
+        <button id="btnCenter" class="ghost">Center Tokens</button>
+        <button id="btnParticles" class="ghost">Test FX</button>
+        <button id="btnGenBG" class="primary">Generate Background</button>
+      </div>
+      <div class="row" style="margin-top:.5rem">
+        <button id="btnRevealAll" class="success">Reveal All</button>
+        <button id="btnHideAll" class="danger">Hide All</button>
+      </div>
+      <div class="hr"></div>
+      <div class="row">
+        <button id="btnNewScene" class="ghost">New Scene</button>
+        <button id="btnSwitchScene" class="ghost">Switch Scene</button>
+      </div>
+      <div class="small">Scene: <span id="sceneName">Untitled</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>Initiative</h2>
+      <div class="row">
+        <button id="btnInitRoll" class="ghost">Roll All</button>
+        <button id="btnInitNext" class="primary">Next Turn</button>
+        <button id="btnInitClear" class="ghost">Clear</button>
+      </div>
+      <ol id="initList" class="small"></ol>
+    </div>
+
+    <div class="panel">
+      <h2>Tokens</h2>
+      <div id="tokenList" class="small"></div>
+    </div>
+  </section>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal" id="modalSettings">
+  <div class="scrim" data-close="#modalSettings"></div>
+  <div class="sheet">
+    <h2>Settings</h2>
+    <div class="grid2">
+      <div class="col">
+        <label>OpenAI API Key (optional)</label>
+        <input id="openaiKey" placeholder="sk‑..." />
+        <label>OpenAI Model</label>
+        <select id="openaiModel">
+          <option value="gpt-4o-mini" selected>gpt-4o-mini</option>
+          <option value="gpt-4o">gpt-4o</option>
+          <option value="o4-mini">o4-mini (if available)</option>
+        </select>
+        <label><input type="checkbox" id="useImages" /> Enable Image Generation (OpenAI)</label>
+        <label><input type="checkbox" id="keeperOn" checked/> Keeper AI On</label>
+      </div>
+      <div class="col">
+        <label>ElevenLabs API Key (optional)</label>
+        <input id="elevenKey" placeholder="eleven‑..." />
+        <label>ElevenLabs Voice ID</label>
+        <input id="voiceId" placeholder="e.g., 21m00Tcm4TlvDq8ikWAM" />
+        <label><input type="checkbox" id="ttsOn" /> Keeper speaks via TTS</label>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+    <div class="col">
+      <label>Rules Pack (optional, used to guide Keeper — do not paste copyrighted text)</label>
+      <textarea id="rulesPack" rows="6" placeholder="Your house rules / notes…"></textarea>
+      <span class="note">Tip: add your personal check difficulties, injury rules, chase tweaks, etc. The Keeper uses this for guidance without quoting any protected text.</span>
+    </div>
+
+    <div class="hr"></div>
+    <div class="row right">
+      <button class="ghost" data-close="#modalSettings">Close</button>
+      <button class="primary" id="btnSaveSettings">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCENES MODAL -->
+<div class="modal" id="modalScenes">
+  <div class="scrim" data-close="#modalScenes"></div>
+  <div class="sheet">
+    <h2>Scenes</h2>
+    <div class="grid3">
+      <div class="col">
+        <label>Scene Name</label>
+        <input id="sceneTitle" placeholder="Greyhaven Docks" />
+        <label>Set Background (data URL)</label>
+        <textarea id="sceneBgData" rows="4" placeholder="Paste data:image/png;base64,..."></textarea>
+        <div class="row right">
+          <button id="btnSetBG" class="ghost">Apply</button>
+        </div>
+      </div>
+      <div class="col">
+        <label>Generate Background (OpenAI Images)</label>
+        <textarea id="bgPrompt" rows="6" placeholder="Foggy 1920s cannery interior, moonlit beams, painterly, cinematic lighting"></textarea>
+        <div class="row right">
+          <button id="btnGenBG2" class="primary">Generate</button>
+        </div>
+      </div>
+      <div class="col">
+        <label>Scenes</label>
+        <div id="sceneList" class="small"></div>
+      </div>
+    </div>
+    <div class="hr"></div>
+    <div class="row right">
+      <button class="ghost" data-close="#modalScenes">Close</button>
+      <button class="primary" id="btnAddScene">Add Scene</button>
+      <button class="warn" id="btnSwitchScene2">Switch</button>
+    </div>
+  </div>
+</div>
+
+<!-- PARTY MODAL -->
+<div class="modal" id="modalParty">
+  <div class="scrim" data-close="#modalParty"></div>
+  <div class="sheet">
+    <h2>Party (Investigators)</h2>
+    <div class="row">
+      <button id="btnGenParty" class="primary">Quick Generate 5</button>
+      <button id="btnPortraits" class="ghost">Generate Portraits (all)</button>
+      <button id="btnAddPC" class="ghost">Add PC</button>
+    </div>
+    <div id="partyList" class="small" style="margin-top:.5rem"></div>
+    <div class="hr"></div>
+    <div class="row right">
+      <button class="ghost" data-close="#modalParty">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- NPC MODAL -->
+<div class="modal" id="modalNPCs">
+  <div class="scrim" data-close="#modalNPCs"></div>
+  <div class="sheet">
+    <h2>NPCs</h2>
+    <div class="row">
+      <button id="btnGenNPCs" class="primary">Generate NPCs</button>
+      <button id="btnAddNPC" class="ghost">Add NPC</button>
+    </div>
+    <div id="npcList" class="small" style="margin-top:.5rem"></div>
+    <div class="hr"></div>
+    <div class="row right">
+      <button class="ghost" data-close="#modalNPCs">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAVE/LOAD MODAL -->
+<div class="modal" id="modalSave">
+  <div class="scrim" data-close="#modalSave"></div>
+  <div class="sheet">
+    <h2>Save / Load</h2>
+    <div class="slots" id="slots"></div>
+    <div class="hr"></div>
+    <div class="grid2">
+      <div class="col">
+        <label>Export (download JSON file)</label>
+        <button id="btnExport" class="ghost">Export Now</button>
+      </div>
+      <div class="col">
+        <label>Import (paste JSON)</label>
+        <textarea id="importText" rows="6" placeholder="{...}"></textarea>
+        <div class="row right"><button id="btnImport" class="primary">Import</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* =========================
+   SOLO INVESTIGATOR — SINGLE FILE VTT
+   (c) You. MIT-ish, personal use.
+   This file is intentionally framework-free.
+   ========================= */
+
+/* ---------- STATE ---------- */
+const LS_SETTINGS = 'si_settings_v2';
+const LS_SLOTS    = 'si_slots_v2';
+const DEFAULT_SCENE_BG = ''; // optional data URL; left blank
+const GRID_W = 12, GRID_H = 8;
+
+const state = {
+  settings: {
+    openaiKey: '',
+    openaiModel: 'gpt-4o-mini',
+    keeperOn: true,
+    useImages: false,
+    elevenKey: '',
+    voiceId: '',
+    ttsOn: false,
+    rulesPack: ''
+  },
+  sceneIndex: 0,
+  scenes: [newScene('Greyhaven Docks')],
+  chat: [],
+  initOrder: [],
+  activeTurn: 0
+};
+
+function newScene(name){
+  return {
+    id: 'scn_'+Math.random().toString(36).slice(2,8),
+    name: name || 'Untitled Scene',
+    bg: DEFAULT_SCENE_BG,
+    tokens: [], // {id,name,type:'pc'|'npc',x,y,portraitData, hp:10, stress:0}
+    fog: makeFog(GRID_W, GRID_H, true), // start hidden
+    fogUndo: []
+  };
+}
+function makeFog(w,h,hidden){
+  const f=[]; for(let y=0;y<h;y++){const row=[]; for(let x=0;x<w;x++) row.push(!!hidden); f.push(row)} return f;
+}
+
+/* ---------- PERSISTENCE ---------- */
+function saveSettings(){ localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings)); toast('Settings saved'); }
+function loadSettings(){
+  const raw = localStorage.getItem(LS_SETTINGS); if(raw){ try{ Object.assign(state.settings, JSON.parse(raw)); }catch{} }
+  // Populate UI
+  byId('openaiKey').value = state.settings.openaiKey;
+  byId('openaiModel').value = state.settings.openaiModel;
+  byId('keeperOn').checked = state.settings.keeperOn;
+  byId('useImages').checked = state.settings.useImages;
+  byId('elevenKey').value = state.settings.elevenKey;
+  byId('voiceId').value = state.settings.voiceId;
+  byId('ttsOn').checked = state.settings.ttsOn;
+  byId('rulesPack').value = state.settings.rulesPack;
+}
+function saveSlots(slots){ localStorage.setItem(LS_SLOTS, JSON.stringify(slots)); }
+function loadSlots(){ const raw = localStorage.getItem(LS_SLOTS); return raw? JSON.parse(raw): []; }
+
+/* ---------- DOM HELPERS ---------- */
+const byId = id => document.getElementById(id);
+function el(tag,attrs={},children=[]){
+  const e=document.createElement(tag);
+  for(const k in attrs){
+    if(k==='class') e.className=attrs[k];
+    else if(k==='html') e.innerHTML=attrs[k];
+    else e.setAttribute(k, attrs[k]);
+  }
+  if(!Array.isArray(children)) children=[children];
+  children.filter(Boolean).forEach(c=> e.appendChild(typeof c==='string'? document.createTextNode(c): c));
+  return e;
+}
+function toast(msg){ const t=byId('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 1800); }
+
+/* ---------- INIT ---------- */
+const mapEl   = byId('map');
+const bgEl    = byId('mapBg');
+const fogCv   = byId('fog');
+const chatLog = byId('chatLog');
+const sceneNameEl = byId('sceneName');
+let tool='select', brush=2;
+let pointer={down:false,start:[0,0],cur:[0,0]};
+let measureEl=null;
+let draggingToken=null;
+
+loadSettings();
+renderAll();
+
+function renderAll(){
+  renderSceneName();
+  renderBackground();
+  renderFog();
+  renderTokens();
+  renderTokenList();
+  renderInit();
+  updateSlots();
+}
+
+/* ---------- SCENE ---------- */
+function currentScene(){ return state.scenes[state.sceneIndex]; }
+function renderSceneName(){ sceneNameEl.textContent = currentScene().name; }
+function renderBackground(){
+  const sc=currentScene(); bgEl.style.backgroundImage = sc.bg? `url(${sc.bg})` : 'none';
+}
+function setSceneBgData(data){ currentScene().bg=data; renderBackground(); toast('Background set'); }
+function addScene(name){ state.scenes.push(newScene(name||'New Scene')); updateSceneList(); toast('Scene added'); }
+function switchScene(idx){
+  if(idx<0 || idx>=state.scenes.length) return;
+  state.sceneIndex = idx; renderAll(); toast('Switched scene');
+}
+function updateSceneList(){
+  const wrap = byId('sceneList');
+  wrap.innerHTML='';
+  state.scenes.forEach((s,i)=>{
+    const row = el('div',{class:'row',style:'justify-content:space-between;align-items:center;margin:.25rem 0;'},
+      [el('div',{class:'meta small'},[el('div',{html:`<b>${escapeHtml(s.name)}</b>`}), el('div',{class:'ts'},[`ID: ${s.id}`])]),
+       el('button',{class:'ghost',onclick:()=> switchScene(i)},'Switch')]);
+    wrap.appendChild(row);
+  });
+}
+
+/* ---------- TOKENS ---------- */
+function addToken(t){
+  const sc=currentScene();
+  t.id = t.id || 't_'+Math.random().toString(36).slice(2,8);
+  t.x = clamp(t.x ?? 1, 0, GRID_W-1);
+  t.y = clamp(t.y ?? 1, 0, GRID_H-1);
+  t.type = t.type || 'pc';
+  sc.tokens.push(t);
+  renderTokens(); renderTokenList();
+}
+function renderTokens(){
+  // remove existing token nodes
+  [...mapEl.querySelectorAll('.token')].forEach(n=>n.remove());
+  const sc=currentScene();
+  sc.tokens.forEach((t, idx)=>{
+    const n = el('div',{class:`token ${t.type}`, 'data-id':t.id, style:cellStyle(t.x,t.y)});
+    const bubble = el('div',{class:'bubble'});
+    if(t.portraitData){
+      bubble.appendChild(el('img',{src:t.portraitData, alt:t.name}));
+    }else{
+      bubble.appendChild(el('div',{class:'letters'}, initials(t.name|| (t.type==='pc'?'PC':'NPC'))));
+    }
+    n.appendChild(bubble);
+    n.appendChild(el('div',{class:'init'}, t.name || (t.type==='pc'?'PC':'NPC')));
+    mapEl.appendChild(n);
+  });
+}
+function cellStyle(x,y){
+  return `left:${((x+0.5)/GRID_W)*100}%; top:${((y+0.5)/GRID_H)*100}%`;
+}
+function initials(name){
+  return (name||'??').split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join('');
+}
+function renderTokenList(){
+  const list=byId('tokenList'); list.innerHTML='';
+  currentScene().tokens.forEach((t,i)=>{
+    const row = el('div',{class:'row',style:'justify-content:space-between;margin:.25rem 0;align-items:center;'},
+      [el('div',{}, `${t.type.toUpperCase()} • ${t.name||'Unnamed'} @ ${t.x},${t.y}`),
+       el('div',{class:'row'},[
+         el('button',{class:'ghost',onclick:()=> centerToken(t)},'Center'),
+         el('button',{class:'ghost',onclick:()=> editTokenPrompt(t)},'Edit'),
+         el('button',{class:'danger',onclick:()=> removeToken(t.id)},'Remove')
+       ])]);
+    list.appendChild(row);
+  });
+}
+function centerToken(t){
+  // highlight token temporarily
+  spawnFXAt(t.x,t.y);
+}
+function editTokenPrompt(t){
+  const name = prompt('Name:', t.name||''); if(name===null) return;
+  const type = prompt('Type (pc|npc):', t.type||'pc'); if(type===null) return;
+  t.name=name.trim(); t.type=(type==='npc')?'npc':'pc';
+  renderTokens(); renderTokenList();
+}
+function removeToken(id){
+  const sc=currentScene(); sc.tokens = sc.tokens.filter(x=>x.id!==id);
+  renderTokens(); renderTokenList();
+}
+
+/* ---------- MAP INTERACTION ---------- */
+mapEl.addEventListener('pointerdown', (e)=>{
+  const rect = mapEl.getBoundingClientRect();
+  pointer.down=true; pointer.start=[e.clientX-rect.left, e.clientY-rect.top]; pointer.cur=pointer.start.slice();
+  const [gx,gy] = pxToGrid(pointer.start[0], pointer.start[1]);
+  if(tool==='select'){
+    // pick token near grid cell
+    const t = tokenAt(gx,gy);
+    if(t){ draggingToken=t; }
+  }else if(tool==='ruler'){
+    startMeasure(pointer.start);
+  }else if(tool==='reveal' || tool==='hide'){
+    fogStroke(gx,gy, tool==='hide');
+  }
+});
+mapEl.addEventListener('pointermove', (e)=>{
+  if(!pointer.down) return;
+  const rect = mapEl.getBoundingClientRect();
+  pointer.cur=[e.clientX-rect.left, e.clientY-rect.top];
+  const [gx,gy] = pxToGrid(pointer.cur[0], pointer.cur[1]);
+  if(tool==='select' && draggingToken){
+    draggingToken.x = clamp(gx,0,GRID_W-1);
+    draggingToken.y = clamp(gy,0,GRID_H-1);
+    renderTokens();
+  }else if(tool==='ruler'){
+    updateMeasure(pointer.start, pointer.cur);
+  }else if(tool==='reveal' || tool==='hide'){
+    fogStroke(gx,gy, tool==='hide');
+  }
+});
+mapEl.addEventListener('pointerup', ()=>{
+  pointer.down=false;
+  draggingToken=null; endMeasure();
+});
+function pxToGrid(px,py){
+  const w=mapEl.clientWidth, h=mapEl.clientHeight;
+  const gx = Math.floor((px/w)*GRID_W);
+  const gy = Math.floor((py/h)*GRID_H);
+  return [gx,gy];
+}
+function tokenAt(gx,gy){
+  return currentScene().tokens.find(t=>t.x===gx && t.y===gy);
+}
+function startMeasure(start){
+  if(measureEl) measureEl.remove();
+  measureEl = el('div',{class:'measure'});
+  const lab = el('div',{class:'label'});
+  measureEl.appendChild(lab);
+  mapEl.appendChild(measureEl);
+  updateMeasure(start,start);
+}
+function updateMeasure(a,b){
+  if(!measureEl) return;
+  const dx=b[0]-a[0], dy=b[1]-a[1];
+  const dist = Math.hypot(dx,dy);
+  measureEl.style.left = `${a[0]}px`;
+  measureEl.style.top  = `${a[1]}px`;
+  measureEl.style.width= `${dist}px`;
+  const ang = Math.atan2(dy,dx)*180/Math.PI;
+  measureEl.style.transform = `rotate(${ang}deg)`;
+  measureEl.querySelector('.label').textContent = `${gridDistance(a,b)} u`;
+}
+function endMeasure(){ if(measureEl){ measureEl.remove(); measureEl=null; } }
+function gridDistance(a,b){
+  const [ax,ay]=pxToGrid(a[0],a[1]), [bx,by]=pxToGrid(b[0],b[1]);
+  const dx=Math.abs(ax-bx), dy=Math.abs(ay-by);
+  return Math.max(dx,dy); // cube/chebyshev distance for grid steps
+}
+
+/* ---------- FOG ---------- */
+function renderFog(){
+  const cv=fogCv, sc=currentScene(); const ctx=cv.getContext('2d');
+  cv.width = mapEl.clientWidth; cv.height = mapEl.clientHeight;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const cw=cv.width/GRID_W, ch=cv.height/GRID_H;
+  ctx.fillStyle='rgba(4,6,10,.82)'; // fog color
+  for(let y=0;y<GRID_H;y++){
+    for(let x=0;x<GRID_W;x++){
+      if(sc.fog[y][x]) ctx.fillRect(Math.floor(x*cw),Math.floor(y*ch),Math.ceil(cw),Math.ceil(ch));
+    }
+  }
+}
+function fogStroke(gx,gy, hide){
+  const sc=currentScene(); const before = deepClone(sc.fog);
+  const r = Number(byId('brush').value||2);
+  for(let y=-r;y<=r;y++){
+    for(let x=-r;x<=r;x++){
+      const ix=gx+x, iy=gy+y;
+      if(ix<0||iy<0||ix>=GRID_W||iy>=GRID_H) continue;
+      sc.fog[iy][ix] = !!hide;
+    }
+  }
+  sc.fogUndo.push(before); if(sc.fogUndo.length>50) sc.fogUndo.shift();
+  renderFog();
+}
+function fogUndo(){
+  const sc=currentScene();
+  const last = sc.fogUndo.pop(); if(!last) return;
+  sc.fog = last; renderFog();
+}
+function fogAll(flag){
+  const sc=currentScene(); for(let y=0;y<GRID_H;y++) for(let x=0;x<GRID_W;x++) sc.fog[y][x]=!!flag;
+  renderFog();
+}
+
+/* ---------- INITIATIVE ---------- */
+function rollAllInit(){
+  const order = currentScene().tokens.map(t=>({id:t.id,name:t.name||t.id, roll: (Math.floor(Math.random()*20)+1)}));
+  order.sort((a,b)=>b.roll-a.roll);
+  state.initOrder=order; state.activeTurn=0; renderInit();
+}
+function renderInit(){
+  const ol=byId('initList'); ol.innerHTML='';
+  state.initOrder.forEach((e,i)=>{
+    const li=el('li',{}, `${i===state.activeTurn?'➡ ':''}${e.name} — ${e.roll}`);
+    ol.appendChild(li);
+  });
+}
+function nextTurn(){
+  if(!state.initOrder.length) return; state.activeTurn = (state.activeTurn+1)%state.initOrder.length; renderInit();
+}
+function clearInit(){ state.initOrder=[]; state.activeTurn=0; renderInit(); }
+
+/* ---------- CHAT & KEEPER ---------- */
+function addLine(text, who='you'){ const line=el('div',{class:`line ${who}`}); line.innerHTML = who==='you'? `🧑 ${escapeHtml(text)}` : `👁️ ${text}`; chatLog.appendChild(line); chatLog.scrollTop=chatLog.scrollHeight; }
+
+byId('chatSend').addEventListener('click', sendChat);
+byId('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter'){ sendChat(); } });
+
+function sendChat(){
+  const val = byId('chatInput').value.trim(); if(!val) return;
+  byId('chatInput').value='';
+  addLine(val,'you');
+  if(val.startsWith('/')){ runSlash(val); return; }
+  if(!state.settings.keeperOn){ addLine("Keeper is off. Enable in Settings.","keeper"); return; }
+  keeperReply(val);
+}
+
+async function keeperReply(userText){
+  const sys = keeperSystem();
+  const msgs = [{role:'system', content: sys},{role:'user', content:userText}];
+  const model = state.settings.openaiModel || 'gpt-4o-mini';
+  const key = state.settings.openaiKey;
+  try{
+    let text;
+    if(key){
+      const res = await fetch('https://api.openai.com/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+        body: JSON.stringify({model, messages: msgs, temperature:0.8})
+      });
+      if(!res.ok) throw new Error('OpenAI error');
+      const data = await res.json();
+      text = data.choices?.[0]?.message?.content || "…";
+    }else{
+      text = demoKeeper(userText);
+    }
+    addLine(text,'keeper');
+    if(state.settings.ttsOn && state.settings.elevenKey && state.settings.voiceId){
+      speak(text);
+    }
+    const eng = parseEngine(text);
+    if(eng) applyEngine(eng);
+  }catch(err){
+    addLine("The fog thickens… (AI call failed; using offline demo).","keeper");
+    addLine(demoKeeper(userText),'keeper');
+  }
+}
+function keeperSystem(){
+  const sc=currentScene();
+  const party=sc.tokens.filter(t=>t.type==='pc').map(t=>t.name||t.id);
+  const npcs =sc.tokens.filter(t=>t.type==='npc').map(t=>t.name||t.id);
+  return `You are The Keeper: atmospheric, encouraging, rule-aware (generic BRP-like; avoid quoting any protected text).
+Keep responses to 2–5 sentences of in-world narration, then guidance if needed.
+When asking for checks, prefer percent checks with tiers (Success/Hard/Extreme/Crit).
+If the user is lost, gently suggest options. Use vivid, moody language.
+
+ALWAYS end with an <engine>{JSON}</engine> block with optional fields:
+- say: [{speaker, text}]
+- moves: [{tokenId, to:[x,y]}]
+- rollRequests: [{character, skill, mod}] // app rolls d100 and reports
+
+Scene: ${sc.name}. PCs: ${party.join(', ')||'none yet'}. NPCs: ${npcs.join(', ')||'none'}.
+Rules Pack (user-supplied, non-proprietary hints): """${state.settings.rulesPack || ''}"""`;
+}
+function parseEngine(text){
+  const m = text.match(/<engine>([\s\S]+?)<\/engine>/i); if(!m) return null;
+  try{ return JSON.parse(m[1]); }catch{ return null; }
+}
+function applyEngine(eng){
+  if(eng.say){ eng.say.forEach(s=> addLine(`<b>${escapeHtml(s.speaker||'NPC')}:</b> ${escapeHtml(s.text||'')}`,'keeper')); }
+  if(eng.moves){
+    eng.moves.forEach(m=>{
+      const t = currentScene().tokens.find(x=>x.id===m.tokenId);
+      if(t){ t.x=clamp(m.to?.[0]??t.x,0,GRID_W-1); t.y=clamp(m.to?.[1]??t.y,0,GRID_H-1); renderTokens(); spawnFXAt(t.x,t.y); }
+    });
+  }
+  if(eng.rollRequests){ eng.rollRequests.forEach(r=> doRoll(`1d100`)); }
+}
+
+/* Offline demo Keeper */
+function demoKeeper(userText){
+  const snippets=[
+    "The wind claws at the shutters as you speak; somewhere on the pier a bell rings once, and then not again.",
+    "Footprints interlace on the damp planks. One set ends abruptly near a rusted chain coiled like a serpent.",
+    "A gull watches from the lamppost, head tilted — as if listening for an answer only you can provide."
+  ];
+  const tip = userText.toLowerCase().includes('look')? "You could <i>/roll 1d100</i> to search, or move to a new grid cell with <i>/move pc0 to 6,3</i>." :
+              userText.toLowerCase().includes('door')? "Perhaps test the lock — a careful hand might suffice." :
+              "Options: examine the crates, follow the wet tracks, or call out into the fog.";
+  return `${snippets[Math.floor(Math.random()*snippets.length)]} ${tip}
+<engine>{"say":[{"speaker":"Dockhand","text":"Careful, friend. Greyhaven swallows the unprepared."}]}</engine>`;
+}
+
+/* ---------- IMAGE GENERATION ---------- */
+async function openaiImage(prompt){
+  const key = state.settings.openaiKey; if(!key) throw new Error('No OpenAI key');
+  const body = {model:'gpt-image-1', prompt, size:'1024x768'};
+  const res = await fetch('https://api.openai.com/v1/images/generations',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+    body: JSON.stringify(body)
+  });
+  if(!res.ok) throw new Error('Image gen failed');
+  const data = await res.json(); const b64 = data.data?.[0]?.b64_json;
+  if(!b64) throw new Error('No image data');
+  return `data:image/png;base64,${b64}`;
+}
+
+/* ---------- ELEVENLABS TTS ---------- */
+async function speak(text){
+  try{
+    const key = state.settings.elevenKey, voice = state.settings.voiceId||'21m00Tcm4TlvDq8ikWAM';
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}`,{
+      method:'POST',
+      headers:{'xi-api-key':key,'Content-Type':'application/json','Accept':'audio/mpeg'},
+      body: JSON.stringify({text, model_id:'eleven_multilingual_v2', voice_settings:{stability:0.4, similarity_boost:0.7}})
+    });
+    if(!res.ok) throw new Error('TTS failed');
+    const blob = await res.blob(); const url = URL.createObjectURL(blob);
+    const audio = new Audio(url); audio.play();
+  }catch(e){ console.log(e); }
+}
+
+/* ---------- PORTRAITS ---------- */
+async function genPortraitFor(t){
+  if(!state.settings.useImages) return;
+  const prompt = `Portrait, 1920s ${t.type==='pc'?'investigator':''} ${t.name||'character'}, moody film grain, chiaroscuro, painterly, round crop`;
+  try{ t.portraitData = await openaiImage(prompt); renderTokens(); }catch{ toast('Portrait failed'); }
+}
+
+/* ---------- SLASH COMMANDS ---------- */
+function runSlash(val){
+  const m = val.match(/^\/roll\s+(.+)$/i);
+  if(m){ doRoll(m[1]); return; }
+  const mv = val.match(/^\/move\s+(\w+)\s+to\s+(\d+)\s*,\s*(\d+)$/i);
+  if(mv){
+    const id = mv[1]; const t = currentScene().tokens.find(x=> x.id===id || (x.name||'').replace(/\s+/g,'').toLowerCase()===id.toLowerCase());
+    if(!t){ addLine("No such token.","keeper"); return; }
+    t.x = clamp(Number(mv[2]),0,GRID_W-1); t.y = clamp(Number(mv[3]),0,GRID_H-1); renderTokens(); spawnFXAt(t.x,t.y); return;
+  }
+  if(/^\/help/i.test(val)){
+    addLine("Commands: <b>/roll NdM±K</b>, <b>/move TOKEN to x,y</b>. Use map tools and modals for everything else.","keeper");
+    return;
+  }
+  addLine("Unknown command. Try <b>/help</b>.","keeper");
+}
+
+/* ---------- DICE ---------- */
+const diceCanvas = byId('diceCanvas');
+const diceCtx = diceCanvas.getContext('2d');
+let diceAnim = null, overlayTimeout=null;
+
+function clearDice(){ diceCtx.clearRect(0,0,diceCanvas.width,diceCanvas.height); byId('diceOverlay').innerHTML=''; cancelAnimationFrame(diceAnim); diceAnim=null;}
+byId('btnClearDice').addEventListener('click', clearDice);
+
+byId('btnRoll').addEventListener('click', ()=>{
+  const ex = byId('rollExpr').value.trim()||'1d6';
+  doRoll(ex);
+});
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='d' || e.key==='D'){ doRoll('1d6'); }
+  if(e.key==='v'||e.key==='V'){ setTool('select'); }
+  if(e.key==='r'||e.key==='R'){ setTool('ruler'); }
+  if(e.key==='f'||e.key==='F'){ setTool('reveal'); }
+  if(e.key==='h'||e.key==='H'){ setTool('hide'); }
+  if(e.key==='u'||e.key==='U'){ fogUndo(); }
+});
+
+function doRoll(expr){
+  // parse NdM+K
+  const p = expr.trim().toLowerCase().replace(/^d/,'1d');
+  const m = p.match(/^(\d+)d(\d+)([+-]\d+)?$/);
+  if(!m){ overlay(`Bad roll: ${escapeHtml(expr)}`); return; }
+  const n=Number(m[1]), sides=Number(m[2]), mod=Number(m[3]||0);
+  const rolls=[]; for(let i=0;i<n;i++) rolls.push(1+Math.floor(Math.random()*sides));
+  const sum = rolls.reduce((a,b)=>a+b,0)+mod;
+  overlay(`${n}d${sides}${mod? (mod>0?`+${mod}`:mod):''} → ${sum} [${rolls.join(', ')}]`);
+  // 3D visuals for certain dice; if many dice, animate first only then numeric overlay covers all
+  if((sides===6||sides===8||sides===10||sides===20) && n===1){
+    animateDie(sides, rolls[0]);
+  }else if(sides===100 && n===1){
+    // visualize as two d10
+    animateDie(10, Math.floor(rolls[0]/10)*10);
+  }else{
+    // numeric only
+  }
+}
+
+/* 3D DICE: simple software renderer for d6/d8/d10/d20
+   We render shaded faces and rotate to a pretty orientation; we overlay the result number for clarity. */
+function overlay(text){
+  const ov=byId('diceOverlay'); ov.innerHTML=`<div class="big">${text}</div>`;
+  clearTimeout(overlayTimeout); overlayTimeout=setTimeout(()=>{ov.innerHTML='';}, 3000);
+}
+
+function animateDie(type, result){
+  const geom = getGeom(type);
+  if(!geom){ clearDice(); return; }
+  let t=0; const dur=950; const startRot = randEuler(); // random start
+  // Target: a nice orientation; we do not strictly align a numbered face up — we overlay the result text
+  const targetRot = {x: Math.PI*1.25, y: Math.PI*0.65, z: Math.PI*0.1 + Math.random()*0.3};
+  const cam = {z: 4.2}; const scale=110;
+  function frame(ts){
+    if(!diceAnim) diceAnim=ts; const dt=ts-diceAnim; diceAnim=ts; t+=dt;
+    const k = easeOutCubic(Math.min(1, t/dur));
+    const rot = lerpEuler(startRot, targetRot, k);
+    drawGeom(geom, rot, cam, scale);
+    if(k<1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function getGeom(sides){
+  if(sides===6){
+    // cube (size 1)
+    const v=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]];
+    const f=[[0,1,2,3],[4,5,6,7],[0,1,5,4],[2,3,7,6],[1,2,6,5],[0,3,7,4]];
+    return {v,f};
+  }
+  if(sides===8){
+    // octahedron
+    const v=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+    const f=[[0,2,4],[2,1,4],[1,3,4],[3,0,4],[2,0,5],[1,2,5],[3,1,5],[0,3,5]];
+    return {v,f};
+  }
+  if(sides===10){
+    // pentagonal trapezohedron (two rings of 5, rotated)
+    const a=0.8, r=1.0;
+    const top=[], bot=[];
+    for(let i=0;i<5;i++){
+      const t= (i/5)*2*Math.PI;
+      top.push([r*Math.cos(t), r*Math.sin(t), a]);
+      const t2 = t + Math.PI/5;
+      bot.push([r*Math.cos(t2), r*Math.sin(t2), -a]);
+    }
+    const v=[...top,...bot];
+    const f=[];
+    for(let i=0;i<5;i++){
+      const i2=(i+1)%5;
+      // kites: [top i, top i+1, bot i, bot i] and alternate
+      f.push([i, i2, 5+i]);       // upper triangle
+      f.push([5+i, 5+i2, i2]);    // lower triangle (two tris make a kite)
+    }
+    return {v,f};
+  }
+  if(sides===20){
+    // Icosahedron — vertices from golden ratio
+    const phi=(1+Math.sqrt(5))/2, s=1;
+    const v=[
+      [0, -s, -phi],[0, s, -phi],[0, -s, phi],[0, s, phi],
+      [-s, -phi, 0],[s, -phi, 0],[-s, phi, 0],[s, phi, 0],
+      [-phi, 0, -s],[phi, 0, -s],[-phi, 0, s],[phi, 0, s]
+    ];
+    const f=[
+      [0,1,8],[1,6,8],[1,3,6],[3,7,6],[3,11,7],
+      [3,2,11],[2,5,11],[2,4,5],[2,0,4],[0,8,4],
+      [9,1,0],[9,7,1],[9,11,7],[9,5,11],[9,4,5],
+      [9,0,4],[10,6,8],[10,3,6],[10,2,3],[10,0,2]
+    ];
+    return {v,f};
+  }
+  return null;
+}
+
+function drawGeom(geom, rot, cam, scale){
+  clearDice();
+  const ctx=diceCtx; ctx.save(); ctx.translate(diceCanvas.width/2, diceCanvas.height/2+30);
+  // rotate vertices
+  const rv = geom.v.map(([x,y,z])=> rotateXYZ([x,y,z], rot));
+  // project
+  const pv = rv.map(([x,y,z])=> {
+    const zt = z+cam.z;
+    const k = 1/(zt||1e-3);
+    return [x*k*scale, y*k*scale, zt];
+  });
+  // draw faces sorted by depth
+  const faces = geom.f.map((idxs,i)=>{
+    const pts = idxs.map(ii=> pv[ii]);
+    const depth = idxs.reduce((a,ii)=>a+rv[ii][2],0)/idxs.length;
+    const normal = faceNormal(idxs.map(ii=>rv[ii]));
+    const light = Math.max(0, dot(normal, normalize([0.2,0.4,1])));
+    return {pts,depth,light};
+  }).sort((a,b)=> b.depth-a.depth);
+  faces.forEach(f=>{
+    ctx.beginPath(); ctx.moveTo(f.pts[0][0], f.pts[0][1]);
+    for(let i=1;i<f.pts.length;i++) ctx.lineTo(f.pts[i][0], f.pts[i][1]);
+    ctx.closePath();
+    const base = 35 + Math.floor(f.light*120);
+    ctx.fillStyle = `rgb(${base},${base+15},${base+35})`;
+    ctx.strokeStyle = 'rgba(200,210,255,.15)';
+    ctx.lineWidth = 1;
+    ctx.fill(); ctx.stroke();
+  });
+  ctx.restore();
+}
+
+function rotateXYZ(p, r){
+  let [x,y,z]=p;
+  // Rx
+  let cy=Math.cos(r.x), sy=Math.sin(r.x);
+  let y1 = y*cy - z*sy, z1 = y*sy + z*cy; y=y1; z=z1;
+  // Ry
+  let cx=Math.cos(r.y), sx=Math.sin(r.y);
+  let x1 = x*cx + z*sx, z2 = -x*sx + z*cx; x=x1; z=z2;
+  // Rz
+  let cz=Math.cos(r.z), sz=Math.sin(r.z);
+  let x2 = x*cz - y*sz, y2 = x*sz + y*cz; x=x2; y=y2;
+  return [x,y,z];
+}
+function faceNormal(verts){
+  // polygon normal via Newell's method
+  let nx=0,ny=0,nz=0;
+  for(let i=0;i<verts.length;i++){
+    const [x1,y1,z1]=verts[i], [x2,y2,z2]=verts[(i+1)%verts.length];
+    nx += (y1 - y2) * (z1 + z2);
+    ny += (z1 - z2) * (x1 + x2);
+    nz += (x1 - x2) * (y1 + y2);
+  }
+  return normalize([nx,ny,nz]);
+}
+function normalize(v){ const m=Math.hypot(...v)||1; return v.map(n=>n/m); }
+function dot(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+function randEuler(){ return {x:Math.random()*Math.PI*2,y:Math.random()*Math.PI*2,z:Math.random()*Math.PI*2}; }
+function lerpEuler(a,b,t){ return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t}; }
+function easeOutCubic(x){ return 1 - Math.pow(1-x,3); }
+
+/* ---------- PARTICLES ---------- */
+function spawnFXAt(gx,gy){
+  const box = mapEl.getBoundingClientRect();
+  const cx = (gx+0.5)/GRID_W*box.width;
+  const cy = (gy+0.5)/GRID_H*box.height;
+  for(let i=0;i<12;i++){
+    const d = el('div',{class:'fx'});
+    const ang = Math.random()*2*Math.PI, dist = 8+Math.random()*28;
+    const x = cx + Math.cos(ang)*dist, y = cy + Math.sin(ang)*dist;
+    d.style.left = `${x}px`; d.style.top = `${y}px`;
+    d.style.width='4px'; d.style.height='4px'; d.style.background='#a7c2ff'; d.style.borderRadius='50%';
+    mapEl.appendChild(d);
+    setTimeout(()=>d.remove(), 400+Math.random()*400);
+  }
+}
+
+/* ---------- UI HOOKS ---------- */
+byId('btnSettings').onclick = ()=> show('#modalSettings');
+byId('btnScenes').onclick   = ()=> { updateSceneList(); show('#modalScenes'); };
+byId('btnParty').onclick    = ()=> { renderParty(); show('#modalParty'); };
+byId('btnNPCs').onclick     = ()=> { renderNPCs(); show('#modalNPCs'); };
+byId('btnSaveLoad').onclick = ()=> { updateSlots(); show('#modalSave'); };
+byId('btnDice').onclick     = ()=> diceCanvas.scrollIntoView({behavior:'smooth', block:'center'});
+
+document.querySelectorAll('.modal .scrim,[data-close]').forEach(n=> n.addEventListener('click', (e)=>{
+  const tgt = e.currentTarget.getAttribute('data-close') || '#'+e.currentTarget.closest('.modal').id;
+  hide(tgt);
+}));
+
+byId('btnSaveSettings').onclick = ()=>{
+  state.settings.openaiKey = byId('openaiKey').value.trim();
+  state.settings.openaiModel = byId('openaiModel').value;
+  state.settings.keeperOn = byId('keeperOn').checked;
+  state.settings.useImages = byId('useImages').checked;
+  state.settings.elevenKey = byId('elevenKey').value.trim();
+  state.settings.voiceId = byId('voiceId').value.trim();
+  state.settings.ttsOn   = byId('ttsOn').checked;
+  state.settings.rulesPack = byId('rulesPack').value;
+  saveSettings();
+  hide('#modalSettings');
+};
+
+/* Map tool UI */
+byId('tool').addEventListener('change', e=> setTool(e.target.value));
+byId('brush').addEventListener('change', e=> brush=Number(e.target.value));
+function setTool(t){ tool=t; byId('tool').value=t; toast('Tool: '+t); }
+
+/* Board controls */
+byId('btnParticles').onclick = ()=> spawnFXAt(Math.floor(GRID_W/2), Math.floor(GRID_H/2));
+byId('btnRevealAll').onclick = ()=> fogAll(false);
+byId('btnHideAll').onclick   = ()=> fogAll(true);
+byId('btnUndo').onclick      = ()=> fogUndo();
+byId('btnGenBG').onclick     = genBGQuick;
+
+byId('btnNewScene').onclick      = ()=> addScene(prompt('Scene name?','New Scene')||'New Scene');
+byId('btnSwitchScene').onclick   = ()=> { updateSceneList(); show('#modalScenes'); };
+
+/* Scenes modal controls */
+byId('btnSetBG').onclick = ()=>{
+  const d=byId('sceneBgData').value.trim(); if(!d) return; setSceneBgData(d);
+};
+byId('btnGenBG2').onclick = async ()=>{
+  const p = byId('bgPrompt').value.trim()||'moody foggy harbour';
+  await generateBackground(p);
+};
+byId('btnAddScene').onclick = ()=> addScene(byId('sceneTitle').value.trim()||'New Scene');
+byId('btnSwitchScene2').onclick = ()=> {
+  const idx = Number(prompt('Switch to scene index (0..N-1)?', String(state.sceneIndex)))||0;
+  switchScene(idx);
+  hide('#modalScenes');
+};
+
+/* Party modal */
+function renderParty(){
+  const wrap=byId('partyList'); wrap.innerHTML='';
+  currentScene().tokens.filter(t=>t.type==='pc').forEach(t=>{
+    wrap.appendChild(pcEditorRow(t));
+  });
+}
+function pcEditorRow(t){
+  const row = el('div',{class:'row',style:'align-items:center;justify-content:space-between;margin:.25rem 0;flex-wrap:wrap'});
+  row.appendChild(el('div',{}, `${t.name||'Unnamed'} @ ${t.x},${t.y}`));
+  const ctrls=el('div',{class:'row'});
+  ctrls.appendChild(el('button',{class:'ghost',onclick:async()=>{ await genPortraitFor(t); renderParty(); }},'Portrait'));
+  ctrls.appendChild(el('button',{class:'ghost',onclick:()=>{ const n=prompt('Rename',t.name||''); if(n!==null){ t.name=n; renderTokens(); renderParty(); }}},'Rename'));
+  ctrls.appendChild(el('button',{class:'danger',onclick:()=>{ removeToken(t.id); renderParty(); }},'Remove'));
+  row.appendChild(ctrls);
+  return row;
+}
+byId('btnGenParty').onclick = async ()=>{
+  // Offline quick 5 investigators
+  const names = ["Eleanor Shaw","Caleb Finch","Iris Caldwell","Thomas Greer","Miriam Kline","Walter Rourke","Opal Reyes","Jonah Pike","Vera Doyle","Silas Hart"];
+  for(let i=0;i<5;i++){
+    addToken({name:names[Math.floor(Math.random()*names.length)], type:'pc', x:i, y:GRID_H-1});
+  }
+  renderParty(); toast('5 investigators added');
+};
+byId('btnAddPC').onclick = ()=> { addToken({name:prompt('Name?','New Investigator')||'Investigator', type:'pc', x:0, y:GRID_H-1}); renderParty(); };
+byId('btnPortraits').onclick = async ()=>{
+  for(const t of currentScene().tokens.filter(t=>t.type==='pc')){ await genPortraitFor(t); }
+  renderParty();
+};
+
+/* NPC modal */
+function renderNPCs(){
+  const wrap=byId('npcList'); wrap.innerHTML='';
+  currentScene().tokens.filter(t=>t.type==='npc').forEach(t=>{
+    wrap.appendChild(npcEditorRow(t));
+  });
+}
+function npcEditorRow(t){
+  const row = el('div',{class:'row',style:'align-items:center;justify-content:space-between;margin:.25rem 0;flex-wrap:wrap'});
+  row.appendChild(el('div',{}, `${t.name||'Unnamed'} @ ${t.x},${t.y}`));
+  const ctrls=el('div',{class:'row'});
+  ctrls.appendChild(el('button',{class:'ghost',onclick:async()=>{ await genPortraitFor(t); renderNPCs(); }},'Portrait'));
+  ctrls.appendChild(el('button',{class:'ghost',onclick:()=>{ const n=prompt('Rename',t.name||''); if(n!==null){ t.name=n; renderTokens(); renderNPCs(); }}},'Rename'));
+  ctrls.appendChild(el('button',{class:'danger',onclick:()=>{ removeToken(t.id); renderNPCs(); }},'Remove'));
+  row.appendChild(ctrlls);
+  return row;
+}
+byId('btnGenNPCs').onclick = ()=>{
+  const arche = ['Dockhand','Fishmonger','Lighthouse Keeper','Professor','Journalist','Doctor','Officer','Priest','Innkeeper','Smuggler'];
+  for(let i=0;i<4;i++){
+    addToken({name: arche[Math.floor(Math.random()*arche.length)]+' '+(i+1), type:'npc', x:GRID_W-1-i, y:0});
+  }
+  renderNPCs(); toast('NPCs added');
+};
+byId('btnAddNPC').onclick = ()=> { addToken({name:prompt('Name?','Mysterious NPC')||'Mysterious NPC', type:'npc', x:GRID_W-1, y:0}); renderNPCs(); };
+
+/* SCENE BACKGROUND GEN */
+async function genBGQuick(){
+  const prompt = 'Moody foggy 1920s harbor at night, painterly, desaturated blues, cinematic light, film grain, wide shot';
+  await generateBackground(prompt);
+}
+async function generateBackground(prompt){
+  if(!state.settings.useImages){ toast('Enable image generation in Settings'); return; }
+  try{
+    const data = await openaiImage(prompt);
+    setSceneBgData(data);
+  }catch(e){ toast('Image generation failed'); }
+}
+
+/* ---------- SAVE / LOAD ---------- */
+function updateSlots(){
+  const wrap = byId('slots'); wrap.innerHTML='';
+  const slots = loadSlots();
+  for(let i=0;i<6;i++){
+    const slot = slots[i]||null;
+    const row = el('div',{class:'slot'},
+      [el('div',{class:'meta'}, [
+        el('div',{}, `Slot ${i+1}: ${slot? (slot.meta?.name||'Campaign'): '— empty —'}`),
+        el('div',{class:'ts'}, slot? new Date(slot.meta?.ts||Date.now()).toLocaleString(): '')
+      ]),
+      el('div',{class:'row'},[
+        el('button',{class:'ghost',onclick:()=> saveToSlot(i)},'Save'),
+        el('button',{class:'warn',onclick:()=> loadFromSlot(i)},'Load'),
+        el('button',{class:'danger',onclick:()=> clearSlot(i)},'Clear')
+      ])]
+    );
+    wrap.appendChild(row);
+  }
+}
+function captureState(){
+  return {
+    meta:{ts:Date.now(), name: currentScene().name},
+    settings: state.settings,
+    sceneIndex: state.sceneIndex,
+    scenes: state.scenes
+  };
+}
+function applyState(data){
+  Object.assign(state.settings, data.settings||{});
+  state.sceneIndex = data.sceneIndex||0;
+  state.scenes = data.scenes||[newScene('Recovered')];
+  loadSettings(); renderAll();
+}
+function saveToSlot(i){
+  const slots = loadSlots();
+  slots[i]= captureState(); saveSlots(slots); updateSlots(); toast('Saved.');
+}
+function loadFromSlot(i){
+  const slots = loadSlots(); if(!slots[i]){ toast('Empty slot'); return; }
+  applyState(slots[i]); toast('Loaded.');
+}
+function clearSlot(i){
+  const slots = loadSlots(); slots[i]=null; saveSlots(slots); updateSlots(); toast('Cleared.');
+}
+byId('btnExport').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(captureState(),null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download='solo-investigator-save.json'; a.click(); URL.revokeObjectURL(url);
+};
+byId('btnImport').onclick = ()=>{
+  try{
+    const data = JSON.parse(byId('importText').value.trim()); applyState(data); toast('Imported.');
+  }catch{ toast('Bad JSON'); }
+};
+
+/* ---------- UTIL ---------- */
+function show(sel){ document.querySelector(sel).classList.add('show'); }
+function hide(sel){ document.querySelector(sel).classList.remove('show'); }
+function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
+function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- ON LOAD: seed some tokens ---------- */
+if(currentScene().tokens.length===0){
+  addToken({name:'pc0',type:'pc',x:1,y:6});
+  addToken({name:'pc1',type:'pc',x:2,y:6});
+  addToken({name:'pc2',type:'pc',x:3,y:6});
+  addToken({name:'npc0',type:'npc',x:10,y:1});
+}
+</script>
+</body>
+</html>
