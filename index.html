@@ -309,8 +309,8 @@
         <label><input type="checkbox" id="keeperOn" checked/> Keeper AI On</label>
         <label>Keeper Trigger</label>
         <select id="keeperTrigger">
-          <option value="manual" selected>Manual (Ask Keeper or /keeper)</option>
-          <option value="auto">Auto (every non-slash message)</option>
+          <option value="manual">Manual (Ask Keeper or /keeper)</option>
+          <option value="auto" selected>Auto (every non-slash message)</option>
         </select>
         <label>Keeper Style</label>
         <select id="keeperStyle">
@@ -562,7 +562,7 @@
 /* =========================================================
    SOLO INVESTIGATOR — Tutorial Solo VTT (client‑only)
    Token‑frugal, with Character Sheets + Inventory, stable chat scroll,
-   asset‑full saves, manual Keeper trigger, stronger variety
+   asset‑full saves, auto Keeper trigger, stronger variety
    ========================================================= */
 
 /* ---------- CONSTANTS ---------- */
@@ -677,7 +677,7 @@ const state = {
     ttsOn:false, ttsQueue:true, ttsProviderDefault:'browser',
     elevenKey:'', voiceId:'',
     rulesPack:'',
-    keeperTrigger:'manual',
+    keeperTrigger:'auto',
     keeperStyle:'normal',
     keeperMax:450,
     voiceMap:{} // { name: {provider:'browser'|'eleven'|'none', id:'VoiceNameOrId'} }
@@ -726,7 +726,7 @@ function loadSettings(){
   byId('ttsQueue').checked = state.settings.ttsQueue;
   byId('ttsProviderDefault').value = state.settings.ttsProviderDefault || 'browser';
   byId('rulesPack').value = state.settings.rulesPack;
-  byId('keeperTrigger').value = state.settings.keeperTrigger || 'manual';
+  byId('keeperTrigger').value = state.settings.keeperTrigger || 'auto';
   byId('keeperStyle').value = state.settings.keeperStyle || 'normal';
   byId('keeperMax').value = state.settings.keeperMax || 450;
 }
@@ -1194,7 +1194,7 @@ function askKeeperFromInput(){
 function sendChat(){ const val=byId('chatInput').value.trim(); if(!val) return; byId('chatInput').value=''; addLine(val,'you');
   if(val.startsWith('/')){ runSlash(val); return; }
   if(!state.settings.keeperOn) return;
-  if((state.settings.keeperTrigger||'manual')==='auto'){ keeperReply(val); }
+  if((state.settings.keeperTrigger||'auto')==='auto'){ keeperReply(val); }
 }
 
 /* ---------- SLASH ---------- */

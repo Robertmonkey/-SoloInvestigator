@@ -17,7 +17,7 @@ A single-file, client-only tabletop experience inspired by investigative horror 
 - **Tactical Board:** Grid, fog of war (reveal/hide/undo), ruler, pings, tokens w/ portraits, active-turn highlight, movement budgets.
 - **Voices:** Queue-based TTS with **Browser voices (free)** or **ElevenLabs** (premium). Per-speaker voice selection + local caching for replays.
 - **Asset-Full Saves:** Export/import includes scenes, portraits, and handouts as data URLs—no re-generation needed when you reload.
-- **Cost Controls:** Local asset cache, selective Keeper trigger (manual by default), quick command picker, offline placeholders if you disable images.
+- **Cost Controls:** Local asset cache, Keeper auto-trigger (switch to manual anytime), quick command picker, offline placeholders if you disable images.
 
 ---
 
@@ -69,7 +69,7 @@ Edit
   - **Browser (free)** — system voices, zero cost.
   - **ElevenLabs** — premium quality. Set API key + voice ID. All audio is cached locally and replayable.
   - **None** — silent mode.
-- **Keeper Trigger:** `Manual` (click **Ask Keeper** or `/keeper …`) or `Auto` (Keeper replies to normal messages).
+- **Keeper Trigger:** `Auto` (Keeper replies to normal messages) or `Manual` (click **Ask Keeper** or `/keeper …`).
 - **Keeper Style/Max Tokens:** Control verbosity and token budget to reduce spend.
 - **Rules Pack:** Your own notes/house-rules (do not paste copyrighted text).
 
