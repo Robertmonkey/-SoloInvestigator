@@ -464,8 +464,8 @@
   <div class="sheet">
     <h2>Save / Load</h2>
     <div class="row" style="margin-bottom:.5rem">
-      <button id="btnQuickSave" class="ghost">Save</button>
-      <button id="btnQuickLoad" class="warn">Load</button>
+      <button id="btnSave" class="ghost">Save</button>
+      <button id="btnLoad" class="warn">Load</button>
     </div>
     <div class="slots" id="slots"></div>
     <div class="hr"></div>
@@ -1417,12 +1417,21 @@ function applyState(data){
 function saveToSlot(i){ const slots=loadSlots(); slots[i]=captureState(); saveSlots(slots); updateSlots(); toast('Saved.'); }
 function loadFromSlot(i){ const slots=loadSlots(); if(!slots[i]){ toast('Empty slot'); return; } applyState(slots[i]); toast('Loaded.'); }
 function clearSlot(i){ const slots=loadSlots(); slots[i]=null; saveSlots(slots); updateSlots(); }
-function quickSave(){ saveToSlot(0); hide('#modalSave'); }
-function quickLoad(){ loadFromSlot(0); hide('#modalSave'); }
+function saveLocal(){
+  localStorage.setItem(LS_QUICK, JSON.stringify(captureState()));
+  toast('Saved.');
+  hide('#modalSave');
+}
+function loadLocal(){
+  const raw = localStorage.getItem(LS_QUICK);
+  if(!raw){ toast('No save'); return; }
+  try{ applyState(JSON.parse(raw)); toast('Loaded.'); hide('#modalSave'); }
+  catch{ toast('Bad save'); }
+}
 byId('btnExport').onclick=()=>{ const blob=new Blob([JSON.stringify(captureState(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='solo-investigator-save.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 2000); };
 byId('btnImport').onclick=()=>{ try{ const data=JSON.parse(byId('importText').value.trim()); applyState(data); toast('Imported.'); }catch{ toast('Bad JSON'); } };
-byId('btnQuickSave').onclick=quickSave;
-byId('btnQuickLoad').onclick=quickLoad;
+byId('btnSave').onclick=saveLocal;
+byId('btnLoad').onclick=loadLocal;
 
 /* ---------- IMAGES (Data URLs; cached) ---------- */
 async function openaiImage(prompt, size='1024x1024'){
