@@ -411,7 +411,11 @@ byId('cmdInsert').onclick=()=>{
 function addLine(text, who='you', opts={}){
   const line = el('div',{class:`line ${who}`});
   const content = el('div',{class:'content'});
-  if(who==='you'){ content.textContent=text; } else { content.innerHTML=text; }
+  if(who==='you'){
+    content.textContent = text;
+  } else {
+    content.innerHTML = escapeHtml(text);
+  }
 
   if(who==='keeper'){
     const whoEl = el('div',{class:'who'}, `👁️ ${opts.speaker||'Keeper'}`);
@@ -472,12 +476,15 @@ function addWhisper(target, text){
   chatLog.scrollTop=chatLog.scrollHeight;
 }
 function speakerAvatar(name){
-  const t=currentScene().tokens.find(x=> (x.name||'').toLowerCase()===name.toLowerCase());
+  const key=(name||'').toLowerCase();
+  const t=currentScene().tokens.find(x=> (x.name||'').toLowerCase()===key);
   if(t?.portraitData) return t.portraitData;
-  const np=(state.campaign?.npcPortraits||[]).find(p=> (p.name||p.role||'').toLowerCase()===name.toLowerCase());
+  const np=(state.campaign?.npcPortraits||[]).find(p=> (p.name||p.role||'').toLowerCase()===key);
   if(np?.portraitData) return np.portraitData;
   const cv=document.createElement('canvas'); cv.width=64; cv.height=64; const ctx=cv.getContext('2d'); ctx.fillStyle='#0e1524'; ctx.fillRect(0,0,64,64);
-  ctx.fillStyle='#9fb4ff'; ctx.font='bold 20px ui-monospace,monospace'; const inis=(name||'??').split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join(''); ctx.fillText(inis, 12, 38);
+  ctx.fillStyle='#9fb4ff'; ctx.font='bold 20px ui-monospace,monospace';
+  const inis=(name||'??').split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join('');
+  ctx.fillText(inis, 12, 38);
   return cv.toDataURL('image/png');
 }
 
@@ -551,20 +558,23 @@ function doRoll(expr, opts={}){
   const rolls=[];
   for(let i=0;i<n;i++) rolls.push(1+Math.floor(Math.random()*sides));
   const sum=rolls.reduce((a,b)=>a+b,0)+mod;
-  const label = opts.note ? ` (${opts.note})` : '';
-  const line = `Roll ${n}d${sides}${mod?(mod>0?`+${mod}`:mod):''}${label} → ${sum} [${rolls.join(', ')}]`;
+  const note = opts.note ? ` (${escapeHtml(opts.note)})` : '';
+  const prefix = opts.who ? `${escapeHtml(opts.who)}: ` : '';
+  const line = `${prefix}Roll ${n}d${sides}${mod?(mod>0?`+${mod}`:mod):''}${note} → ${sum} [${rolls.join(', ')}]`;
   addSystemMessage(line);
   return {n,sides,mod,rolls,sum};
 }
 
 /* Percentile check with tiers */
 function rollPercentile(skillName, skillVal){
+  const val = clamp(Number(skillVal) || 0, 1, 99);
   const roll = 1+Math.floor(Math.random()*100);
-  const hard = Math.floor(skillVal/2), extreme = Math.max(1,Math.floor(skillVal/5));
-  let tier = (roll<=extreme) ? 'Extreme Success' : (roll<=hard) ? 'Hard Success' : (roll<=skillVal) ? 'Success' : 'Failure';
+  const hard = Math.floor(val/2), extreme = Math.max(1,Math.floor(val/5));
+  let tier = (roll<=extreme) ? 'Extreme Success' : (roll<=hard) ? 'Hard Success' : (roll<=val) ? 'Success' : 'Failure';
   if(roll===1) tier='Critical Success';
   if(roll===100) tier='Fumble';
-  const text = `Check ${skillName} ${skillVal}: d100 → ${roll} → <b>${tier}</b>`;
+  const safeName = escapeHtml(skillName);
+  const text = `Check ${safeName} ${val}: d100 → ${roll} → <b>${tier}</b>`;
   return {roll, tier, text};
 }
 
