@@ -638,7 +638,8 @@ function voiceControlsForName(actor){
   const provSel=el('select',{}); ['browser','eleven','none'].forEach(p=> provSel.appendChild(el('option',{value:p, selected:(state.settings.voiceMap?.[name]?.provider || state.settings.ttsProviderDefault || 'browser')===p}, p)));
   const voiceSel=el('select',{}); // browser voices
   const voiceInp=el('input',{placeholder:'ElevenLabs Voice ID'}); // eleven
-  const testBtn=el('button',{class:'ghost',onclick:()=> speak(`It is I, ${name}.`, name)},'Test');
+  const role = actor.type || (name==='Keeper'?'npc':'pc');
+  const testBtn=el('button',{class:'ghost',onclick:()=> speak(`It is I, ${name}.`, name, role)},'Test');
 
   // fill browser voices
   const chosenId = state.settings.voiceMap?.[name]?.id || '';
@@ -809,8 +810,14 @@ async function generateBackground(prompt){ try{ const dataUrl=await openaiImage(
 
 /* ---------- TTS (Browser + ElevenLabs) ---------- */
 let ttsQueue=[], ttsPlaying=false, currentAudio=null, currentUrl=null;
-function providerFor(speaker, role='pc'){ const key=(role==='npc' || speaker==='Keeper')?'npc':speaker; const m=state.settings.voiceMap?.[key]; return m?.provider || state.settings.ttsProviderDefault || 'browser'; }
-function voiceIdFor(speaker, role='pc'){ const key=(role==='npc' || speaker==='Keeper')?'npc':speaker; const m=state.settings.voiceMap?.[key]; return m?.id || (providerFor(speaker, role)==='eleven'? state.settings.voiceId : ''); }
+function providerFor(speaker, role='pc'){
+  const m = state.settings.voiceMap?.[speaker] || (role==='npc' ? state.settings.voiceMap?.npc : null);
+  return m?.provider || state.settings.ttsProviderDefault || 'browser';
+}
+function voiceIdFor(speaker, role='pc'){
+  const m = state.settings.voiceMap?.[speaker] || (role==='npc' ? state.settings.voiceMap?.npc : null);
+  return m?.id || (providerFor(speaker, role)==='eleven'? state.settings.voiceId : '');
+}
 
 async function speak(text, speaker='Keeper', role='pc'){
   if(!state.settings.ttsOn || !text) return;
