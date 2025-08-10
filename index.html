@@ -1892,6 +1892,10 @@ byId('btnSheetSave').onclick=()=>{
 /* ---------- SHOW/HIDE ---------- */
 function show(sel){ const m=document.querySelector(sel); if(m) m.classList.add('show'); }
 function hide(sel){ const m=document.querySelector(sel); if(m) m.classList.remove('show'); }
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-close]');
+  if(t) hide(t.getAttribute('data-close'));
+});
 
 /* ---------- LOCAL MEMORY SUMMARIZATION (no API) ---------- */
 function maybeSummarizeLocal(){
