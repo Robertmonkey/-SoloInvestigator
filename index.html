@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Solo Investigator — Tutorial Solo VTT (Client‑only)</title>
+<title>Solo Investigator — Tutorial Solo VTT</title>
 <style>
   :root{
     --bg:#0b0f14; --panel:#121821; --panel-2:#0f151e; --ink:#e9eef7; --muted:#a7b0c0;
     --brand:#7aa2ff; --accent:#86f0d1; --danger:#ff6b6b; --warn:#ffc04d; --ok:#59db7d;
     --grid:#1c2230; --grid-2:#151a25; --glow:0 0 20px rgba(122,162,255,.25);
+    --pc:#2e6a53; --npc:#5a365a; --keeper:#1f2a44;
   }
   *{box-sizing:border-box} html,body{height:100%}
   body{
@@ -70,8 +71,8 @@
   }
   .token img{width:100%;height:100%;object-fit:cover;border-radius:50%}
   .token .letters{font-weight:700;color:#d8e4ff}
-  .token.pc .bubble{background:radial-gradient(50% 50% at 30% 30%, #2e6a53, #15251f)}
-  .token.npc .bubble{background:radial-gradient(50% 50% at 30% 30%, #5a365a, #1f1521)}
+  .token.pc .bubble{background:radial-gradient(50% 50% at 30% 30%, var(--pc), #15251f)}
+  .token.npc .bubble{background:radial-gradient(50% 50% at 30% 30%, var(--npc), #1f1521)}
   .token .cap{position:absolute;bottom:-.25rem;left:50%;transform:translateX(-50%);
     font-size:.7rem;background:#0e1421;border:1px solid #223049;border-radius:6px;padding:.05rem .35rem;color:#cfe1ff}
 
@@ -82,12 +83,15 @@
   /* Chat */
   #chat{display:flex;flex-direction:column;height:460px}
   #chatLog{flex:1;overflow:auto;background:#0c121d;border:1px solid #1a2130;border-radius:8px;padding:.75rem;scroll-behavior:smooth}
-  #chatLog .line{display:flex;align-items:flex-start;gap:.5rem;margin:.35rem 0}
-  #chatLog .who{opacity:.8}
+  #chatLog .line{display:flex;align-items:flex-start;gap:.6rem;margin:.45rem 0}
+  #chatLog .who{opacity:.85;font-weight:600}
   #chatLog .content{flex:1}
   #chatLog .controls{display:flex;gap:.25rem}
-  #chatLog .keeper .who{color:#cfe1ff}
+  #chatLog .keeper .who{color:#bcd1ff}
   #chatLog .you .who{color:#d5f7e7}
+  .avatar{width:28px;height:28px;border-radius:50%;overflow:hidden;border:1px solid #223049;flex:none}
+  .avatar img{width:100%;height:100%;object-fit:cover}
+  .speakerName{font-weight:700}
   #chatEntry{display:flex;gap:.5rem;margin-top:.5rem}
   #chatEntry input{flex:1}
 
@@ -95,7 +99,7 @@
   .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:90}
   .modal.show{display:flex}
   .modal .scrim{position:absolute;inset:0;background:rgba(6,8,12,.75);backdrop-filter:blur(6px)}
-  .modal .sheet{position:relative;max-width:1024px;width:min(1024px,96vw);max-height:90vh;overflow:auto;border-radius:14px;
+  .modal .sheet{position:relative;max-width:1100px;width:min(1100px,96vw);max-height:90vh;overflow:auto;border-radius:14px;
     background:linear-gradient(180deg,#0d1220,#0a0f19);border:1px solid #1a2231;padding:1rem;box-shadow:0 10px 40px rgba(0,0,0,.5)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem}
@@ -118,22 +122,29 @@
   .slots .meta{display:flex;flex-direction:column}
   .slots .ts{font-size:.75rem;color:#8ea0bf}
 
-  /* Toast */
-  #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#0e1626;border:1px solid #26314b;border-radius:10px;padding:.5rem .75rem;
-    color:#cfe1ff;display:none;z-index:120}
-  #toast.show{display:block}
-
   /* Wizard */
-  #modalWizard .steps{display:flex;gap:.5rem;margin:.25rem 0 .75rem 0}
+  #modalWizard .steps{display:flex;gap:.5rem;margin:.25rem 0 .75rem 0;flex-wrap:wrap}
   #modalWizard .steps .step{padding:.2rem .5rem;border:1px solid #2a3345;border-radius:999px}
   #modalWizard .steps .step.active{background:#17223a;color:#cfe1ff}
   .card{border:1px solid #233048;background:#0e1524;border-radius:10px;padding:.6rem}
   .card h3{margin:.2rem 0 .4rem 0;font-size:1rem;color:#d7e4ff}
+  .meSel{outline:2px solid #59db7d; box-shadow:0 0 0 4px rgba(89,219,125,.18)}
+  .compSel{outline:2px solid #7aa2ff; box-shadow:0 0 0 4px rgba(122,162,255,.18)}
 
   /* Handouts */
   #handoutsList img{max-width:100%;height:auto;border:1px solid #1a2231;border-radius:8px;display:block;margin:.35rem 0}
   #handoutsList .ho{border:1px solid #223049;border-radius:10px;padding:.6rem;margin:.5rem 0;background:#0f1525}
   #handoutsList .ho h4{margin:.25rem 0 .3rem 0}
+
+  /* Progress */
+  #modalProgress .sheet{max-width:640px}
+  .barWrap{height:12px;background:#0c131f;border:1px solid #202b41;border-radius:999px;overflow:hidden}
+  .bar{height:100%;width:0%;background:linear-gradient(90deg,#7aa2ff,#86f0d1)}
+  .stepList{display:flex;flex-direction:column;gap:.35rem}
+  .stepItem{display:flex;align-items:center;gap:.6rem}
+  .stepItem .dot{width:10px;height:10px;border-radius:50%;background:#2a3650;border:1px solid #34476a}
+  .stepItem.done .dot{background:#59db7d;border-color:#2e6a53}
+  .stepItem.cur .dot{background:#7aa2ff;border-color:#4869a7}
 </style>
 </head>
 <body>
@@ -163,7 +174,7 @@
           <button class="primary" id="chatSend">Send</button>
           <button class="ghost" id="btnStopVoice" title="Stop voice & clear queue">Stop Voice</button>
         </div>
-        <div class="note small">Keeper guides you like a tutorial, asks for checks, and speaks if TTS is enabled. Click ▶ on any Keeper line to replay from cache.</div>
+        <div class="note small">Keeper guides you and **companions speak** with their own voices. Click ▶ on any line to replay. Browser TTS is free; ElevenLabs is optional.</div>
       </div>
     </div>
 
@@ -175,7 +186,7 @@
         <input id="rollExpr" placeholder="NdM±K (e.g., 1d20+3, 2d8, 1d100)" />
         <button class="primary" id="btnRoll">Roll</button>
         <button class="ghost" id="btnClearDice">Clear</button>
-        <span class="small">3D visuals: d4/d6/d8/d10/d12/d20 (d100 = two d10s)</span>
+        <span class="small">d4/d6/d8/d10/d12/d20 (d100=two d10s)</span>
       </div>
     </div>
   </section>
@@ -199,7 +210,7 @@
       </div>
       <div class="pill">Brush:
         <select id="brush">
-          <option value="1">1</option><option value="2" selected>2</option><option value="3">3</option>
+          <option>1</option><option selected>2</option><option>3</option>
         </select>
       </div>
       <button id="btnUndo" class="ghost">Undo Fog (U)</button>
@@ -251,7 +262,7 @@
   </section>
 </div>
 
-<!-- SETTINGS MODAL -->
+<!-- SETTINGS -->
 <div class="modal" id="modalSettings">
   <div class="scrim" data-close="#modalSettings"></div>
   <div class="sheet">
@@ -268,29 +279,33 @@
         </select>
         <label>Image Model</label>
         <select id="imageModel">
-          <option value="gpt-image-1" selected>gpt-image-1 (latest)</option>
-          <option value="dall-e-3">dall-e-3 (fallback)</option>
+          <option value="dall-e-3" selected>dall-e-3</option>
+          <option value="gpt-image-1">gpt-image-1</option>
           <option value="placeholders">Placeholders only (offline)</option>
         </select>
         <label><input type="checkbox" id="useImages" /> Enable Image Generation</label>
         <label><input type="checkbox" id="keeperOn" checked/> Keeper AI On</label>
       </div>
       <div class="col">
-        <label>ElevenLabs API Key (optional)</label>
+        <label>TTS Provider (default)</label>
+        <select id="ttsProviderDefault">
+          <option value="browser" selected>Browser (free)</option>
+          <option value="eleven">ElevenLabs</option>
+          <option value="none">None</option>
+        </select>
+        <label>ElevenLabs API Key</label>
         <input id="elevenKey" placeholder="eleven‑..." />
-        <label>ElevenLabs Voice ID</label>
+        <label>ElevenLabs Default Voice ID</label>
         <input id="voiceId" placeholder="e.g., 21m00Tcm4TlvDq8ikWAM" />
-        <label><input type="checkbox" id="ttsOn" /> Keeper speaks via TTS</label>
-        <label><input type="checkbox" id="ttsQueue" checked /> Queue voice (prevents overlap)</label>
+        <label><input type="checkbox" id="ttsOn" /> Enable Voices</label>
+        <label><input type="checkbox" id="ttsQueue" checked /> Queue voice (no overlaps)</label>
       </div>
     </div>
-
     <div class="hr"></div>
     <div class="col">
       <label>Rules Pack (optional, your notes only — no copyrighted text)</label>
-      <textarea id="rulesPack" rows="6" placeholder="Your house rules / notes…"></textarea>
+      <textarea id="rulesPack" rows="5" placeholder="Your house rules / notes…"></textarea>
     </div>
-
     <div class="hr"></div>
     <div class="row right">
       <button class="ghost" data-close="#modalSettings">Close</button>
@@ -299,14 +314,14 @@
   </div>
 </div>
 
-<!-- WIZARD MODAL -->
+<!-- WIZARD -->
 <div class="modal" id="modalWizard">
   <div class="scrim" data-close="#modalWizard"></div>
   <div class="sheet">
     <h2>Tutorial: Learn to Play</h2>
     <div class="steps">
       <div class="step" id="wStep0B">1 · Settings</div>
-      <div class="step" id="wStep1B">2 · Story Arc</div>
+      <div class="step" id="wStep1B">2 · Variety & Story Arc</div>
       <div class="step" id="wStep2B">3 · Pick + 4 Companions</div>
       <div class="step" id="wStep3B">4 · Auto‑Build</div>
       <div class="step" id="wStep4B">5 · Begin</div>
@@ -320,7 +335,19 @@
   </div>
 </div>
 
-<!-- SCENES MODAL -->
+<!-- PROGRESS -->
+<div class="modal" id="modalProgress">
+  <div class="scrim"></div>
+  <div class="sheet">
+    <h2 id="progTitle">Building Your Table…</h2>
+    <div class="barWrap"><div class="bar" id="progBar"></div></div>
+    <div class="stepList" id="progSteps" style="margin-top:.6rem"></div>
+    <div class="hr"></div>
+    <div class="small" id="progNote">This runs entirely in your browser.</div>
+  </div>
+</div>
+
+<!-- SCENES -->
 <div class="modal" id="modalScenes">
   <div class="scrim" data-close="#modalScenes"></div>
   <div class="sheet">
@@ -334,7 +361,7 @@
         <div class="row right"><button id="btnSetBG" class="ghost">Apply</button></div>
       </div>
       <div class="col">
-        <label>Generate Background (OpenAI Images)</label>
+        <label>Generate Background</label>
         <textarea id="bgPrompt" rows="6" placeholder="Foggy 1920s cannery interior, moonlit beams, painterly, cinematic lighting"></textarea>
         <div class="row right"><button id="btnGenBG2" class="primary">Generate</button></div>
       </div>
@@ -352,7 +379,7 @@
   </div>
 </div>
 
-<!-- PARTY MODAL -->
+<!-- PARTY -->
 <div class="modal" id="modalParty">
   <div class="scrim" data-close="#modalParty"></div>
   <div class="sheet">
@@ -368,13 +395,13 @@
   </div>
 </div>
 
-<!-- NPC MODAL -->
+<!-- NPCS -->
 <div class="modal" id="modalNPCs">
   <div class="scrim" data-close="#modalNPCs"></div>
   <div class="sheet">
     <h2>NPCs</h2>
     <div class="row">
-      <button id="btnGenNPCs" class="primary">Generate NPCs</button>
+      <button id="btnGenNPCs" class="primary">Add 4 Random NPCs</button>
       <button id="btnAddNPC" class="ghost">Add NPC</button>
     </div>
     <div id="npcList" class="small" style="margin-top:.5rem"></div>
@@ -383,7 +410,7 @@
   </div>
 </div>
 
-<!-- HANDOUTS MODAL -->
+<!-- HANDOUTS -->
 <div class="modal" id="modalHandouts">
   <div class="scrim" data-close="#modalHandouts"></div>
   <div class="sheet">
@@ -397,7 +424,7 @@
   </div>
 </div>
 
-<!-- SAVE/LOAD MODAL -->
+<!-- SAVE/LOAD -->
 <div class="modal" id="modalSave">
   <div class="scrim" data-close="#modalSave"></div>
   <div class="sheet">
@@ -421,48 +448,41 @@
 <div id="toast"></div>
 
 <script>
-/* =========================
-   SOLO INVESTIGATOR — SINGLE FILE VTT
-   Tutorial edition with Encounter turns + 10-investigator chooser + robust images
-   ========================= */
+/* =========================================================
+   SOLO INVESTIGATOR — Tutorial Solo VTT (client‑only)
+   New: Progress modal, NPC catalog portraits, arc variety, avatars, multi‑voice (Browser/11Labs)
+   ========================================================= */
 
 /* ---------- CONSTANTS ---------- */
-const LS_SETTINGS = 'si_settings_v5';
+const LS_SETTINGS = 'si_settings_v6';
 const LS_SLOTS    = 'si_slots_v4';
-const LS_WIZARD   = 'si_wizard_done_v3';
+const LS_WIZARD   = 'si_wizard_done_v4';
 const GRID_W = 12, GRID_H = 8;
-const DEFAULT_SCENE_BG = '';
 
-/* Ten investigators for the chooser */
+/* Ten investigators (unchanged core) */
 const INVESTIGATORS = [
-  { archetype:"Journalist", name:"Eleanor Shaw", prompt:"1920s journalist portrait, trench coat, press badge, film-noir lighting", backstory:"City reporter chasing labor abuse scandals to redeem a career-stalling misquote.", traits:"Observant, stubborn, empathetic." },
-  { archetype:"Doctor", name:"Thomas Greer, MD", prompt:"1920s physician portrait, wireframe glasses, soft rim light", backstory:"War medic haunted by triage choices; volunteers at a dockside clinic.", traits:"Calm, clinical, deeply moral." },
-  { archetype:"Professor", name:"Miriam Kline", prompt:"1920s academic portrait, tweed, library bokeh", backstory:"Folklore professor cataloging 'drowned saints' myths.", traits:"Curious, cautious, enthralled by texts." },
+  { archetype:"Journalist", name:"Eleanor Shaw", prompt:"1920s journalist portrait, trench coat, press badge, film-noir lighting", backstory:"Reporter chasing labor abuses to redeem a career-stalling misquote.", traits:"Observant, stubborn, empathetic." },
+  { archetype:"Doctor", name:"Thomas Greer, MD", prompt:"1920s physician portrait, wireframe glasses, soft rim light", backstory:"War medic haunted by triage choices; volunteers at a dockside clinic.", traits:"Calm, clinical, moral." },
+  { archetype:"Professor", name:"Miriam Kline", prompt:"1920s academic portrait, tweed, library bokeh", backstory:"Folklore professor cataloging 'drowned saints' myths.", traits:"Curious, cautious, enthralled." },
   { archetype:"Detective", name:"Silas Hart", prompt:"1920s sleuth portrait, fedora, cigarette smoke", backstory:"Laid‑off Pinkerton with a code; hired off‑books to find missing workers.", traits:"Dry wit, methodical, suspicious." },
   { archetype:"Occultist", name:"Opal Reyes", prompt:"1920s medium portrait, candlelight, ectoplasmic haze", backstory:"Spiritualist who lost a sibling at sea; seeks the truth beyond parlour tricks.", traits:"Intense, intuitive, brittle." },
-  { archetype:"Photographer", name:"Beatrice “Bea” Hollis", prompt:"1920s field photographer portrait, Graflex camera, raincoat, cinematic glow", backstory:"Stringer who captured something impossible on a glass plate.", traits:"Composed, daring, curious." },
-  { archetype:"Sailor", name:"Franklin “Finn” MacReady", prompt:"1920s sailor portrait, peacoat, salt-stiff cap, stormy backdrop", backstory:"Boatman familiar with hidden inlets; rumors say he talks in his sleep—answers back, too.", traits:"Superstitious, brave, practical." },
-  { archetype:"Psychiatrist", name:"Dr. Anjali Rao", prompt:"1920s psychiatrist portrait, tidy bob, notebook, chiaroscuro", backstory:"Researching mass suggestion along the coast; her mentor vanished here.", traits:"Analytical, patient, quietly fearless." },
-  { archetype:"Ex‑Priest", name:"Father Declan Byrne", prompt:"1920s clerical portrait, worn collar, hard eyes, candlelit sacristy", backstory:"Left the cloth after a disaster at sea; now studies apocrypha.", traits:"Grim, protective, resolute." },
-  { archetype:"Radio Operator", name:"Dorothy “Dot” Pennington", prompt:"1920s radio operator portrait, headphones, desk lamp glow", backstory:"Intercepted a coded transmission referencing 'the Chapel Below'.", traits:"Wry, quick, technical." }
+  { archetype:"Photographer", name:"Beatrice “Bea” Hollis", prompt:"1920s field photographer portrait, Graflex camera, raincoat", backstory:"Stringer who captured something impossible on a glass plate.", traits:"Composed, daring, curious." },
+  { archetype:"Sailor", name:"Franklin “Finn” MacReady", prompt:"1920s sailor portrait, peacoat, stormy backdrop", backstory:"Knows hidden inlets; talks in his sleep—answers back, too.", traits:"Superstitious, brave, practical." },
+  { archetype:"Psychiatrist", name:"Dr. Anjali Rao", prompt:"1920s psychiatrist portrait, tidy bob, notebook", backstory:"Researching mass suggestion; her mentor vanished here.", traits:"Analytical, patient, fearless." },
+  { archetype:"Ex‑Priest", name:"Father Declan Byrne", prompt:"1920s clerical portrait, worn collar, hard eyes", backstory:"Left the cloth after a disaster at sea; now studies apocrypha.", traits:"Grim, protective, resolute." },
+  { archetype:"Radio Operator", name:"Dorothy “Dot” Pennington", prompt:"1920s radio operator portrait, headphones, desk lamp glow", backstory:"Intercepted a coded transmission about 'the Chapel Below'.", traits:"Wry, quick, technical." }
 ];
 
-/* Demo Arc when no AI arc */
+/* Demo Arc */
 const DEMO_ARC = {
   title: "Whispers Beneath Greyhaven",
   logline: "A derelict cannery and a drowned chapel hide the truth behind vanishing dockworkers.",
   tone: "Moody, investigative, slow dread with sudden spikes.",
   setting: "1927, storm-lashed fishing town on the Atlantic coast.",
   acts: [
-    { name:"Act I — Fog at the Docks", beats:[
-      "Odd footprints end at the waterline; a chain bell tolls once.",
-      "A ledger mentions delivery to 'The Chapel Below'." ]},
-    { name:"Act II — The Drowned Chapel", beats:[
-      "A tidal cavern holds a barnacled chapel.",
-      "A ritual map points to the cannery's sealed coldroom." ]},
-    { name:"Act III — The Coldroom", beats:[
-      "The coldroom opens to an illegal tunnel.",
-      "Confront the ringleader amid freezing pipes and chanting." ]}
+    { name:"Act I — Fog at the Docks", beats:["Odd footprints end at the waterline; a chain bell tolls once.","A ledger mentions delivery to 'The Chapel Below'."]},
+    { name:"Act II — The Drowned Chapel", beats:["A tidal cavern holds a barnacled chapel.","A ritual map points to the cannery's sealed coldroom."]},
+    { name:"Act III — The Coldroom", beats:["The coldroom opens to an illegal tunnel.","Confront the ringleader amid freezing pipes and chanting."]}
   ],
   imagePrompts: [
     "Rusted dock at night, rope coils, rain, painterly, cinematic lighting",
@@ -474,97 +494,85 @@ const DEMO_ARC = {
 };
 
 /* ---------- STATE ---------- */
-const state = {
-  settings: {
-    openaiKey: '', openaiModel: 'gpt-4o-mini', keeperOn: true,
-    useImages: false, imageModel: 'gpt-image-1',
-    elevenKey: '', voiceId: '', ttsOn: false, ttsQueue: true,
-    rulesPack: ''
-  },
-  campaign: null,
-  youPCId: null,
-  sceneIndex: 0,
-  scenes: [newScene('Greyhaven Docks')],
-  chat: [],
-  initOrder: [],
-  activeTurn: 0,
-  encounter: { on:false, movesLeft:0, actionsLeft:0 }
-};
-
-/* ---------- SCENE ---------- */
 function newScene(name){
   return {
     id: 'scn_'+Math.random().toString(36).slice(2,8),
     name: name || 'Untitled Scene',
-    bg: DEFAULT_SCENE_BG,
+    bg: '',
     tokens: [],
     fog: makeFog(GRID_W, GRID_H, true),
     fogUndo: []
   };
 }
 function makeFog(w,h,hidden){ const f=[]; for(let y=0;y<h;y++){const row=[]; for(let x=0;x<w;x++) row.push(!!hidden); f.push(row)} return f; }
+const state = {
+  settings: {
+    openaiKey:'', openaiModel:'gpt-4o-mini', keeperOn:true,
+    useImages:false, imageModel:'dall-e-3',
+    ttsOn:false, ttsQueue:true, ttsProviderDefault:'browser',
+    elevenKey:'', voiceId:'',
+    rulesPack:'',
+    voiceMap:{} // { "Keeper":{provider:'browser'|'eleven'|'none', id:'VoiceNameOrId'}, "Eleanor Shaw":{...} }
+  },
+  campaign:null,
+  npcCatalog:[], // [{name, role, prompt, portraitData?}]
+  youPCId:null,
+  sceneIndex:0,
+  scenes:[newScene('Greyhaven Docks')],
+  chat:[],
+  initOrder:[],
+  activeTurn:0,
+  encounter:{on:false, movesLeft:0, actionsLeft:0},
+  browserVoices:[]
+};
 function currentScene(){ return state.scenes[state.sceneIndex]; }
 
-/* ---------- PERSISTENCE ---------- */
-function saveSettings(){ localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings)); toast('Settings saved'); }
-function loadSettings(){
-  const raw = localStorage.getItem(LS_SETTINGS); if(raw){ try{ Object.assign(state.settings, JSON.parse(raw)); }catch{} }
-  byId('openaiKey').value = state.settings.openaiKey;
-  byId('openaiModel').value = state.settings.openaiModel;
-  byId('keeperOn').checked = state.settings.keeperOn;
-  byId('useImages').checked = state.settings.useImages;
-  byId('imageModel').value = state.settings.imageModel || 'gpt-image-1';
-  byId('elevenKey').value = state.settings.elevenKey;
-  byId('voiceId').value = state.settings.voiceId;
-  byId('ttsOn').checked = state.settings.ttsOn;
-  byId('ttsQueue').checked = state.settings.ttsQueue;
-  byId('rulesPack').value = state.settings.rulesPack;
-}
-function saveSlots(slots){ localStorage.setItem(LS_SLOTS, JSON.stringify(slots)); }
-function loadSlots(){ const raw = localStorage.getItem(LS_SLOTS); return raw? JSON.parse(raw): []; }
-
-/* ---------- HELPERS ---------- */
+/* ---------- UI BASIC ---------- */
 const byId = id => document.getElementById(id);
-function el(tag,attrs={},children=[]){
-  const e=document.createElement(tag);
-  for(const k in attrs){
-    if(k==='class') e.className=attrs[k];
-    else if(k==='html') e.innerHTML=attrs[k];
-    else if(k==='onclick') e.onclick = attrs[k];
-    else e.setAttribute(k, attrs[k]);
-  }
+function el(tag,attrs={},children=[]){ const e=document.createElement(tag);
+  for(const k in attrs){ if(k==='class') e.className=attrs[k]; else if(k==='html') e.innerHTML=attrs[k]; else if(k==='onclick') e.onclick=attrs[k]; else e.setAttribute(k,attrs[k]); }
   if(!Array.isArray(children)) children=[children];
   children.filter(Boolean).forEach(c=> e.appendChild(typeof c==='string'? document.createTextNode(c): c));
   return e;
 }
-function toast(msg){ const t=byId('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 1800); }
+function toast(msg){ const t=byId('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function stripTags(s){ const d=document.createElement('div'); d.innerHTML=s||''; return d.textContent||d.innerText||''; }
 function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
 function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
 
-/* ---------- RENDER ROOT ---------- */
+/* ---------- PERSISTENCE ---------- */
+function saveSettings(){ localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings)); toast('Settings saved'); }
+function loadSettings(){
+  const raw=localStorage.getItem(LS_SETTINGS); if(raw){ try{ Object.assign(state.settings, JSON.parse(raw)); }catch{} }
+  byId('openaiKey').value = state.settings.openaiKey;
+  byId('openaiModel').value = state.settings.openaiModel;
+  byId('keeperOn').checked = state.settings.keeperOn;
+  byId('useImages').checked = state.settings.useImages;
+  byId('imageModel').value = state.settings.imageModel;
+  byId('elevenKey').value = state.settings.elevenKey;
+  byId('voiceId').value = state.settings.voiceId;
+  byId('ttsOn').checked = state.settings.ttsOn;
+  byId('ttsQueue').checked = state.settings.ttsQueue;
+  byId('ttsProviderDefault').value = state.settings.ttsProviderDefault || 'browser';
+  byId('rulesPack').value = state.settings.rulesPack;
+}
+
+/* ---------- MAP RENDER ---------- */
 const mapEl=byId('map'), bgEl=byId('mapBg'), fogCv=byId('fog'), reachCv=byId('reach');
-const chatLog=byId('chatLog'), sceneNameEl=byId('sceneName'), turnInfoEl=byId('turnInfo');
-let tool='select', brush=2; let measureEl=null; let pointer={down:false,start:[0,0],cur:[0,0]}, draggingToken=null, dragOrig=null;
-
-loadSettings();
-renderAll();
-
-/* ---------- RENDERERS ---------- */
 function renderAll(){ renderSceneName(); renderBackground(); renderFog(); renderReach(); renderTokens(); renderTokenList(); renderInit(); updateSlots(); updateTurnBanner(); }
-function renderSceneName(){ sceneNameEl.textContent = currentScene().name; }
-function renderBackground(){ const sc=currentScene(); bgEl.style.backgroundImage = sc.bg? `url(${sc.bg})` : 'none'; }
+function renderSceneName(){ byId('sceneName').textContent=currentScene().name; }
+function renderBackground(){ const sc=currentScene(); bgEl.style.backgroundImage=sc.bg?`url(${sc.bg})`:'none'; }
 function renderTokens(){
   [...mapEl.querySelectorAll('.token')].forEach(n=>n.remove());
   const sc=currentScene();
   sc.tokens.forEach(t=>{
     const n=el('div',{class:`token ${t.type}`,'data-id':t.id, style:cellStyle(t.x,t.y)});
     const bubble=el('div',{class:'bubble'});
-    if(t.portraitData){ bubble.appendChild(el('img',{src:t.portraitData,alt:t.name})); }
-    else { bubble.appendChild(el('div',{class:'letters'}, initials(t.name|| (t.type==='pc'?'PC':'NPC')))); }
+    if(t.portraitData) bubble.appendChild(el('img',{src:t.portraitData,alt:t.name}));
+    else bubble.appendChild(el('div',{class:'letters'}, initials(t.name|| (t.type==='pc'?'PC':'NPC'))));
     n.appendChild(bubble);
-    n.appendChild(el('div',{class:'cap'}, t.name || (t.type==='pc'?'PC':'NPC')));
+    n.appendChild(el('div',{class:'cap'}, t.name|| (t.type==='pc'?'PC':'NPC')));
     mapEl.appendChild(n);
   });
 }
@@ -574,209 +582,158 @@ function renderTokenList(){
     const row=el('div',{class:'row',style:'justify-content:space-between;margin:.25rem 0;align-items:center;'},
       [el('div',{}, `${t.type.toUpperCase()} • ${t.name||'Unnamed'} @ ${t.x},${t.y}`),
        el('div',{class:'row'},[
-         el('button',{class:'ghost',onclick:()=> spawnFXAt(t.x,t.y)},'Center'),
+         el('button',{class:'ghost',onclick:()=> spawnFXAt(t.x,t.y)},'Ping'),
          el('button',{class:'ghost',onclick:()=> editTokenPrompt(t)},'Edit'),
          el('button',{class:'danger',onclick:()=> removeToken(t.id)},'Remove')
        ])]);
     list.appendChild(row);
   });
 }
-
-/* ---------- MAP / GRID ---------- */
 function cellStyle(x,y){ return `left:${((x+0.5)/GRID_W)*100}%; top:${((y+0.5)/GRID_H)*100}%`; }
-function initials(name){ return (name||'??').split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join(''); }
-function pxToGrid(px,py){ const w=mapEl.clientWidth, h=mapEl.clientHeight; return [Math.floor((px/w)*GRID_W), Math.floor((py/h)*GRID_H)]; }
-function tokenAt(gx,gy){ return currentScene().tokens.find(t=>t.x===gx && t.y===gy); }
-mapEl.addEventListener('pointerdown', (e)=>{
-  const rect=mapEl.getBoundingClientRect(); pointer.down=true; pointer.start=[e.clientX-rect.left, e.clientY-rect.top]; pointer.cur=pointer.start.slice();
-  const [gx,gy]=pxToGrid(pointer.start[0], pointer.start[1]);
-  if(tool==='select'){ const t=tokenAt(gx,gy); if(t){ draggingToken=t; dragOrig={x:t.x,y:t.y}; } }
-  else if(tool==='ruler'){ startMeasure(pointer.start); }
-  else if(tool==='reveal' || tool==='hide'){ fogStroke(gx,gy, tool==='hide'); }
-});
-mapEl.addEventListener('pointermove', (e)=>{
-  if(!pointer.down) return;
-  const rect=mapEl.getBoundingClientRect(); pointer.cur=[e.clientX-rect.left, e.clientY-rect.top];
-  const [gx,gy]=pxToGrid(pointer.cur[0], pointer.cur[1]);
-  if(tool==='select' && draggingToken){
-    const can = canMoveTo(draggingToken, gx, gy, dragOrig);
-    if(can.ok){ draggingToken.x=can.to.x; draggingToken.y=can.to.y; renderTokens(); renderReach(); }
-  }
-  else if(tool==='ruler'){ updateMeasure(pointer.start, pointer.cur); }
-  else if(tool==='reveal' || tool==='hide'){ fogStroke(gx,gy, tool==='hide'); }
-});
-mapEl.addEventListener('pointerup', ()=>{
-  pointer.down=false;
-  if(draggingToken && state.encounter.on){
-    // consume movement by actual distance used
-    const d=chebyshev(dragOrig.x,dragOrig.y, draggingToken.x, draggingToken.y);
-    if(!isActiveToken(draggingToken)) { draggingToken.x=dragOrig.x; draggingToken.y=dragOrig.y; renderTokens(); }
-    else if(d>state.encounter.movesLeft){ draggingToken.x=dragOrig.x; draggingToken.y=dragOrig.y; renderTokens(); }
-    else{ state.encounter.movesLeft -= d; renderReach(); updateTurnBanner(); }
-  }
-  draggingToken=null; dragOrig=null; endMeasure();
-});
-window.addEventListener('resize', ()=> { renderFog(); renderReach(); });
+function initials(n){ return (n||'??').split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join(''); }
 
-/* ---------- MEASURE ---------- */
-function startMeasure(start){ if(measureEl) measureEl.remove(); measureEl=el('div',{class:'measure'}); measureEl.appendChild(el('div',{class:'label'})); mapEl.appendChild(measureEl); updateMeasure(start,start); }
-function updateMeasure(a,b){
-  if(!measureEl) return;
-  const dx=b[0]-a[0], dy=b[1]-a[1], dist=Math.hypot(dx,dy), ang=Math.atan2(dy,dx)*180/Math.PI;
-  Object.assign(measureEl.style,{left:`${a[0]}px`,top:`${a[1]}px`,width:`${dist}px`,transform:`rotate(${ang}deg)`});
-  measureEl.querySelector('.label').textContent = `${gridDistance(a,b)} u`;
-}
-function endMeasure(){ if(measureEl){ measureEl.remove(); measureEl=null; } }
-function gridDistance(a,b){ const [ax,ay]=pxToGrid(a[0],a[1]), [bx,by]=pxToGrid(b[0],b[1]); return Math.max(Math.abs(ax-bx),Math.abs(ay-by)); }
-
-/* ---------- FOG ---------- */
-function renderFog(){
-  const cv=fogCv, sc=currentScene(), ctx=cv.getContext('2d'); cv.width=mapEl.clientWidth; cv.height=mapEl.clientHeight; ctx.clearRect(0,0,cv.width,cv.height);
+/* ---------- GRID / FOG ---------- */
+const GRID_WPX=()=>mapEl.clientWidth, GRID_HPX=()=>mapEl.clientHeight;
+function pxToGrid(px,py){ return [Math.floor((px/GRID_WPX())*GRID_W), Math.floor((py/GRID_HPX())*GRID_H)]; }
+function renderFog(){ const cv=fogCv, sc=currentScene(), ctx=cv.getContext('2d'); cv.width=GRID_WPX(); cv.height=GRID_HPX(); ctx.clearRect(0,0,cv.width,cv.height);
   const cw=cv.width/GRID_W, ch=cv.height/GRID_H; ctx.fillStyle='rgba(4,6,10,.82)';
   for(let y=0;y<GRID_H;y++) for(let x=0;x<GRID_W;x++) if(sc.fog[y][x]) ctx.fillRect(Math.floor(x*cw),Math.floor(y*ch),Math.ceil(cw),Math.ceil(ch));
 }
-function fogStroke(gx,gy,hide){
-  const sc=currentScene(), before=deepClone(sc.fog), r=Number(byId('brush').value||2);
+function fogStroke(gx,gy,hide){ const sc=currentScene(), before=deepClone(sc.fog), r=Number(byId('brush').value||2);
   for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){ const ix=gx+x,iy=gy+y; if(ix<0||iy<0||ix>=GRID_W||iy>=GRID_H) continue; sc.fog[iy][ix]=!!hide; }
   sc.fogUndo.push(before); if(sc.fogUndo.length>50) sc.fogUndo.shift(); renderFog();
 }
 function fogUndo(){ const sc=currentScene(); const last=sc.fogUndo.pop(); if(last){ sc.fog=last; renderFog(); } }
 function fogAll(flag){ const sc=currentScene(); for(let y=0;y<GRID_H;y++) for(let x=0;x<GRID_W;x++) sc.fog[y][x]=!!flag; renderFog(); }
 
-/* ---------- REACHABLE HIGHLIGHT ---------- */
+/* ---------- REACHABLE / MOVEMENT ---------- */
+const reachCvCtx = reachCv.getContext('2d');
 function renderReach(){
-  const cv=reachCv, ctx=cv.getContext('2d'); cv.width=mapEl.clientWidth; cv.height=mapEl.clientHeight; ctx.clearRect(0,0,cv.width,cv.height);
+  const cv=reachCv, ctx=reachCvCtx; cv.width=GRID_WPX(); cv.height=GRID_HPX(); ctx.clearRect(0,0,cv.width,cv.height);
   if(!state.encounter.on) return;
-  const active = getActiveToken(); if(!active) return;
+  const active=getActiveToken(); if(!active) return;
   const cw=cv.width/GRID_W, ch=cv.height/GRID_H;
   ctx.fillStyle='rgba(122,162,255,.18)'; ctx.strokeStyle='rgba(122,162,255,.35)';
   for(let y=0;y<GRID_H;y++) for(let x=0;x<GRID_W;x++){
-    const d=chebyshev(active.x,active.y,x,y);
-    if(d<=state.encounter.movesLeft) {
-      ctx.fillRect(Math.floor(x*cw),Math.floor(y*ch),Math.ceil(cw),Math.ceil(ch));
-      ctx.strokeRect(Math.floor(x*cw),Math.floor(y*ch),Math.ceil(cw),Math.ceil(ch));
-    }
+    const d=chebyshev(active.x,active.y,x,y); if(d<=state.encounter.movesLeft){ ctx.fillRect(Math.floor(x*cw),Math.floor(y*ch),Math.ceil(cw),Math.ceil(ch)); ctx.strokeRect(Math.floor(x*cw),Math.floor(y*ch),Math.ceil(cw),Math.ceil(ch)); }
   }
 }
-
-/* ---------- TOKENS ---------- */
-function addToken(t){
-  const sc=currentScene(); t.id=t.id||('t_'+Math.random().toString(36).slice(2,8));
-  t.x=clamp(t.x ?? 1,0,GRID_W-1); t.y=clamp(t.y ?? 1,0,GRID_H-1); t.type=t.type||'pc';
-  t.speed = t.speed ?? 4; // tiles per turn
-  sc.tokens.push(t); renderTokens(); renderTokenList();
-}
-function removeToken(id){ const sc=currentScene(); sc.tokens = sc.tokens.filter(x=>x.id!==id); renderTokens(); renderTokenList(); renderReach(); }
-function editTokenPrompt(t){
-  const name = prompt('Name:', t.name||''); if(name===null) return;
-  const type = prompt('Type (pc|npc):', t.type||'pc'); if(type===null) return;
-  t.name=name.trim(); t.type=(type==='npc')?'npc':'pc'; renderTokens(); renderTokenList();
-}
-
-/* ---------- INITIATIVE & ENCOUNTERS ---------- */
-function rollAllInit(){
-  const order=currentScene().tokens.map(t=>({id:t.id,name:t.name||t.id, roll:(Math.floor(Math.random()*20)+1)}));
-  order.sort((a,b)=>b.roll-a.roll); state.initOrder=order; state.activeTurn=0; renderInit(); updateTurnBanner();
-}
-function renderInit(){
-  const ol=byId('initList'); ol.innerHTML='';
-  state.initOrder.forEach((e,i)=> ol.appendChild(el('li',{}, `${i===state.activeTurn?'➡ ':''}${e.name} — ${e.roll}`)));
-}
-function nextTurn(){ if(!state.initOrder.length){ toast('Roll initiative first'); return; } state.activeTurn=(state.activeTurn+1)%state.initOrder.length; resetTurnBudget(); renderInit(); renderReach(); updateTurnBanner(); }
-function clearInit(){ state.initOrder=[]; state.activeTurn=0; renderInit(); renderReach(); updateTurnBanner(); }
-
-function startEncounter(){ if(!state.initOrder.length) rollAllInit(); state.encounter.on=true; resetTurnBudget(); renderReach(); updateTurnBanner(); toast('Encounter started'); }
-function endEncounter(){ state.encounter.on=false; renderReach(); updateTurnBanner(); toast('Encounter ended'); }
-function endTurn(){ if(!state.encounter.on) { toast('Not in encounter'); return; } nextTurn(); }
-
-function isActiveToken(t){ const activeEntry=state.initOrder[state.activeTurn]; return activeEntry && t.id===activeEntry.id; }
-function getActiveToken(){ const activeEntry=state.initOrder[state.activeTurn]; if(!activeEntry) return null; return currentScene().tokens.find(t=>t.id===activeEntry.id); }
-function resetTurnBudget(){ const t=getActiveToken(); state.encounter.movesLeft=t?.speed ?? 4; state.encounter.actionsLeft=1; }
-function updateTurnBanner(){
-  if(!state.encounter.on){ turnInfoEl.textContent='Free exploration'; return; }
-  const t=getActiveToken(); if(!t){ turnInfoEl.textContent='Encounter (no active)'; return; }
-  turnInfoEl.textContent = `Encounter: ${t.name} — Moves ${state.encounter.movesLeft}, Actions ${state.encounter.actionsLeft}`;
-}
 function chebyshev(ax,ay,bx,by){ return Math.max(Math.abs(ax-bx),Math.abs(ay-by)); }
-function canMoveTo(t, gx, gy, orig){
+function canMoveTo(t,gx,gy,orig){
   if(!state.encounter.on) return {ok:true,to:{x:clamp(gx,0,GRID_W-1),y:clamp(gy,0,GRID_H-1)}};
   if(!isActiveToken(t)) return {ok:false,to:{x:t.x,y:t.y}};
-  const d=chebyshev(orig.x,orig.y, gx, gy);
-  if(d>state.encounter.movesLeft) return {ok:false,to:{x:t.x,y:t.y}};
+  const d=chebyshev(orig.x,orig.y,gx,gy); if(d>state.encounter.movesLeft) return {ok:false,to:{x:t.x,y:t.y}};
   return {ok:true,to:{x:clamp(gx,0,GRID_W-1),y:clamp(gy,0,GRID_H-1)}};
 }
 
-/* ---------- CHAT + KEEPER ---------- */
-function addLine(text, who='you', opts={}){
-  const line = el('div',{class:`line ${who}`});
-  const whoEl = el('div',{class:'who'}, who==='you'?'🧑':'👁️');
-  const content = el('div',{class:'content'});
-  if(who==='you'){ content.textContent = text; } else { content.innerHTML = text; }
-  line.appendChild(whoEl); line.appendChild(content);
+/* ---------- POINTER TOOLS ---------- */
+let tool='select', brush=2; let measureEl=null; let pointer={down:false,start:[0,0],cur:[0,0]}, draggingToken=null, dragOrig=null;
+mapEl.addEventListener('pointerdown',(e)=>{
+  const rect=mapEl.getBoundingClientRect(); pointer.down=true; pointer.start=[e.clientX-rect.left, e.clientY-rect.top]; pointer.cur=pointer.start.slice();
+  const [gx,gy]=pxToGrid(pointer.start[0], pointer.start[1]);
+  if(tool==='select'){ const t=tokenAt(gx,gy); if(t){ draggingToken=t; dragOrig={x:t.x,y:t.y}; } }
+  else if(tool==='ruler'){ startMeasure(pointer.start); }
+  else if(tool==='reveal' || tool==='hide'){ fogStroke(gx,gy, tool==='hide'); }
+});
+mapEl.addEventListener('pointermove',(e)=>{
+  if(!pointer.down) return;
+  const rect=mapEl.getBoundingClientRect(); pointer.cur=[e.clientX-rect.left, e.clientY-rect.top];
+  const [gx,gy]=pxToGrid(pointer.cur[0], pointer.cur[1]);
+  if(tool==='select' && draggingToken){ const can=canMoveTo(draggingToken,gx,gy,dragOrig); if(can.ok){ draggingToken.x=can.to.x; draggingToken.y=can.to.y; renderTokens(); renderReach(); } }
+  else if(tool==='ruler'){ updateMeasure(pointer.start,pointer.cur); }
+  else if(tool==='reveal' || tool==='hide'){ fogStroke(gx,gy, tool==='hide'); }
+});
+mapEl.addEventListener('pointerup', ()=>{
+  pointer.down=false;
+  if(draggingToken && state.encounter.on){
+    const d=chebyshev(dragOrig.x,dragOrig.y, draggingToken.x, draggingToken.y);
+    if(!isActiveToken(draggingToken) || d>state.encounter.movesLeft){ draggingToken.x=dragOrig.x; draggingToken.y=dragOrig.y; renderTokens(); }
+    else{ state.encounter.movesLeft -= d; renderReach(); updateTurnBanner(); }
+  }
+  draggingToken=null; dragOrig=null; endMeasure();
+});
+window.addEventListener('resize', ()=>{ renderFog(); renderReach(); });
 
+function tokenAt(gx,gy){ return currentScene().tokens.find(t=>t.x===gx && t.y===gy); }
+function startMeasure(start){ if(measureEl) measureEl.remove(); measureEl=el('div',{class:'measure'}); measureEl.appendChild(el('div',{class:'label'})); mapEl.appendChild(measureEl); updateMeasure(start,start); }
+function updateMeasure(a,b){ if(!measureEl) return; const dx=b[0]-a[0], dy=b[1]-a[1], dist=Math.hypot(dx,dy), ang=Math.atan2(dy,dx)*180/Math.PI; Object.assign(measureEl.style,{left:`${a[0]}px`,top:`${a[1]}px`,width:`${dist}px`,transform:`rotate(${ang}deg)`}); measureEl.querySelector('.label').textContent=`${gridDistance(a,b)} u`; }
+function endMeasure(){ if(measureEl){ measureEl.remove(); measureEl=null; } }
+function gridDistance(a,b){ const [ax,ay]=pxToGrid(a[0],a[1]), [bx,by]=pxToGrid(b[0],b[1]); return Math.max(Math.abs(ax-bx),Math.abs(ay-by)); }
+
+/* ---------- TOKENS ---------- */
+function addToken(t){ const sc=currentScene(); t.id=t.id||('t_'+Math.random().toString(36).slice(2,8)); t.x=clamp(t.x ?? 1,0,GRID_W-1); t.y=clamp(t.y ?? 1,0,GRID_H-1); t.type=t.type||'pc'; t.speed=t.speed ?? 4; sc.tokens.push(t); renderTokens(); renderTokenList(); }
+function removeToken(id){ const sc=currentScene(); sc.tokens=sc.tokens.filter(x=>x.id!==id); renderTokens(); renderTokenList(); renderReach(); }
+function editTokenPrompt(t){ const name=prompt('Name:', t.name||''); if(name===null) return; const type=prompt('Type (pc|npc):', t.type||'pc'); if(type===null) return; t.name=name.trim(); t.type=(type==='npc')?'npc':'pc'; renderTokens(); renderTokenList(); }
+
+/* ---------- INITIATIVE ---------- */
+function rollAllInit(){ const order=currentScene().tokens.map(t=>({id:t.id,name:t.name||t.id, roll:(Math.floor(Math.random()*20)+1)})); order.sort((a,b)=>b.roll-a.roll); state.initOrder=order; state.activeTurn=0; renderInit(); updateTurnBanner(); }
+function renderInit(){ const ol=byId('initList'); ol.innerHTML=''; state.initOrder.forEach((e,i)=> ol.appendChild(el('li',{}, `${i===state.activeTurn?'➡ ':''}${e.name} — ${e.roll}`))); }
+function nextTurn(){ if(!state.initOrder.length){ toast('Roll initiative first'); return; } state.activeTurn=(state.activeTurn+1)%state.initOrder.length; resetTurnBudget(); renderInit(); renderReach(); updateTurnBanner(); }
+function clearInit(){ state.initOrder=[]; state.activeTurn=0; renderInit(); renderReach(); updateTurnBanner(); }
+function startEncounter(){ if(!state.initOrder.length) rollAllInit(); state.encounter.on=true; resetTurnBudget(); renderReach(); updateTurnBanner(); toast('Encounter started'); }
+function endEncounter(){ state.encounter.on=false; renderReach(); updateTurnBanner(); toast('Encounter ended'); }
+function endTurn(){ if(!state.encounter.on){ toast('Not in encounter'); return; } nextTurn(); }
+function isActiveToken(t){ const activeEntry=state.initOrder[state.activeTurn]; return activeEntry && t.id===activeEntry.id; }
+function getActiveToken(){ const activeEntry=state.initOrder[state.activeTurn]; if(!activeEntry) return null; return currentScene().tokens.find(t=>t.id===activeEntry.id); }
+function resetTurnBudget(){ const t=getActiveToken(); state.encounter.movesLeft=t?.speed ?? 4; state.encounter.actionsLeft=1; }
+function updateTurnBanner(){ if(!state.encounter.on){ byId('turnInfo').textContent='Free exploration'; return; } const t=getActiveToken(); if(!t){ byId('turnInfo').textContent='Encounter (no active)'; return; } byId('turnInfo').textContent=`Encounter: ${t.name} — Moves ${state.encounter.movesLeft}, Actions ${state.encounter.actionsLeft}`; }
+
+/* ---------- CHAT & AVATARS ---------- */
+const chatLog=byId('chatLog');
+function addLine(text, who='you', opts={}){ // generic line (you/keeper)
+  const line = el('div',{class:`line ${who}`});
+  const whoEl = el('div',{class:'who'}, who==='you'?'🧑 You':'👁️ Keeper');
+  const content = el('div',{class:'content'}); if(who==='you'){ content.textContent=text; } else { content.innerHTML=text; }
+  line.appendChild(whoEl); line.appendChild(content);
   const controls = el('div',{class:'controls'});
-  if(who==='keeper' && state.settings.ttsOn){
-    const btn=el('button',{class:'ghost',title:'Replay voice',onclick:async()=>{ await replayVoice(opts.ttsText ?? stripTags(text)); }},'▶');
+  if((who==='keeper' || opts.replayable) && state.settings.ttsOn){
+    const btn=el('button',{class:'ghost',title:'Replay voice',onclick:async()=>{ await speak(stripTags(text), opts.speaker||'Keeper'); }},'▶');
     controls.appendChild(btn);
   }
   if(controls.childNodes.length) line.appendChild(controls);
-
   chatLog.appendChild(line); chatLog.scrollTop=chatLog.scrollHeight;
 }
-byId('chatSend').addEventListener('click', sendChat);
-byId('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
-byId('btnStopVoice').onclick = ()=> stopVoice(true);
-
-function sendChat(){
-  const val=byId('chatInput').value.trim(); if(!val) return; byId('chatInput').value='';
-  addLine(val,'you');
-  if(val.startsWith('/')){ runSlash(val); return; }
-  if(!state.settings.keeperOn){ addLine("Keeper is off. Enable in Settings.","keeper"); return; }
-  keeperReply(val);
+function addSay(speaker, text, role='pc'){
+  const line=el('div',{class:'line'});
+  const av=el('div',{class:'avatar'});
+  const img=el('img',{src: speakerAvatar(speaker), alt:speaker});
+  av.appendChild(img);
+  const whoEl=el('div',{class:'who'}, speaker);
+  whoEl.style.color = role==='npc' ? '#e3b9ff' : '#b2ffda';
+  const content=el('div',{class:'content'}, text);
+  const controls=el('div',{class:'controls'});
+  if(state.settings.ttsOn){ controls.appendChild(el('button',{class:'ghost',title:'Replay voice',onclick:()=> speak(stripTags(text), speaker)},'▶')); }
+  line.appendChild(av); line.appendChild(whoEl); line.appendChild(content); line.appendChild(controls);
+  chatLog.appendChild(line); chatLog.scrollTop=chatLog.scrollHeight;
+}
+function speakerAvatar(name){
+  // find token first
+  const t=currentScene().tokens.find(x=> (x.name||'').toLowerCase()===name.toLowerCase());
+  if(t?.portraitData) return t.portraitData;
+  // pre-cached NPC catalog portrait
+  const np=(state.campaign?.npcPortraits||[]).find(p=> (p.name||p.role||'').toLowerCase()===name.toLowerCase());
+  if(np?.portraitData) return np.portraitData;
+  // unknown: make a tiny placeholder
+  const cv=document.createElement('canvas'); cv.width=64; cv.height=64; const ctx=cv.getContext('2d'); ctx.fillStyle='#0e1524'; ctx.fillRect(0,0,64,64);
+  ctx.fillStyle='#9fb4ff'; ctx.font='bold 20px ui-monospace,monospace'; const inis=(name||'??').split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join(''); ctx.fillText(inis, 12, 38);
+  return cv.toDataURL('image/png');
 }
 
-async function keeperReply(userText){
-  const sys = keeperSystem();
-  const msgs = [{role:'system',content:sys},{role:'user',content:userText}];
-  const model = state.settings.openaiModel || 'gpt-4o-mini';
-  const key   = state.settings.openaiKey;
-  try{
-    let text;
-    if(key){
-      const res=await fetch('https://api.openai.com/v1/chat/completions',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-        body: JSON.stringify({model, messages: msgs, temperature:0.8})
-      });
-      if(!res.ok) throw new Error('OpenAI error');
-      const data=await res.json();
-      text = data.choices?.[0]?.message?.content || "…";
-    }else{
-      text = demoKeeper(userText);
-    }
-    const ttsText = stripTags(text.replace(/<engine>[\s\S]*<\/engine>/i,'')).trim();
-    addLine(text,'keeper',{ttsText});
-    if(state.settings.ttsOn && state.settings.elevenKey && state.settings.voiceId){
-      speak(ttsText);
-    }
-    const eng=parseEngine(text); if(eng) applyEngine(eng);
-  }catch(err){
-    addLine("The fog thickens… (AI call failed; using offline demo).","keeper");
-    const demo=demoKeeper(userText); addLine(demo,'keeper',{ttsText:stripTags(demo)});
-  }
-}
+/* ---------- KEEPER AI ---------- */
 function keeperSystem(){
   const sc=currentScene();
   const party=sc.tokens.filter(t=>t.type==='pc').map(t=>`${t.name} — persona: ${t.persona||'N/A'}`).join('; ');
   const npcs=sc.tokens.filter(t=>t.type==='npc').map(t=>t.name).join(', ');
   const you = sc.tokens.find(t=> t.id===state.youPCId);
   const enc = state.encounter.on ? `Encounter ON — ${getActiveToken()?.name||'n/a'} to act, moves ${state.encounter.movesLeft}.` : 'Free exploration';
-  return `You are The Keeper (tutorial mode). Teach gently.
+  return `You are The Keeper (tutorial). Teach gently.
 - Narrate 2–5 sentences, then offer one clear next step (move, roll, talk).
 - Use generic percentile checks (Success/Hard/Extreme/Crit). Avoid proprietary rule text.
-- Keep turns strict if Encounter is ON (one move up to speed, one action).
-- Occasionally let party members speak in-character (short quotes).
-- Always end with <engine>{...}</engine> JSON.
+- In Encounter mode, prompt the active investigator. ALSO include short in‑character lines for 1–3 companions and at least one NPC when present.
+- Always include <engine>{...}</engine> JSON with:
+  {"say":[{"speaker":string,"role":"pc"|"npc"|"keeper","text":string}...],
+   "moves":[{"tokenId":string,"to":[x,y]}...],
+   "rollRequests":[{"character":string,"skill":string,"mod":number}...]}
 
 <campaign>
 Title: ${state.campaign?.title||'Whispers Beneath Greyhaven'}
@@ -789,25 +746,14 @@ NPCs on scene: ${npcs||'none'}
 
 YOU are: ${you? you.name+' ('+(you.persona||'no persona')+')' : 'not yet chosen'}
 
-Rules notes (user-provided hints): """${state.settings.rulesPack||''}"""
-
-<engine format>
-- say: [{speaker, text}]
-- moves: [{tokenId, to:[x,y]}]
-- rollRequests: [{character, skill, mod}]
-</engine>`;
+Rules notes: """${state.settings.rulesPack||''}"""
+`;
 }
 function parseEngine(text){ const m=text.match(/<engine>([\s\S]+?)<\/engine>/i); if(!m) return null; try{ return JSON.parse(m[1]); }catch{ return null; } }
 function applyEngine(eng){
-  if(eng.say){ eng.say.forEach(s=> addLine(`<b>${escapeHtml(s.speaker||'NPC')}:</b> ${escapeHtml(s.text||'')}`,'keeper',{ttsText: s.text||''})); }
+  if(eng.say){ eng.say.forEach(s=> addSay(s.speaker||'Someone', escapeHtml(s.text||''), s.role||'pc')); }
   if(eng.moves){ eng.moves.forEach(m=>{ const t=currentScene().tokens.find(x=>x.id===m.tokenId); if(t){ tryMoveCommand(t, m.to?.[0], m.to?.[1]); } }); }
-  if(eng.rollRequests){
-    eng.rollRequests.forEach(r=>{
-      const who = 'keeper';
-      const note = `${r.character?`${r.character} `:''}${r.skill?`(${r.skill})`:''}`.trim();
-      doRoll('1d100', {who, note});
-    });
-  }
+  if(eng.rollRequests){ eng.rollRequests.forEach(r=> doRoll('1d100', {who:'keeper', note:`${r.character||'PC'} ${r.skill?`(${r.skill})`:''}`})); }
 }
 function demoKeeper(userText){
   const tips=[
@@ -816,218 +762,80 @@ function demoKeeper(userText){
    "Consider calling out; sometimes NPCs answer with more than words."
   ];
   return `A wet gust rattles the panes; the smell of brine and old wood thickens. ${tips[Math.floor(Math.random()*tips.length)]}
-<engine>{"say":[{"speaker":"Dockhand","text":"Careful, friend. Greyhaven swallows the unprepared."}]}</engine>`;
+<engine>{"say":[{"speaker":"Dockhand","role":"npc","text":"Careful, friend. Greyhaven swallows the unprepared."}]}</engine>`;
 }
-
-/* ---------- OPENAI: IMAGES (with model switch, caching, graceful fallback) ---------- */
-async function openaiImage(prompt, size='1024x1024'){
-  const key=state.settings.openaiKey;
-  if(!key || !state.settings.useImages || state.settings.imageModel==='placeholders'){
-    return await placeholderImage(prompt, size);
+async function keeperReply(userText){
+  const sys=keeperSystem(); const msgs=[{role:'system',content:sys},{role:'user',content:userText}];
+  const model=state.settings.openaiModel||'gpt-4o-mini'; const key=state.settings.openaiKey;
+  try{
+    let text;
+    if(key){
+      const res=await fetch('https://api.openai.com/v1/chat/completions',{
+        method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+        body: JSON.stringify({model, messages:msgs, temperature:0.8})
+      });
+      if(!res.ok) throw new Error(await res.text());
+      const data=await res.json(); text=data.choices?.[0]?.message?.content || '…';
+    }else{ text=demoKeeper(userText); }
+    const narr = text.replace(/<engine>[\s\S]*<\/engine>/i,'').trim();
+    if(narr) addLine(narr,'keeper',{speaker:'Keeper'});
+    const eng=parseEngine(text); if(eng) applyEngine(eng);
+    if(state.settings.ttsOn && narr) speak(stripTags(narr),'Keeper');
+  }catch(err){
+    addLine("The fog thickens… (AI call failed; offline demo).",'keeper',{speaker:'Keeper'});
+    const demo=demoKeeper(userText); addLine(demo,'keeper',{speaker:'Keeper'}); const eng=parseEngine(demo); if(eng) applyEngine(eng);
   }
-  const model = state.settings.imageModel || 'gpt-image-1';
-  const cacheKey = await hashKey(`img|${model}|${size}|${prompt}`);
-  const cached = await idbGet('images', cacheKey); if(cached){ return URL.createObjectURL(cached); }
+}
+byId('chatSend').onclick=sendChat;
+byId('chatInput').addEventListener('keydown',e=>{ if(e.key==='Enter') sendChat(); });
+byId('btnStopVoice').onclick=()=> stopVoice(true);
+function sendChat(){ const val=byId('chatInput').value.trim(); if(!val) return; byId('chatInput').value=''; addLine(val,'you'); if(val.startsWith('/')){ runSlash(val); return; } if(!state.settings.keeperOn){ addLine("Keeper is off. Enable in Settings.","keeper"); return; } keeperReply(val); }
 
-  const body={model, prompt, size, response_format:'b64_json'};
-  const res=await fetch('https://api.openai.com/v1/images/generations',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-    body: JSON.stringify(body)
-  });
-
-  if(!res.ok){
-    let msg = res.statusText;
-    try{ const j=await res.json(); msg = j?.error?.message || msg; }catch{}
-    // Surface reason for 403 & fallback
-    addLine(`Image generation failed (${res.status}): ${escapeHtml(msg)} — switched to placeholders.`, 'keeper');
-    return await placeholderImage(prompt, size);
-  }
-  const data=await res.json();
-  const b64=data.data?.[0]?.b64_json;
-  if(!b64){ addLine(`No image bytes returned — using placeholder.`, 'keeper'); return await placeholderImage(prompt, size); }
-  const blob=b64ToBlob(b64,'image/png');
-  await idbSet('images', cacheKey, blob);
-  return URL.createObjectURL(blob);
-}
-function b64ToBlob(b64, mime){ const bin=atob(b64); const len=bin.length; const u8=new Uint8Array(len); for(let i=0;i<len;i++) u8[i]=bin.charCodeAt(i); return new Blob([u8],{type:mime}); }
-
-/* ---------- PLACEHOLDER IMAGE (offline) ---------- */
-async function placeholderImage(prompt, size='1024x1024'){
-  const [w,h]=size.split('x').map(Number);
-  const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const ctx=cv.getContext('2d');
-  const g=ctx.createLinearGradient(0,0,w,h); g.addColorStop(0,'#0d1524'); g.addColorStop(1,'#09101c'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
-  ctx.globalAlpha=.1; for(let i=0;i<42;i++){ ctx.fillStyle='#7aa2ff'; const r=20+Math.random()*120; ctx.beginPath(); ctx.arc(Math.random()*w,Math.random()*h,r,0,Math.PI*2); ctx.fill(); }
-  ctx.globalAlpha=1; ctx.fillStyle='#cfe1ff'; ctx.font='bold '+Math.floor(w*0.04)+'px ui-monospace,monospace'; ctx.fillText('SCENE', 24, 56);
-  ctx.font=''+Math.floor(w*0.025)+'px ui-monospace,monospace'; const lines=wrap(wordsFromPrompt(prompt), Math.floor(w*0.9), ctx); let y=90; lines.slice(0,6).forEach(l=>{ ctx.fillText(l,24,y); y+=Math.floor(w*0.04); });
-  return cv.toDataURL('image/png');
-}
-function wordsFromPrompt(s){ return (s||'Moody scene').replace(/\s+/g,' ').slice(0,140); }
-function wrap(text, max, ctx){ const out=[]; let line=''; for(const w of text.split(' ')){ const t=line? line+' '+w: w; if(ctx.measureText(t).width>max){ if(line) out.push(line); line=w; } else line=t; } if(line) out.push(line); return out; }
-
-/* ---------- ELEVENLABS TTS: queue + caching + replay ---------- */
-let ttsQueue=[], ttsPlaying=false, currentAudio=null, currentUrl=null;
-async function speak(text){
-  if(!text?.trim()) return;
-  const {blob} = await getOrCreateTTS(text);
-  if(state.settings.ttsQueue){ enqueueTTS(blob); } else { playBlobImmediate(blob); }
-}
-async function replayVoice(text){
-  const {blob} = await getOrCreateTTS(text);
-  if(state.settings.ttsQueue){ enqueueTTS(blob); } else { playBlobImmediate(blob); }
-}
-async function getOrCreateTTS(text){
-  const key = await ttsKey(text);
-  const hit = await idbGet('tts', key);
-  if(hit){ return {blob: hit, key}; }
-  const blob = await fetchTTSBlob(text);
-  await idbSet('tts', key, blob);
-  return {blob, key};
-}
-async function ttsKey(text){ return await hashKey(`tts|${state.settings.voiceId||'voice'}|${(text||'').trim()}`); }
-async function fetchTTSBlob(text){
-  const key=state.settings.elevenKey, voice=state.settings.voiceId||'21m00Tcm4TlvDq8ikWAM';
-  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}`,{
-    method:'POST', headers:{'xi-api-key':key,'Content-Type':'application/json','Accept':'audio/mpeg'},
-    body: JSON.stringify({text, model_id:'eleven_multilingual_v2', voice_settings:{stability:0.4, similarity_boost:0.7}})
-  });
-  if(!res.ok) throw new Error('TTS failed');
-  return await res.blob();
-}
-function enqueueTTS(blob){ ttsQueue.push(blob); if(!ttsPlaying) playNext(); }
-function playNext(){
-  const blob=ttsQueue.shift(); if(!blob){ ttsPlaying=false; return; }
-  ttsPlaying=true; playBlobImmediate(blob, ()=>{ playNext(); });
-}
-function playBlobImmediate(blob, onEnd){
-  stopVoice(false);
-  currentUrl = URL.createObjectURL(blob);
-  currentAudio = new Audio(currentUrl);
-  currentAudio.addEventListener('ended', ()=>{ if(currentUrl){ URL.revokeObjectURL(currentUrl); currentUrl=null; } currentAudio=null; if(onEnd) onEnd(); });
-  currentAudio.play().catch(()=>{ /* ignore */ });
-}
-function stopVoice(clearQueue){
-  if(currentAudio){ try{ currentAudio.pause(); }catch{} }
-  if(currentUrl){ URL.revokeObjectURL(currentUrl); currentUrl=null; }
-  currentAudio=null; if(clearQueue){ ttsQueue.length=0; ttsPlaying=false; }
-}
-
-/* ---------- IndexedDB mini helper ---------- */
-const dbp = new Promise((resolve,reject)=>{
-  const open = indexedDB.open('si_cache_v1',1);
-  open.onupgradeneeded = (e)=>{
-    const db=e.target.result;
-    if(!db.objectStoreNames.contains('tts')) db.createObjectStore('tts');
-    if(!db.objectStoreNames.contains('images')) db.createObjectStore('images');
-  };
-  open.onsuccess=()=> resolve(open.result);
-  open.onerror =()=> reject(open.error);
-});
-function idbGet(store,key){ return dbp.then(db=> new Promise((res,rej)=>{ const tx=db.transaction(store,'readonly'); const r=tx.objectStore(store).get(key); r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error);})); }
-function idbSet(store,key,val){ return dbp.then(db=> new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const r=tx.objectStore(store).put(val,key); r.onsuccess=()=>res(true); r.onerror=()=>rej(r.error);})); }
-async function hashKey(s){ const buf=new TextEncoder().encode(s); const hash=await crypto.subtle.digest('SHA-256',buf); return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
-
-/* ---------- SLASH COMMANDS ---------- */
+/* ---------- SLASH ---------- */
 function runSlash(val){
   const m=val.match(/^\/roll\s+(.+)$/i); if(m){ doRoll(m[1], {who:'you'}); return; }
   const mv=val.match(/^\/move\s+(.+)\s+to\s+(\d+)\s*,\s*(\d+)$/i);
-  if(mv){
-    const nameOrId=mv[1].trim();
-    const t=currentScene().tokens.find(x=> x.id===nameOrId || (x.name||'').toLowerCase()===nameOrId.toLowerCase());
-    if(!t){ addLine("No such token.","keeper"); return; }
-    tryMoveCommand(t, Number(mv[2]), Number(mv[3]));
-    return;
-  }
+  if(mv){ const nameOrId=mv[1].trim(); const t=currentScene().tokens.find(x=> x.id===nameOrId || (x.name||'').toLowerCase()===nameOrId.toLowerCase()); if(!t){ addLine("No such token.","keeper"); return; } tryMoveCommand(t, Number(mv[2]), Number(mv[3])); return; }
   if(/^\/endturn/i.test(val)){ endTurn(); return; }
-  if(/^\/help/i.test(val)){
-    addLine("Commands: /roll NdM±K, /move [name] to x,y, /endturn. Use the wizard to auto-build your game.","keeper"); return;
-  }
+  if(/^\/help/i.test(val)){ addLine("Commands: /roll NdM±K, /move [name] to x,y, /endturn. Use the wizard to auto-build your game.","keeper"); return; }
   addLine("Unknown command. Try /help.","keeper");
 }
-function tryMoveCommand(t, gx, gy){
-  const orig={x:t.x,y:t.y};
-  const can=canMoveTo(t, gx, gy, orig);
-  if(!can.ok){ addLine(`Can’t move ${t.name} there right now.`, 'keeper'); return; }
-  t.x=can.to.x; t.y=can.to.y; renderTokens(); spawnFXAt(t.x,t.y);
-  if(state.encounter.on){
-    const d=chebyshev(orig.x,orig.y, t.x, t.y);
-    state.encounter.movesLeft = Math.max(0, state.encounter.movesLeft - d);
-    renderReach(); updateTurnBanner();
-  }
-}
+function tryMoveCommand(t,gx,gy){ const orig={x:t.x,y:t.y}; const can=canMoveTo(t,gx,gy,orig); if(!can.ok){ addLine(`Can’t move ${t.name} there right now.`, 'keeper'); return; } t.x=can.to.x; t.y=can.to.y; renderTokens(); spawnFXAt(t.x,t.y);
+  if(state.encounter.on){ const d=chebyshev(orig.x,orig.y, t.x, t.y); state.encounter.movesLeft=Math.max(0,state.encounter.movesLeft-d); renderReach(); updateTurnBanner(); } }
 
-/* ---------- 3D DICE + CHAT LOGGING ---------- */
+/* ---------- DICE (3D) ---------- */
+/* (same 3D dice implementation as before; omitted comments for brevity) */
 const diceCanvas=byId('diceCanvas'), diceCtx=diceCanvas.getContext('2d'); let animStart=null, overlayTimeout=null;
 function clearDice(){ diceCtx.clearRect(0,0,diceCanvas.width,diceCanvas.height); byId('diceOverlay').innerHTML=''; animStart=null; }
 byId('btnClearDice').onclick=clearDice;
 byId('btnRoll').onclick=()=> doRoll((byId('rollExpr').value.trim()||'1d6'), {who:'you'});
-
-document.addEventListener('keydown', e=>{
-  if(e.key==='d'||e.key==='D') doRoll('1d6', {who:'you'});
-  if(e.key==='v'||e.key==='V') setTool('select');
-  if(e.key==='r'||e.key==='R') setTool('ruler');
-  if(e.key==='f'||e.key==='F') setTool('reveal');
-  if(e.key==='h'||e.key==='H') setTool('hide');
-  if(e.key==='u'||e.key==='U') fogUndo();
-});
-
-function doRoll(expr, opts={who:'you'}){
-  const p=expr.trim().toLowerCase().replace(/^d/,'1d'); const m=p.match(/^(\d+)d(\d+)([+-]\d+)?$/);
+document.addEventListener('keydown', e=>{ if(e.key==='d'||e.key==='D') doRoll('1d6',{who:'you'}); if(e.key==='v'||e.key==='V') setTool('select'); if(e.key==='r'||e.key==='R') setTool('ruler'); if(e.key==='f'||e.key==='F') setTool('reveal'); if(e.key==='h'||e.key==='H') setTool('hide'); if(e.key==='u'||e.key==='U') fogUndo(); });
+function doRoll(expr, opts={who:'you'}){ const p=expr.trim().toLowerCase().replace(/^d/,'1d'); const m=p.match(/^(\d+)d(\d+)([+-]\d+)?$/);
   if(!m){ overlay(`Bad roll: ${escapeHtml(expr)}`); addLine(`Bad roll: ${expr}`,'you'); return; }
   const n=Number(m[1]), sides=Number(m[2]), mod=Number(m[3]||0);
   const rolls=[]; for(let i=0;i<n;i++) rolls.push(1+Math.floor(Math.random()*sides));
-  const sum=rolls.reduce((a,b)=>a+b,0)+mod;
-  overlay(`${n}d${sides}${mod?(mod>0?`+${mod}`:mod):''} → ${sum} [${rolls.join(', ')}]`);
-  const label = opts.note ? ` (${opts.note})` : '';
-  const line = `Roll ${n}d${sides}${mod?(mod>0?`+${mod}`:mod):''}${label} → ${sum} [${rolls.join(', ')}]`;
-  addLine(line, opts.who==='keeper'?'keeper':'you');
-
-  if(n===1 && [4,6,8,10,12,20].includes(sides)){ animateDie(sides, rolls[0]); }
-  else if(n===1 && sides===100){ animateDie(10, Math.floor(rolls[0]/10)*10); }
-  return {n,sides,mod,rolls,sum};
-}
+  const sum=rolls.reduce((a,b)=>a+b,0)+mod; overlay(`${n}d${sides}${mod?(mod>0?`+${mod}`:mod):''} → ${sum} [${rolls.join(', ')}]`);
+  const label = opts.note ? ` (${opts.note})` : ''; const line = `Roll ${n}d${sides}${mod?(mod>0?`+${mod}`:mod):''}${label} → ${sum} [${rolls.join(', ')}]`; addLine(line, opts.who==='keeper'?'keeper':'you'); if(n===1 && [4,6,8,10,12,20].includes(sides)) animateDie(sides, rolls[0]); else if(n===1 && sides===100){ animateDie(10, Math.floor(rolls[0]/10)*10); } return {n,sides,mod,rolls,sum}; }
 function overlay(text){ const ov=byId('diceOverlay'); ov.innerHTML=`<div class="big">${text}</div>`; clearTimeout(overlayTimeout); overlayTimeout=setTimeout(()=>ov.innerHTML='',3000); }
-
-/* (die geometry drawing functions omitted for brevity—unchanged from previous build) */
-function getGeom(sides){
-  if(sides===4){ const v=[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]]; const f=[[0,1,2],[0,3,1],[0,2,3],[1,3,2]]; return {v,f}; }
-  if(sides===6){ const v=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]], f=[[0,1,2,3],[4,5,6,7],[0,1,5,4],[2,3,7,6],[1,2,6,5],[0,3,7,4]]; return {v,f}; }
-  if(sides===8){ const v=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
-                 const f=[[0,2,4],[2,1,4],[1,3,4],[3,0,4],[2,0,5],[1,2,5],[3,1,5],[0,3,5]]; return {v,f}; }
-  if(sides===10){ const a=0.8,r=1.0,top=[],bot=[]; for(let i=0;i<5;i++){ const t=(i/5)*2*Math.PI; top.push([r*Math.cos(t),r*Math.sin(t),a]); const t2=t+Math.PI/5; bot.push([r*Math.cos(t2),r*Math.sin(t2),-a]); }
-                  const v=[...top,...bot], f=[]; for(let i=0;i<5;i++){ const i2=(i+1)%5; f.push([i,i2,5+i]); f.push([5+i,5+i2,i2]); } return {v,f}; }
-  if(sides===12){ const phi=(1+Math.sqrt(5))/2, a=1/phi, b=1;
-    const v=[[-a,0,b],[a,0,b],[-a,0,-b],[a,0,-b],[0,b,a],[0,b,-a],[0,-b,a],[0,-b,-a],[b,a,0],[-b,a,0],[b,-a,0],[-b,-a,0]];
+/* Polyhedra drawing helpers */
+function getGeom(s){ if(s===4){ const v=[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]], f=[[0,1,2],[0,3,1],[0,2,3],[1,3,2]]; return {v,f}; }
+  if(s===6){ const v=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]], f=[[0,1,2,3],[4,5,6,7],[0,1,5,4],[2,3,7,6],[1,2,6,5],[0,3,7,4]]; return {v,f}; }
+  if(s===8){ const v=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]], f=[[0,2,4],[2,1,4],[1,3,4],[3,0,4],[2,0,5],[1,2,5],[3,1,5],[0,3,5]]; return {v,f}; }
+  if(s===10){ const a=0.8,r=1.0,top=[],bot=[]; for(let i=0;i<5;i++){ const t=(i/5)*2*Math.PI; top.push([r*Math.cos(t),r*Math.sin(t),a]); const t2=t+Math.PI/5; bot.push([r*Math.cos(t2),r*Math.sin(t2),-a]); } const v=[...top,...bot], f=[]; for(let i=0;i<5;i++){ const i2=(i+1)%5; f.push([i,i2,5+i]); f.push([5+i,5+i2,i2]); } return {v,f}; }
+  if(s===12){ const phi=(1+Math.sqrt(5))/2,a=1/phi,b=1; const v=[[-a,0,b],[a,0,b],[-a,0,-b],[a,0,-b],[0,b,a],[0,b,-a],[0,-b,a],[0,-b,-a],[b,a,0],[-b,a,0],[b,-a,0],[-b,-a,0]];
     const f=[[0,1,4,8,9],[1,0,6,10,8],[0,9,11,6,0],[1,8,10,7,5],[2,3,5,7,11],[3,2,9,8,4],[2,11,6,0,9],[3,4,1,5,3],[6,11,7,10,6],[5,1,4,3,5],[4,0,2,5,4],[7,10,8,3,7]]; return {v,f}; }
-  if(sides===20){ const phi=(1+Math.sqrt(5))/2, s=1;
-    const v=[[0,-s,-phi],[0,s,-phi],[0,-s,phi],[0,s,phi],[-s,-phi,0],[s,-phi,0],[-s,phi,0],[s,phi,0],[-phi,0,-s],[phi,0,-s],[-phi,0,s],[phi,0,s]];
+  if(s===20){ const phi=(1+Math.sqrt(5))/2,s=1; const v=[[0,-s,-phi],[0,s,-phi],[0,-s,phi],[0,s,phi],[-s,-phi,0],[s,-phi,0],[-s,phi,0],[s,phi,0],[-phi,0,-s],[phi,0,-s],[-phi,0,s],[phi,0,s]];
     const f=[[0,1,8],[1,6,8],[1,3,6],[3,7,6],[3,11,7],[3,2,11],[2,5,11],[2,4,5],[2,0,4],[0,8,4],[9,1,0],[9,7,1],[9,11,7],[9,5,11],[9,4,5],[9,0,4],[10,6,8],[10,3,6],[10,2,3],[10,0,2]]; return {v,f}; }
-  return null;
-}
-const diceCtxSaveRestore = ()=>{}; // placeholder
-function animateDie(type, result){
-  const geom=getGeom(type); if(!geom){ clearDice(); return; }
-  let t=0, dur=950; const start=randEuler(), target={x: Math.PI*1.25,y: Math.PI*0.65,z: Math.PI*0.1+Math.random()*0.3};
-  const cam={z:4.2}, scale= (type===4?130:110);
-  function frame(ts){ if(!animStart) animStart=ts; const k=easeOutCubic(Math.min(1,(ts-animStart)/dur)); drawGeom(geom,lerpEuler(start,target,k),cam,scale); if(k<1) requestAnimationFrame(frame); else animStart=null; }
-  requestAnimationFrame(frame);
-}
-function drawGeom(geom,rot,cam,scale){
-  clearDice(); const ctx=diceCtx; ctx.save(); ctx.translate(diceCanvas.width/2, diceCanvas.height/2+30);
-  const rv=geom.v.map(([x,y,z])=> rotateXYZ([x,y,z],rot));
-  const pv=rv.map(([x,y,z])=>{ const zt=z+cam.z, k=1/(zt||1e-3); return [x*k*scale,y*k*scale,zt]; });
-  const faces=geom.f.map(idxs=>{
-    const pts=idxs.map(ii=>pv[ii]); const depth=idxs.reduce((a,ii)=>a+rv[ii][2],0)/idxs.length;
-    const nrm=faceNormal(idxs.map(ii=>rv[ii])); const light=Math.max(0,dot(nrm,normalize([0.2,0.4,1])));
-    return {pts,depth,light};
-  }).sort((a,b)=> b.depth-a.depth);
-  faces.forEach(f=>{ ctx.beginPath(); ctx.moveTo(f.pts[0][0],f.pts[0][1]); for(let i=1;i<f.pts.length;i++) ctx.lineTo(f.pts[i][0],f.pts[i][1]); ctx.closePath();
-    const base=35+Math.floor(f.light*120); ctx.fillStyle=`rgb(${base},${base+15},${base+35})`; ctx.strokeStyle='rgba(200,210,255,.15)'; ctx.lineWidth=1; ctx.fill(); ctx.stroke(); });
-  ctx.restore();
-}
-function rotateXYZ([x,y,z],r){ let cy=Math.cos(r.x),sy=Math.sin(r.x), y1=y*cy-z*sy, z1=y*sy+z*cy; y=y1; z=z1;
-  let cx=Math.cos(r.y),sx=Math.sin(r.y), x1=x*cx+z*sx, z2=-x*sx+z*cx; x=x1; z=z2;
-  let cz=Math.cos(r.z),sz=Math.sin(r.z), x2=x*cz-y*sz, y2=x*sz+y*cz; return [x2,y2,z]; }
+  return null;}
+function animateDie(type,result){ const geom=getGeom(type); if(!geom){ clearDice(); return; }
+  let t=0,dur=950; const start=randEuler(), target={x:Math.PI*1.25,y:Math.PI*0.65,z:Math.PI*0.1+Math.random()*0.3}; const cam={z:4.2}, scale=(type===4?130:110);
+  function frame(ts){ if(!animStart) animStart=ts; const k=easeOutCubic(Math.min(1,(ts-animStart)/dur)); drawGeom(geom,lerpEuler(start,target,k),cam,scale); if(k<1) requestAnimationFrame(frame); else animStart=null; } requestAnimationFrame(frame); }
+function drawGeom(geom,rot,cam,scale){ clearDice(); const ctx=diceCtx; ctx.save(); ctx.translate(diceCanvas.width/2, diceCanvas.height/2+30);
+  const rv=geom.v.map(([x,y,z])=> rotateXYZ([x,y,z],rot)); const pv=rv.map(([x,y,z])=>{ const zt=z+cam.z,k=1/(zt||1e-3); return [x*k*scale,y*k*scale,zt]; });
+  const faces=geom.f.map(idxs=>{ const pts=idxs.map(ii=>pv[ii]); const depth=idxs.reduce((a,ii)=>a+rv[ii][2],0)/idxs.length; const nrm=faceNormal(idxs.map(ii=>rv[ii])); const light=Math.max(0,dot(nrm,normalize([0.2,0.4,1]))); return {pts,depth,light}; }).sort((a,b)=> b.depth-a.depth);
+  faces.forEach(f=>{ ctx.beginPath(); ctx.moveTo(f.pts[0][0],f.pts[0][1]); for(let i=1;i<f.pts.length;i++) ctx.lineTo(f.pts[i][0],f.pts[i][1]); ctx.closePath(); const base=35+Math.floor(f.light*120); ctx.fillStyle=`rgb(${base},${base+15},${base+35})`; ctx.strokeStyle='rgba(200,210,255,.15)'; ctx.lineWidth=1; ctx.fill(); ctx.stroke(); });
+  ctx.restore(); }
+function rotateXYZ([x,y,z],r){ let cy=Math.cos(r.x),sy=Math.sin(r.x), y1=y*cy-z*sy, z1=y*sy+z*cy; y=y1; z=z1; let cx=Math.cos(r.y),sx=Math.sin(r.y), x1=x*cx+z*sx, z2=-x*sx+z*cx; x=x1; z=z2; let cz=Math.cos(r.z),sz=Math.sin(r.z), x2=x*cz-y*sz, y2=x*sz+y*cz; return [x2,y2,z]; }
 function faceNormal(verts){ let nx=0,ny=0,nz=0; for(let i=0;i<verts.length;i++){ const [x1,y1,z1]=verts[i],[x2,y2,z2]=verts[(i+1)%verts.length]; nx+=(y1-y2)*(z1+z2); ny+=(z1-z2)*(x1+x2); nz+=(x1-x2)*(y1+y2);} return normalize([nx,ny,nz]); }
 function normalize(v){ const m=Math.hypot(...v)||1; return v.map(n=>n/m); } function dot(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
 function randEuler(){ return {x:Math.random()*Math.PI*2,y:Math.random()*Math.PI*2,z:Math.random()*Math.PI*2}; }
@@ -1035,259 +843,239 @@ function lerpEuler(a,b,t){ return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.
 function easeOutCubic(x){ return 1-Math.pow(1-x,3); }
 
 /* ---------- PARTICLES ---------- */
-function spawnFXAt(gx,gy){
-  const box=mapEl.getBoundingClientRect(), cx=(gx+0.5)/GRID_W*box.width, cy=(gy+0.5)/GRID_H*box.height;
+function spawnFXAt(gx,gy){ const box=mapEl.getBoundingClientRect(), cx=(gx+0.5)/GRID_W*box.width, cy=(gy+0.5)/GRID_H*box.height;
   for(let i=0;i<12;i++){ const d=el('div',{class:'fx'}); const ang=Math.random()*2*Math.PI, dist=8+Math.random()*28; const x=cx+Math.cos(ang)*dist,y=cy+Math.sin(ang)*dist;
-    Object.assign(d.style,{position:'absolute',left:`${x}px`,top:`${y}px`,width:'4px',height:'4px',background:'#a7c2ff',borderRadius:'50%'}); mapEl.appendChild(d); setTimeout(()=>d.remove(), 400+Math.random()*400); }
-}
+    Object.assign(d.style,{position:'absolute',left:`${x}px`,top:`${y}px`,width:'4px',height:'4px',background:'#a7c2ff',borderRadius:'50%'}); mapEl.appendChild(d); setTimeout(()=>d.remove(), 400+Math.random()*400); } }
 
-/* ---------- UI HOOKS ---------- */
-byId('btnSettings').onclick = ()=> show('#modalSettings');
-byId('btnWizard').onclick   = ()=> startWizard(true);
-byId('btnScenes').onclick   = ()=> { updateSceneList(); show('#modalScenes'); };
-byId('btnParty').onclick    = ()=> { renderParty(); show('#modalParty'); };
-byId('btnNPCs').onclick     = ()=> { renderNPCs(); show('#modalNPCs'); };
-byId('btnHandouts').onclick = ()=> { renderHandouts(); show('#modalHandouts'); };
-byId('btnSaveLoad').onclick = ()=> { updateSlots(); show('#modalSave'); };
-byId('btnDice').onclick     = ()=> diceCanvas.scrollIntoView({behavior:'smooth', block:'center'});
-
-document.querySelectorAll('.modal .scrim,[data-close]').forEach(n=> n.addEventListener('click', (e)=>{
-  const tgt = e.currentTarget.getAttribute('data-close') || '#'+e.currentTarget.closest('.modal').id; hide(tgt);
-}));
-byId('btnSaveSettings').onclick = ()=>{
-  state.settings.openaiKey = byId('openaiKey').value.trim();
-  state.settings.openaiModel = byId('openaiModel').value;
-  state.settings.keeperOn = byId('keeperOn').checked;
-  state.settings.useImages = byId('useImages').checked;
-  state.settings.imageModel = byId('imageModel').value;
-  state.settings.elevenKey = byId('elevenKey').value.trim();
-  state.settings.voiceId = byId('voiceId').value.trim();
-  state.settings.ttsOn   = byId('ttsOn').checked;
-  state.settings.ttsQueue= byId('ttsQueue').checked;
-  state.settings.rulesPack = byId('rulesPack').value;
+/* ---------- CONTROLS ---------- */
+function setTool(t){ tool=t; byId('tool').value=t; toast('Tool: '+t); }
+byId('btnSettings').onclick=()=> show('#modalSettings');
+byId('btnWizard').onclick  =()=> startWizard(true);
+byId('btnScenes').onclick  =()=> { updateSceneList(); show('#modalScenes'); };
+byId('btnParty').onclick   =()=> { renderParty(); show('#modalParty'); };
+byId('btnNPCs').onclick    =()=> { renderNPCs(); show('#modalNPCs'); };
+byId('btnHandouts').onclick=()=> { renderHandouts(); show('#modalHandouts'); };
+byId('btnSaveLoad').onclick=()=> { updateSlots(); show('#modalSave'); };
+byId('btnDice').onclick    =()=> diceCanvas.scrollIntoView({behavior:'smooth', block:'center'});
+byId('btnSaveSettings').onclick=()=>{
+  state.settings.openaiKey=byId('openaiKey').value.trim();
+  state.settings.openaiModel=byId('openaiModel').value;
+  state.settings.keeperOn=byId('keeperOn').checked;
+  state.settings.useImages=byId('useImages').checked;
+  state.settings.imageModel=byId('imageModel').value;
+  state.settings.elevenKey=byId('elevenKey').value.trim();
+  state.settings.voiceId=byId('voiceId').value.trim();
+  state.settings.ttsOn=byId('ttsOn').checked;
+  state.settings.ttsQueue=byId('ttsQueue').checked;
+  state.settings.ttsProviderDefault=byId('ttsProviderDefault').value;
+  state.settings.rulesPack=byId('rulesPack').value;
   saveSettings(); hide('#modalSettings');
 };
-/* Map tool UI */
-byId('tool').addEventListener('change', e=> setTool(e.target.value));
-byId('brush').addEventListener('change', e=> brush=Number(e.target.value));
-function setTool(t){ tool=t; byId('tool').value=t; toast('Tool: '+t); }
-/* Board controls */
-byId('btnParticles').onclick = ()=> spawnFXAt(Math.floor(GRID_W/2), Math.floor(GRID_H/2));
-byId('btnRevealAll').onclick = ()=> fogAll(false);
-byId('btnHideAll').onclick   = ()=> fogAll(true);
-byId('btnUndo').onclick      = ()=> fogUndo();
-byId('btnGenBG').onclick     = genBGQuick;
-byId('btnNewScene').onclick  = ()=> addScene(prompt('Scene name?','New Scene')||'New Scene');
-byId('btnSwitchScene').onclick= ()=> { updateSceneList(); show('#modalScenes'); };
-byId('btnStartEncounter').onclick = ()=> startEncounter();
-byId('btnEndTurn').onclick = ()=> endTurn();
-byId('btnEndEncounter').onclick = ()=> endEncounter();
+byId('tool').addEventListener('change',e=> setTool(e.target.value));
+byId('brush').addEventListener('change',e=> brush=Number(e.target.value));
+byId('btnUndo').onclick=fogUndo;
+byId('btnRevealAll').onclick=()=> fogAll(false);
+byId('btnHideAll').onclick=()=> fogAll(true);
+byId('btnParticles').onclick=()=> spawnFXAt(Math.floor(GRID_W/2),Math.floor(GRID_H/2));
+byId('btnGenBG').onclick=genBGQuick;
+byId('btnNewScene').onclick=()=> addScene(prompt('Scene name?','New Scene')||'New Scene');
+byId('btnSwitchScene').onclick=()=> { updateSceneList(); show('#modalScenes'); };
+byId('btnStartEncounter').onclick=startEncounter;
+byId('btnEndTurn').onclick=endTurn;
+byId('btnEndEncounter').onclick=endEncounter;
 
-/* Scenes modal controls */
-byId('btnSetBG').onclick = ()=>{ const d=byId('sceneBgData').value.trim(); if(!d) return; currentScene().bg=d; renderBackground(); toast('Background set'); };
-byId('btnGenBG2').onclick= async ()=>{ const p=byId('bgPrompt').value.trim()||'moody foggy harbour'; await generateBackground(p); };
-byId('btnAddScene').onclick = ()=> addScene(byId('sceneTitle').value.trim()||'New Scene');
-byId('btnSwitchScene2').onclick = ()=> { const idx = Number(prompt('Switch to scene index (0..N-1)?', String(state.sceneIndex)))||0; switchScene(idx); hide('#modalScenes'); };
-
+/* Scenes modal */
+byId('btnSetBG').onclick=()=>{ const d=byId('sceneBgData').value.trim(); if(!d) return; currentScene().bg=d; renderBackground(); toast('Background set'); };
+byId('btnGenBG2').onclick=async()=>{ const p=byId('bgPrompt').value.trim()||'moody foggy harbour'; await generateBackground(p); };
+byId('btnAddScene').onclick=()=> addScene(byId('sceneTitle').value.trim()||'New Scene');
+byId('btnSwitchScene2').onclick=()=> { const idx=Number(prompt('Switch to scene index (0..N-1)?', String(state.sceneIndex)))||0; switchScene(idx); hide('#modalScenes'); };
 function addScene(name){ state.scenes.push(newScene(name||'New Scene')); updateSceneList(); toast('Scene added'); }
 function switchScene(idx){ if(idx<0||idx>=state.scenes.length) return; state.sceneIndex=idx; renderAll(); toast('Switched scene'); }
-function updateSceneList(){
-  const wrap=byId('sceneList'); wrap.innerHTML='';
-  state.scenes.forEach((s,i)=> wrap.appendChild(el('div',{class:'row',style:'justify-content:space-between;align-items:center;margin:.25rem 0;'},
-    [el('div',{class:'meta small'},[el('div',{html:`<b>${escapeHtml(s.name)}</b>`}),el('div',{class:'ts'},[`ID: ${s.id}`])]),
-     el('button',{class:'ghost',onclick:()=> switchScene(i)},'Switch')] )));
-}
+function updateSceneList(){ const wrap=byId('sceneList'); wrap.innerHTML=''; state.scenes.forEach((s,i)=> wrap.appendChild(el('div',{class:'row',style:'justify-content:space-between;align-items:center;margin:.25rem 0;'},
+  [el('div',{class:'meta small'},[el('div',{html:`<b>${escapeHtml(s.name)}</b>`}),el('div',{class:'ts'},[`ID: ${s.id}`])]), el('button',{class:'ghost',onclick:()=> switchScene(i)},'Switch')] ))); }
 
 /* Party modal */
-function renderParty(){
-  const wrap=byId('partyList'); wrap.innerHTML='';
-  currentScene().tokens.filter(t=>t.type==='pc').forEach(t=> wrap.appendChild(pcEditorRow(t)));
-}
-function pcEditorRow(t){
-  const row=el('div',{class:'row',style:'align-items:center;justify-content:space-between;margin:.25rem 0;flex-wrap:wrap'});
-  row.appendChild(el('div',{}, `${t.name||'Unnamed'} @ ${t.x},${t.y}`));
-  const ctrls=el('div',{class:'row'});
+function renderParty(){ const wrap=byId('partyList'); wrap.innerHTML=''; currentScene().tokens.filter(t=>t.type==='pc').forEach(t=> wrap.appendChild(pcEditorRow(t))); }
+function pcEditorRow(t){ const row=el('div',{class:'row',style:'align-items:center;justify-content:space-between;margin:.25rem 0;flex-wrap:wrap'});
+  row.appendChild(el('div',{}, `${t.name||'Unnamed'} @ ${t.x},${t.y}`)); const ctrls=el('div',{class:'row'});
   ctrls.appendChild(el('button',{class:'ghost',onclick:async()=>{ await genPortraitFor(t); renderParty(); }},'Portrait'));
   ctrls.appendChild(el('button',{class:'ghost',onclick:()=>{ const n=prompt('Rename',t.name||''); if(n!==null){ t.name=n; renderTokens(); renderParty(); }}},'Rename'));
   ctrls.appendChild(el('button',{class:'danger',onclick:()=>{ removeToken(t.id); renderParty(); }},'Remove'));
-  row.appendChild(ctrls);
-  return row;
-}
-byId('btnGenParty').onclick = ()=>{
-  const names = ["Eleanor Shaw","Caleb Finch","Iris Caldwell","Thomas Greer","Miriam Kline","Walter Rourke","Opal Reyes","Jonah Pike","Vera Doyle","Silas Hart"];
-  for(let i=0;i<5;i++) addToken({name:names[Math.floor(Math.random()*names.length)], type:'pc', x:i, y:GRID_H-1, persona:"Driven investigator"});
-  renderParty(); toast('5 investigators added');
-};
-byId('btnAddPC').onclick = ()=> { addToken({name:prompt('Name?','New Investigator')||'Investigator', type:'pc', x:0, y:GRID_H-1, persona:""}); renderParty(); };
-byId('btnPortraits').onclick = async ()=>{ for(const t of currentScene().tokens.filter(t=>t.type==='pc')) await genPortraitFor(t); renderParty(); };
+  row.appendChild(ctrls); return row; }
+byId('btnGenParty').onclick=()=>{ const names=["Eleanor Shaw","Caleb Finch","Iris Caldwell","Thomas Greer","Miriam Kline","Walter Rourke","Opal Reyes","Jonah Pike","Vera Doyle","Silas Hart"]; for(let i=0;i<5;i++) addToken({name:names[Math.floor(Math.random()*names.length)], type:'pc', x:i, y:GRID_H-1, persona:"Driven investigator"}); renderParty(); toast('5 investigators added'); };
+byId('btnAddPC').onclick=()=>{ addToken({name:prompt('Name?','New Investigator')||'Investigator', type:'pc', x:0, y:GRID_H-1, persona:""}); renderParty(); };
+byId('btnPortraits').onclick=async()=>{ for(const t of currentScene().tokens.filter(t=>t.type==='pc')) await genPortraitFor(t); renderParty(); };
 
 /* NPC modal */
-function renderNPCs(){
-  const wrap=byId('npcList'); wrap.innerHTML='';
-  currentScene().tokens.filter(t=>t.type==='npc').forEach(t=> wrap.appendChild(npcEditorRow(t)));
-}
-function npcEditorRow(t){
-  const row=el('div',{class:'row',style:'align-items:center;justify-content:space-between;margin:.25rem 0;flex-wrap:wrap'});
-  row.appendChild(el('div',{}, `${t.name||'Unnamed'} @ ${t.x},${t.y}`));
-  const ctrls=el('div',{class:'row'});
+function renderNPCs(){ const wrap=byId('npcList'); wrap.innerHTML=''; currentScene().tokens.filter(t=>t.type==='npc').forEach(t=> wrap.appendChild(npcEditorRow(t))); }
+function npcEditorRow(t){ const row=el('div',{class:'row',style:'align-items:center;justify-content:space-between;margin:.25rem 0;flex-wrap:wrap'});
+  row.appendChild(el('div',{}, `${t.name||'Unnamed'} @ ${t.x},${t.y}`)); const ctrls=el('div',{class:'row'});
   ctrls.appendChild(el('button',{class:'ghost',onclick:async()=>{ await genPortraitFor(t); renderNPCs(); }},'Portrait'));
   ctrls.appendChild(el('button',{class:'ghost',onclick:()=>{ const n=prompt('Rename',t.name||''); if(n!==null){ t.name=n; renderTokens(); renderNPCs(); }}},'Rename'));
   ctrls.appendChild(el('button',{class:'danger',onclick:()=>{ removeToken(t.id); renderNPCs(); }},'Remove'));
-  row.appendChild(ctrls);
-  return row;
-}
-byId('btnGenNPCs').onclick = ()=>{
-  const arche=['Dockhand','Fishmonger','Lighthouse Keeper','Professor','Journalist','Doctor','Officer','Priest','Innkeeper','Smuggler'];
-  for(let i=0;i<4;i++) addToken({name: arche[Math.floor(Math.random()*arche.length)]+' '+(i+1), type:'npc', x:GRID_W-1-i, y:0, persona:"Townsperson with secret"});
-  renderNPCs(); toast('NPCs added');
-};
-byId('btnAddNPC').onclick = ()=> { addToken({name:prompt('Name?','Mysterious NPC')||'Mysterious NPC', type:'npc', x:GRID_W-1, y:0, persona:""}); renderNPCs(); };
+  row.appendChild(ctrls); return row; }
+byId('btnGenNPCs').onclick=()=>{ const arche=['Dockhand','Fishmonger','Lighthouse Keeper','Professor','Journalist','Doctor','Officer','Priest','Innkeeper','Smuggler']; for(let i=0;i<4;i++) addToken({name: arche[Math.floor(Math.random()*arche.length)]+' '+(i+1), type:'npc', x:GRID_W-1-i, y:0, persona:"Townsperson with secret"}); renderNPCs(); toast('NPCs added'); };
+byId('btnAddNPC').onclick=()=>{ addToken({name:prompt('Name?','Mysterious NPC')||'Mysterious NPC', type:'npc', x:GRID_W-1, y:0, persona:""}); renderNPCs(); };
 
 /* ---------- HANDOUTS ---------- */
-function renderHandouts(){
-  const list=byId('handoutsList'); list.innerHTML='';
-  const h = state.campaign?.handouts || [];
-  if(!h.length){ list.innerHTML='<div class="note">No handouts yet. Click “Generate Handouts”.</div>'; return; }
-  h.forEach((ho,i)=>{
-    const d=el('div',{class:'ho'});
-    d.appendChild(el('h4',{}, `${ho.title||('Handout '+(i+1))}`));
-    if(ho.imageUrl) d.appendChild(el('img',{src:ho.imageUrl, alt:ho.title||('handout '+(i+1))}));
-    d.appendChild(el('div',{class:'small'}, ho.text || ''));
-    list.appendChild(d);
-  });
-}
-byId('btnGenHandouts').onclick = ()=> generateHandoutsAuto();
+function renderHandouts(){ const list=byId('handoutsList'); list.innerHTML=''; const h=state.campaign?.handouts||[]; if(!h.length){ list.innerHTML='<div class="note">No handouts yet. Click “Generate Handouts”.</div>'; return; }
+  h.forEach((ho,i)=>{ const d=el('div',{class:'ho'}); d.appendChild(el('h4',{}, `${ho.title||('Handout '+(i+1))}`)); if(ho.imageUrl) d.appendChild(el('img',{src:ho.imageUrl,alt:ho.title||('handout'+(i+1))})); d.appendChild(el('div',{class:'small'}, ho.text||'')); list.appendChild(d); }); }
+byId('btnGenHandouts').onclick=()=> generateHandoutsAuto();
 
-/* ---------- SCENE BACKGROUND GEN ---------- */
-async function genBGQuick(){ const prompt='Foggy 1920s harbor at night, painterly, desaturated blues, cinematic light, film grain, wide shot'; await generateBackground(prompt); }
-async function generateBackground(prompt){
-  try{
-    const url = await openaiImage(prompt, '1024x1024');
-    currentScene().bg = url;
-    renderBackground();
-    toast('Background ready');
-  }catch(e){ toast('Image generation failed: '+(e.message||'error')); }
-}
-
-/* ---------- SAVE / LOAD ---------- */
-function updateSlots(){
-  const wrap=byId('slots'); wrap.innerHTML=''; const slots=loadSlots();
-  for(let i=0;i<6;i++){
-    const slot=slots[i]||null;
-    const row=el('div',{class:'slot'},[
-      el('div',{class:'meta'},[ el('div',{}, `Slot ${i+1}: ${slot? (slot.meta?.name||'Campaign'): '— empty —'}`),
-        el('div',{class:'ts'}, slot? new Date(slot.meta?.ts||Date.now()).toLocaleString(): '')]),
-      el('div',{class:'row'},[
-        el('button',{class:'ghost',onclick:()=> saveToSlot(i)},'Save'),
-        el('button',{class:'warn',onclick:()=> loadFromSlot(i)},'Load'),
-        el('button',{class:'danger',onclick:()=> clearSlot(i)},'Clear')
-      ])
-    ]);
-    wrap.appendChild(row);
-  }
-}
-function captureState(){ return {meta:{ts:Date.now(), name: currentScene().name}, settings: state.settings, sceneIndex: state.sceneIndex, scenes: state.scenes, campaign: state.campaign, youPCId: state.youPCId}; }
-function applyState(data){
-  Object.assign(state.settings, data.settings||{}); state.sceneIndex=data.sceneIndex||0; state.scenes=data.scenes||[newScene('Recovered')];
-  state.campaign=data.campaign||DEMO_ARC; state.youPCId=data.youPCId||null;
-  loadSettings(); renderAll();
-}
+/* ---------- SAVE/LOAD ---------- */
+function updateSlots(){ const wrap=byId('slots'); wrap.innerHTML=''; const slots=loadSlots(); for(let i=0;i<6;i++){ const slot=slots[i]||null; const row=el('div',{class:'slot'},[
+    el('div',{class:'meta'},[ el('div',{}, `Slot ${i+1}: ${slot? (slot.meta?.name||'Campaign'): '— empty —'}`), el('div',{class:'ts'}, slot? new Date(slot.meta?.ts||Date.now()).toLocaleString(): '') ]),
+    el('div',{class:'row'},[ el('button',{class:'ghost',onclick:()=> saveToSlot(i)},'Save'), el('button',{class:'warn',onclick:()=> loadFromSlot(i)},'Load'), el('button',{class:'danger',onclick:()=> clearSlot(i)},'Clear') ])
+  ]); wrap.appendChild(row);} }
+function saveSlots(slots){ localStorage.setItem(LS_SLOTS, JSON.stringify(slots)); }
+function loadSlots(){ const raw=localStorage.getItem(LS_SLOTS); return raw? JSON.parse(raw):[]; }
+function captureState(){ return {meta:{ts:Date.now(), name: currentScene().name}, settings: state.settings, sceneIndex: state.sceneIndex, scenes: state.scenes, campaign: state.campaign, youPCId: state.youPCId, npcCatalog: state.npcCatalog}; }
+function applyState(data){ Object.assign(state.settings, data.settings||{}); state.sceneIndex=data.sceneIndex||0; state.scenes=data.scenes||[newScene('Recovered')]; state.campaign=data.campaign||DEMO_ARC; state.youPCId=data.youPCId||null; state.npcCatalog=data.npcCatalog||[]; loadSettings(); renderAll(); }
 function saveToSlot(i){ const slots=loadSlots(); slots[i]=captureState(); saveSlots(slots); updateSlots(); toast('Saved.'); }
 function loadFromSlot(i){ const slots=loadSlots(); if(!slots[i]){ toast('Empty slot'); return; } applyState(slots[i]); toast('Loaded.'); }
 function clearSlot(i){ const slots=loadSlots(); slots[i]=null; saveSlots(slots); updateSlots(); toast('Cleared.'); }
-byId('btnExport').onclick = ()=>{ const blob=new Blob([JSON.stringify(captureState(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='solo-investigator-save.json'; a.click(); URL.revokeObjectURL(url); };
-byId('btnImport').onclick = ()=>{ try{ const data=JSON.parse(byId('importText').value.trim()); applyState(data); toast('Imported.'); }catch{ toast('Bad JSON'); } };
+byId('btnExport').onclick=()=>{ const blob=new Blob([JSON.stringify(captureState(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='solo-investigator-save.json'; a.click(); URL.revokeObjectURL(url); };
+byId('btnImport').onclick=()=>{ try{ const data=JSON.parse(byId('importText').value.trim()); applyState(data); toast('Imported.'); }catch{ toast('Bad JSON'); } };
 
-/* ---------- WIZARD: tutorial setup (10 investigators + companions + auto build) ---------- */
-const wizard = {step:0, arc:null, youIndex:null, companions:[], rolls:{}};
-byId('btnWizardNext').onclick = ()=> wizardNext();
-byId('btnWizardBack').onclick = ()=> wizardBack();
-
-function startWizard(force=false){
-  if(!force && localStorage.getItem(LS_WIZARD)) return;
-  wizard.step=0; wizard.arc=null; wizard.youIndex=null; wizard.companions=[]; wizard.rolls={};
-  renderWizard(); show('#modalWizard');
+/* ---------- IMAGES ---------- */
+async function openaiImage(prompt, size='1024x1024'){
+  const key=state.settings.openaiKey; if(!key || !state.settings.useImages || state.settings.imageModel==='placeholders') return await placeholderImage(prompt,size);
+  const model=state.settings.imageModel || 'dall-e-3';
+  const cacheKey = await hashKey(`img|${model}|${size}|${prompt}`); const cached=await idbGet('images',cacheKey); if(cached) return URL.createObjectURL(cached);
+  const res=await fetch('https://api.openai.com/v1/images/generations',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`}, body: JSON.stringify({model, prompt, size, response_format:'b64_json'}) });
+  if(!res.ok){ let msg=res.statusText; try{ const j=await res.json(); msg=j?.error?.message||msg; }catch{} addLine(`Image generation failed (${res.status}). ${escapeHtml(msg)} — using placeholders.`,'keeper'); return await placeholderImage(prompt,size); }
+  const data=await res.json(); const b64=data.data?.[0]?.b64_json; if(!b64) return await placeholderImage(prompt,size); const blob=b64ToBlob(b64,'image/png'); await idbSet('images',cacheKey,blob); return URL.createObjectURL(blob);
 }
+function b64ToBlob(b64,mime){ const bin=atob(b64), len=bin.length, u8=new Uint8Array(len); for(let i=0;i<len;i++) u8[i]=bin.charCodeAt(i); return new Blob([u8],{type:mime}); }
+async function placeholderImage(prompt,size='1024x1024'){ const [w,h]=size.split('x').map(Number); const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const ctx=cv.getContext('2d');
+  const g=ctx.createLinearGradient(0,0,w,h); g.addColorStop(0,'#0d1524'); g.addColorStop(1,'#09101c'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  ctx.globalAlpha=.1; for(let i=0;i<42;i++){ ctx.fillStyle='#7aa2ff'; const r=20+Math.random()*120; ctx.beginPath(); ctx.arc(Math.random()*w,Math.random()*h,r,0,Math.PI*2); ctx.fill(); } ctx.globalAlpha=1;
+  ctx.fillStyle='#cfe1ff'; ctx.font='bold '+Math.floor(w*0.04)+'px ui-monospace,monospace'; ctx.fillText('SCENE',24,56); ctx.font=''+Math.floor(w*0.025)+'px ui-monospace,monospace'; ctx.fillText((prompt||'Moody scene').slice(0,64),24,90); return cv.toDataURL('image/png'); }
+async function genBGQuick(){ await generateBackground('Foggy 1920s harbor at night, painterly, desaturated blues, cinematic light, film grain, wide shot'); }
+async function generateBackground(prompt){ try{ const url=await openaiImage(prompt,'1024x1024'); currentScene().bg=url; renderBackground(); toast('Background ready'); }catch(e){ toast('Image error'); } }
+
+/* ---------- TTS (Browser + ElevenLabs) ---------- */
+let ttsQueue=[], ttsPlaying=false, currentAudio=null, currentUrl=null;
+function providerFor(speaker){ const m=state.settings.voiceMap?.[speaker]; return m?.provider || state.settings.ttsProviderDefault || 'browser'; }
+function voiceIdFor(speaker){ const m=state.settings.voiceMap?.[speaker]; return m?.id || (providerFor(speaker)==='eleven'? state.settings.voiceId : ''); }
+async function speak(text, speaker='Keeper'){
+  if(!state.settings.ttsOn || !text) return;
+  const provider=providerFor(speaker);
+  if(provider==='eleven' && state.settings.elevenKey){ const {blob}=await getOrCreateTTS(text, speaker); if(state.settings.ttsQueue) enqueueTTS(blob); else playBlobImmediate(blob); }
+  else if(provider==='browser'){ speakBrowser(text, speaker); }
+}
+async function getOrCreateTTS(text, speaker){
+  const key = await hashKey(`tts|eleven|${voiceIdFor(speaker)}|${speaker}|${(text||'').trim()}`);
+  const hit=await idbGet('tts',key); if(hit){ return {blob:hit,key}; }
+  const blob=await fetchTTSBlob(text, voiceIdFor(speaker)); await idbSet('tts',key,blob); return {blob,key};
+}
+async function fetchTTSBlob(text, voice){ const res=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice||'21m00Tcm4TlvDq8ikWAM'}`,{ method:'POST', headers:{'xi-api-key':state.settings.elevenKey,'Content-Type':'application/json','Accept':'audio/mpeg'}, body: JSON.stringify({text, model_id:'eleven_multilingual_v2', voice_settings:{stability:0.4, similarity_boost:0.7}}) }); if(!res.ok) throw new Error('TTS failed'); return await res.blob(); }
+function enqueueTTS(blob){ ttsQueue.push(blob); if(!ttsPlaying) playNext(); }
+function playNext(){ const blob=ttsQueue.shift(); if(!blob){ ttsPlaying=false; return; } ttsPlaying=true; playBlobImmediate(blob, ()=> playNext()); }
+function playBlobImmediate(blob,onEnd){ stopVoice(false); currentUrl=URL.createObjectURL(blob); currentAudio=new Audio(currentUrl); currentAudio.addEventListener('ended',()=>{ if(currentUrl){ URL.revokeObjectURL(currentUrl); currentUrl=null; } currentAudio=null; if(onEnd) onEnd(); }); currentAudio.play().catch(()=>{}); }
+function speakBrowser(text, speaker){ try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); const id=voiceIdFor(speaker); const v=state.browserVoices.find(v=> v.name===id) || state.browserVoices[0]; if(v) u.voice=v; window.speechSynthesis.speak(u); }catch{} }
+function stopVoice(clearQueue){ try{ if(currentAudio){ currentAudio.pause(); } if(currentUrl){ URL.revokeObjectURL(currentUrl); currentUrl=null; } currentAudio=null; window.speechSynthesis.cancel(); }catch{} if(clearQueue){ ttsQueue.length=0; ttsPlaying=false; } }
+
+/* Browser voices list */
+function refreshBrowserVoices(){ state.browserVoices = window.speechSynthesis.getVoices()||[]; }
+if('speechSynthesis' in window){ window.speechSynthesis.onvoiceschanged = refreshBrowserVoices; refreshBrowserVoices(); }
+
+/* IndexedDB cache */
+const dbp=new Promise((resolve,reject)=>{ const open=indexedDB.open('si_cache_v2',1); open.onupgradeneeded=(e)=>{ const db=e.target.result; if(!db.objectStoreNames.contains('tts')) db.createObjectStore('tts'); if(!db.objectStoreNames.contains('images')) db.createObjectStore('images'); }; open.onsuccess=()=>resolve(open.result); open.onerror=()=>reject(open.error); });
+function idbGet(store,key){ return dbp.then(db=> new Promise((res,rej)=>{ const tx=db.transaction(store,'readonly'); const r=tx.objectStore(store).get(key); r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error);})); }
+function idbSet(store,key,val){ return dbp.then(db=> new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const r=tx.objectStore(store).put(val,key); r.onsuccess=()=>res(true); r.onerror=()=>rej(r.error);})); }
+async function hashKey(s){ const buf=new TextEncoder().encode(s); const hash=await crypto.subtle.digest('SHA-256',buf); return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
+
+/* ---------- WIZARD ---------- */
+const wizard={step:0, arc:null, youIndex:null, companions:[], rolls:{}, variety:{ era:'1920s', locale:'Inland city', theme:'Investigative', avoidCoast:true }};
+byId('btnWizardNext').onclick=()=> wizardNext();
+byId('btnWizardBack').onclick=()=> wizardBack();
+function startWizard(force=false){ if(!force && localStorage.getItem(LS_WIZARD)) return; wizard.step=0; wizard.arc=null; wizard.youIndex=null; wizard.companions=[]; wizard.rolls={}; renderWizard(); show('#modalWizard'); }
 function setStepPills(){ for(let i=0;i<5;i++){ const elB=byId('wStep'+i+'B'); if(elB) elB.classList.toggle('active', i===wizard.step); } }
 function renderWizard(){
-  setStepPills();
-  const body=byId('wizardBody'); body.innerHTML='';
+  setStepPills(); const body=byId('wizardBody'); body.innerHTML='';
   if(wizard.step===0){
     body.appendChild(el('div',{class:'grid2'},[
       el('div',{class:'card'},[
-        el('h3',{},'1) Paste your keys (optional)'), el('div',{class:'small'},'OpenAI key enables AI Keeper + image generation. ElevenLabs key enables Keeper voice. Keys stay in your browser only.'),
+        el('h3',{},'1) Paste your keys (optional)'), el('div',{class:'small'},'OpenAI enables AI Keeper + images. ElevenLabs enables premium voices. Browser voices are free and default.'),
         el('div',{class:'hr'}), el('label',{},'OpenAI API Key'), el('input',{id:'w_openai',value:state.settings.openaiKey||'',placeholder:'sk-...'}),
         el('label',{},'ElevenLabs API Key'), el('input',{id:'w_eleven',value:state.settings.elevenKey||'',placeholder:'eleven-...'}),
-        el('label',{},'ElevenLabs Voice ID'), el('input',{id:'w_voice',value:state.settings.voiceId||'',placeholder:'21m00Tcm4TlvDq8ikWAM'}),
+        el('label',{},'ElevenLabs Default Voice ID'), el('input',{id:'w_voice',value:state.settings.voiceId||'',placeholder:'21m00Tcm4TlvDq8ikWAM'}),
         el('div',{class:'row'},[
           el('label',{},[el('input',{type:'checkbox',id:'w_useimg',checked:state.settings.useImages}), ' Enable Images']),
           el('label',{},'Image Model'),
-          (function(){ const s=el('select',{id:'w_imgmodel'}); ['gpt-image-1','dall-e-3','placeholders'].forEach(m=> s.appendChild(el('option',{value:m, selected:state.settings.imageModel===m}, m))); return s; })(),
-          el('label',{},[el('input',{type:'checkbox',id:'w_tts',checked:state.settings.ttsOn}), ' Keeper speaks (TTS)']),
-          el('label',{},[el('input',{type:'checkbox',id:'w_queue',checked:true}), ' Queue voice (no overlaps)'])
+          (function(){ const s=el('select',{id:'w_imgmodel'}); ['dall-e-3','gpt-image-1','placeholders'].forEach(m=> s.appendChild(el('option',{value:m, selected:state.settings.imageModel===m}, m))); return s; })(),
+          el('label',{},'TTS Default'),
+          (function(){ const s=el('select',{id:'w_ttsdef'}); ['browser','eleven','none'].forEach(m=> s.appendChild(el('option',{value:m, selected:(state.settings.ttsProviderDefault||'browser')===m}, m))); return s; })(),
+          el('label',{},[el('input',{type:'checkbox',id:'w_tts',checked:state.settings.ttsOn}), ' Enable Voices']),
+          el('label',{},[el('input',{type:'checkbox',id:'w_queue',checked:true}), ' Queue voice'])
         ])
       ]),
       el('div',{class:'card'},[
         el('h3',{},'What you’ll learn'), el('div',{class:'small'},
-         'Movement, measuring, fog-of-war, basic checks, and turn order. The Keeper nudges you, and Encounter mode limits movement/actions per turn.')
+         'Movement, measuring, fog, basic checks, initiative and turns. The Keeper nudges you. Companions speak in-character with their own voices.')
       ])
     ]));
     byId('btnWizardBack').disabled=true;
   }
   if(wizard.step===1){
-    body.appendChild(el('div',{class:'grid2'},[
-      el('div',{class:'card'},[
-        el('h3',{},'2) Generate a story arc'),
-        el('div',{class:'small'},'Use OpenAI to create an original 3‑act arc, or use the built‑in Greyhaven demo.'),
-        el('div',{class:'row'},[
-          el('button',{class:'primary',onclick:()=> genStoryArcAI()},'Generate with AI'),
-          el('button',{class:'ghost',onclick:()=>{ wizard.arc=DEMO_ARC; state.campaign=DEMO_ARC; renderWizard(); toast('Demo arc loaded'); }},'Use Demo Arc')
-        ]),
-        el('div',{id:'arcStatus',class:'note',style:'margin-top:.5rem'}, wizard.arc? `Loaded: ${wizard.arc.title}` : 'No arc generated yet.')
+    const varietyUI = el('div',{class:'card'},[
+      el('h3',{},'2) Variety Pack (break the “always a coast” habit)'),
+      el('div',{class:'grid3'},[
+        (function(){ const c=el('div',{class:'col'}); c.appendChild(el('label',{},'Era')); const s=el('select',{id:'v_era'}); ['1890s Gaslight','1920s','1950s','1970s','Modern'].forEach(v=> s.appendChild(el('option',{value:v, selected:wizard.variety.era===v}, v))); c.appendChild(s); return c; })(),
+        (function(){ const c=el('div',{class:'col'}); c.appendChild(el('label',{},'Locale')); const s=el('select',{id:'v_locale'}); ['Inland city','Rural farmland','Desert frontier','Arctic outpost','Mountain mining town','University campus','Hospital complex','Museum & archives','Jungle expedition','Coastal port'].forEach(v=> s.appendChild(el('option',{value:v, selected:wizard.variety.locale===v}, v))); c.appendChild(s); return c; })(),
+        (function(){ const c=el('div',{class:'col'}); c.appendChild(el('label',{},'Theme')); const s=el('select',{id:'v_theme'}); ['Investigative','Psychological','Folkloric','Scientific horror','Heist-gone-wrong'].forEach(v=> s.appendChild(el('option',{value:v, selected:wizard.variety.theme===v}, v))); c.appendChild(s); return c; })()
       ]),
-      el('div',{class:'card'},[
-        el('h3',{},'Arc preview'),
-        el('div',{id:'arcPreview',class:'small'}, wizard.arc? arcHtml(wizard.arc): 'Generate or select an arc to preview.')
-      ])
-    ]));
+      el('label',{},[el('input',{type:'checkbox',id:'v_avoid',checked:wizard.variety.avoidCoast}), ' Avoid coastal settings unless I choose “Coastal port”'])
+    ]);
+    const arcUI = el('div',{class:'card'},[
+      el('h3',{},'Generate a story arc'),
+      el('div',{class:'row'},[
+        el('button',{class:'primary',onclick:()=> genStoryArcAI()},'Generate with AI'),
+        el('button',{class:'ghost',onclick:()=>{ wizard.arc=DEMO_ARC; state.campaign=DEMO_ARC; renderWizard(); toast('Demo arc loaded'); }},'Use Demo Arc')
+      ]),
+      el('div',{id:'arcStatus',class:'note',style:'margin-top:.5rem'}, wizard.arc? `Loaded: ${wizard.arc.title}` : 'No arc generated yet.')
+    ]);
+    const prev = el('div',{class:'card'},[ el('h3',{},'Arc preview'), el('div',{id:'arcPreview',class:'small'}, wizard.arc? arcHtml(wizard.arc): 'Generate or select an arc to preview.') ]);
+    body.appendChild(el('div',{class:'grid2'},[varietyUI, arcUI])); body.appendChild(prev);
     byId('btnWizardBack').disabled=false;
   }
   if(wizard.step===2){
     const arc=wizard.arc||DEMO_ARC;
+    const list=el('div',{}, arc.pcOptions.map((opt,idx)=> invOption(opt,idx)));
+    const voiceSetup=el('div',{class:'card'},[
+      el('h3',{},'Voice Setup (optional, per speaker)'),
+      el('div',{class:'small'},'Pick Browser voices (free) or enter ElevenLabs IDs per character.'),
+      el('div',{id:'voiceSetupRows'})
+    ]);
     body.appendChild(el('div',{class:'card'},[
       el('h3',{},'3) Choose YOU + 4 companions'),
       el('div',{class:'small'},'Click “Me” on one investigator, then “Add Companion” on exactly four others. Click “Roll Stats” to see their starting attributes.'),
-      el('div',{class:'hr'}), el('div',{}, arc.pcOptions.map((opt,idx)=> invOption(opt,idx))),
-      el('div',{class:'small',id:'partyPickInfo',style:'margin-top:.5rem;color:#bcd1ff'}, pickSummary())
+      el('div',{class:'hr'}), list, el('div',{class:'small',id:'partyPickInfo',style:'margin-top:.5rem;color:#bcd1ff'}, pickSummary())
     ]));
-    byId('btnWizardBack').disabled=false;
+    body.appendChild(voiceSetup);
+    renderVoiceSetup();
   }
   if(wizard.step===3){
     body.appendChild(el('div',{class:'grid2'},[
       el('div',{class:'card'},[
-        el('h3',{},'4) Auto‑build your game'),
-        el('div',{class:'small'},'Creates scenes per act, backgrounds (or placeholders), spawns your chosen 5 investigators + NPCs, portraits, and handouts.'),
-        el('div',{class:'row'},[
-          el('button',{class:'primary',onclick:()=> wizardAutoBuildEverything()},'Build Everything Now')
-        ]),
+        el('h3',{},'4) Auto‑build your game (with progress)'),
+        el('div',{class:'small'},'Creates scenes per act, backgrounds (or placeholders), spawns your chosen party + NPCs, portraits, handouts, and an NPC portrait catalog.'),
+        el('div',{class:'row'},[ el('button',{class:'primary',onclick:()=> wizardAutoBuildEverything()},'Build Everything Now') ]),
         el('div',{id:'buildStatus',class:'note',style:'margin-top:.5rem'}, 'Not built yet.')
       ]),
       el('div',{class:'card'},[
         el('h3',{},'Tips'),
-        el('div',{class:'small'},'Encounter mode: Start Encounter → move up to 4 tiles → do one action → /endturn. Dice results appear in chat.')
+        el('div',{class:'small'},'Encounter mode: Start Encounter → move up to 4 tiles → one action → /endturn. Dice results appear in chat.')
       ])
     ]));
-    byId('btnWizardBack').disabled=false;
   }
   if(wizard.step===4){
     body.appendChild(el('div',{class:'card'},[
       el('h3',{},'5) You’re ready'),
       el('div',{class:'small'},'The Keeper will introduce the scene and guide you. Click "Begin Play" or Next to start.'),
-      el('div',{class:'row'},[
-        el('button',{class:'primary',onclick:()=>{ localStorage.setItem(LS_WIZARD,'1'); hide('#modalWizard'); greetAndStart(); }},'Begin Play')
-      ])
+      el('div',{class:'row'},[ el('button',{class:'primary',onclick:()=>{ localStorage.setItem(LS_WIZARD,'1'); hide('#modalWizard'); greetAndStart(); }},'Begin Play') ])
     ]));
-    byId('btnWizardBack').disabled=false;
   }
 }
 function wizardBack(){ if(wizard.step>0){ wizard.step--; renderWizard(); } }
@@ -1297,205 +1085,232 @@ async function wizardNext(){
     state.settings.elevenKey = byId('w_eleven').value.trim();
     state.settings.voiceId   = byId('w_voice').value.trim();
     state.settings.useImages = byId('w_useimg').checked;
-    state.settings.imageModel= (byId('w_imgmodel').value||'gpt-image-1');
+    state.settings.imageModel= (byId('w_imgmodel').value||'dall-e-3');
+    state.settings.ttsProviderDefault = byId('w_ttsdef').value;
     state.settings.ttsOn     = byId('w_tts').checked;
     state.settings.ttsQueue  = byId('w_queue').checked;
     saveSettings();
   }
   if(wizard.step===1){
+    wizard.variety.era    = byId('v_era').value;
+    wizard.variety.locale = byId('v_locale').value;
+    wizard.variety.theme  = byId('v_theme').value;
+    wizard.variety.avoidCoast = byId('v_avoid').checked;
     if(!wizard.arc){ if(state.settings.openaiKey){ await genStoryArcAI(); } else { wizard.arc=DEMO_ARC; state.campaign=DEMO_ARC; } }
   }
-  if(wizard.step===2){
-    if(wizard.youIndex==null || wizard.companions.length!==4){
-      toast('Pick yourself and exactly 4 companions.'); return;
-    }
-  }
+  if(wizard.step===2){ if(wizard.youIndex==null || wizard.companions.length!==4){ toast('Pick yourself and exactly 4 companions.'); return; } }
   if(wizard.step===3){
-    const txt=byId('buildStatus')?.textContent||''; 
-    if(!/ready/i.test(txt)){ await wizardAutoBuildEverything(); }
+    const txt=byId('buildStatus')?.textContent||''; if(!/ready/i.test(txt)){ await wizardAutoBuildEverything(); }
   }
-  if(wizard.step<4){ wizard.step++; renderWizard(); }
-  else{ localStorage.setItem(LS_WIZARD,'1'); hide('#modalWizard'); greetAndStart(); }
+  if(wizard.step<4){ wizard.step++; renderWizard(); } else { localStorage.setItem(LS_WIZARD,'1'); hide('#modalWizard'); greetAndStart(); }
 }
-function arcHtml(arc){
-  return `<b>${escapeHtml(arc.title)}</b><br>${escapeHtml(arc.logline)}<br><br>
-    ${arc.acts.map(a=>`<span class="tag">${escapeHtml(a.name)}</span>`).join(' ')}`
-}
+function arcHtml(arc){ return `<b>${escapeHtml(arc.title)}</b><br>${escapeHtml(arc.logline)}<br><br>${arc.acts.map(a=>`<span class="tag">${escapeHtml(a.name)}</span>`).join(' ')}` }
 function invOption(opt, idx){
-  const wrap=el('div',{class:'card',style:'margin:.4rem 0'});
+  const wrap=el('div',{class:'card',id:`inv_${idx}`,style:'margin:.4rem 0'});
+  if(wizard.youIndex===idx) wrap.classList.add('meSel'); if(wizard.companions.includes(idx)) wrap.classList.add('compSel');
   wrap.appendChild(el('div',{html:`<b>${escapeHtml(opt.name)}</b> — ${escapeHtml(opt.archetype)}<br><span class="small">${escapeHtml(opt.backstory)} <i>(${escapeHtml(opt.traits)})</i></span>`}));
   const row=el('div',{class:'row',style:'margin-top:.25rem'});
   row.appendChild(el('button',{class:'ghost',onclick:()=> rollStats(idx)},'Roll Stats'));
   row.appendChild(el('button',{class:'primary',onclick:()=> chooseMe(idx)}, wizard.youIndex===idx?'Chosen (Me)':'Choose Me'));
   row.appendChild(el('button',{class:'ghost',onclick:()=> toggleCompanion(idx)}, wizard.companions.includes(idx)?'Remove Companion':'Add Companion'));
   wrap.appendChild(row);
-  const rolled=wizard.rolls[idx];
-  wrap.appendChild(el('div',{id:`rolled_${idx}`,class:'small',style:'margin-top:.25rem;color:#bcd1ff'}, rolled? fmtStats(rolled):''));
+  const rolled=wizard.rolls[idx]; wrap.appendChild(el('div',{id:`rolled_${idx}`,class:'small',style:'margin-top:.25rem;color:#bcd1ff'}, rolled? fmtStats(rolled):''));
   return wrap;
 }
 function fmtStats(st){ return `Rolled: ${Object.entries(st).map(([k,v])=>`${k} ${v}`).join(' · ')}`; }
 function pickSummary(){ return `You: ${wizard.youIndex!=null? INVESTIGATORS[wizard.youIndex].name:'—'} · Companions (${wizard.companions.length}/4)`; }
-function rollStats(idx){
-  const stats = {Brains: roll3d6plus(3), Brawn: roll3d6plus(3), Nerve: roll3d6plus(3), Perception: roll3d6plus(3), Charm: roll3d6plus(3)};
-  wizard.rolls[idx]=stats;
-  const elr=byId('rolled_'+idx); if(elr) elr.textContent=fmtStats(stats);
-}
-function roll3d6plus(add){ let s=0; for(let i=0;i<3;i++) s+=1+Math.floor(Math.random()*6); return s+add; }
+function rollStats(idx){ const stats={Brains: roll3d6plus(3), Brawn: roll3d6plus(3), Nerve: roll3d6plus(3), Perception: roll3d6plus(3), Charm: roll3d6plus(3)}; wizard.rolls[idx]=stats; const elr=byId('rolled_'+idx); if(elr) elr.textContent=fmtStats(stats); }
+function roll3d6plus(a){ let s=0; for(let i=0;i<3;i++) s+=1+Math.floor(Math.random()*6); return s+a; }
 function chooseMe(idx){ wizard.youIndex=idx; toast('Selected '+INVESTIGATORS[idx].name); renderWizard(); }
-function toggleCompanion(idx){
-  if(wizard.youIndex===idx) { toast('That is YOU.'); return; }
-  const i=wizard.companions.indexOf(idx);
-  if(i>=0){ wizard.companions.splice(i,1); }
-  else{ if(wizard.companions.length>=4){ toast('Already 4 companions.'); return; } wizard.companions.push(idx); }
-  const inf=byId('partyPickInfo'); if(inf) inf.textContent=pickSummary(); renderWizard();
+function toggleCompanion(idx){ if(wizard.youIndex===idx){ toast('That is YOU.'); return; } const i=wizard.companions.indexOf(idx); if(i>=0) wizard.companions.splice(i,1); else { if(wizard.companions.length>=4){ toast('Already 4 companions.'); return; } wizard.companions.push(idx); } renderWizard(); }
+
+/* Voice setup UI */
+function renderVoiceSetup(){
+  const wrap=byId('voiceSetupRows'); if(!wrap) return; wrap.innerHTML='';
+  const names = []; if(wizard.youIndex!=null) names.push(INVESTIGATORS[wizard.youIndex].name); wizard.companions.forEach(i=> names.push(INVESTIGATORS[i].name)); names.unshift('Keeper');
+  names.forEach(n=>{
+    const row=el('div',{class:'row',style:'align-items:center;justify-content:space-between;margin:.25rem 0;flex-wrap:wrap'});
+    row.appendChild(el('div',{}, n));
+    const ctrls=el('div',{class:'row'});
+    const provSel=el('select',{}); ['browser','eleven','none'].forEach(p=> provSel.appendChild(el('option',{value:p, selected:(state.settings.voiceMap?.[n]?.provider || state.settings.ttsProviderDefault || 'browser')===p}, p)));
+    const voiceSel=el('select',{}); // for browser
+    const voiceInp=el('input',{placeholder:'ElevenLabs Voice ID'}); // for eleven
+    function refreshVoiceInputs(){
+      voiceSel.style.display = (provSel.value==='browser')?'inline-block':'none';
+      voiceInp.style.display = (provSel.value==='eleven')?'inline-block':'none';
+    }
+    // fill browser voices
+    const chosenId = state.settings.voiceMap?.[n]?.id || '';
+    (state.browserVoices||[]).forEach(v=> voiceSel.appendChild(el('option',{value:v.name, selected: v.name===chosenId}, v.name)));
+    refreshVoiceInputs();
+    provSel.onchange=()=> { refreshVoiceInputs(); updateVoiceMap(); };
+    voiceSel.onchange=updateVoiceMap; voiceInp.oninput=updateVoiceMap;
+    function updateVoiceMap(){
+      state.settings.voiceMap[n] = {provider: provSel.value, id: (provSel.value==='browser')? voiceSel.value : (provSel.value==='eleven'? (voiceInp.value.trim()||state.settings.voiceId): '')};
+      saveSettings();
+    }
+    // set initial
+    if(chosenId && provSel.value==='browser'){ voiceSel.value = chosenId; }
+    if(state.settings.voiceMap?.[n]?.provider==='eleven'){ voiceInp.value = state.settings.voiceMap?.[n]?.id || ''; }
+    const testBtn=el('button',{class:'ghost',onclick:()=> speak(`It is I, ${n}.`, n)},'Test');
+    ctrls.appendChild(provSel); ctrls.appendChild(voiceSel); ctrls.appendChild(voiceInp); ctrls.appendChild(testBtn);
+    row.appendChild(ctrls); wrap.appendChild(row);
+  });
 }
 
+/* ---------- STORY ARC (AI) with variety ---------- */
 async function genStoryArcAI(){
-  const key=state.settings.openaiKey; if(!key){ toast('OpenAI key required'); return; }
-  const status=byId('arcStatus'); if(status) status.textContent='Generating arc...';
+  const key=state.settings.openaiKey; const status=byId('arcStatus'); if(!key){ toast('OpenAI key required'); return; }
+  if(status) status.textContent='Generating arc...';
+  const v=wizard.variety;
   try{
-    const sys = `You are a scenario designer. Produce compact JSON with keys:
+    const sys=`You are a scenario designer. Produce compact JSON with keys:
 { "title": string, "logline": string, "tone": string, "setting": string,
-  "acts": [{ "name": string, "beats": string[] }... 3 items],
+  "acts": [{ "name": string, "beats": string[] } ... exactly 3 items],
   "imagePrompts": string[] (3 painterly prompts),
-  "pcOptions": [{ "archetype": string, "name": string, "backstory": string, "traits": string, "prompt": string } 10 items],
-  "npcs": string[] (4 items) }
+  "pcOptions": [{ "archetype": string, "name": string, "backstory": string, "traits": string, "prompt": string } ... 10 items],
+  "npcs": string[] (at least 6 items across varied roles)
+}
+Constraints:
+- Era: ${v.era}. Locale: ${v.locale}. Theme: ${v.theme}.
+- ${v.avoidCoast && v.locale!=='Coastal port' ? 'Do NOT place the opening near a coastline.' : 'Coastal settings allowed.'}
+- Vary motifs. Avoid repeating 'foggy docks/cannery' unless justified by the chosen locale.
 Return ONLY JSON.`;
-    const res=await fetch('https://api.openai.com/v1/chat/completions',{
-      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-      body: JSON.stringify({model: state.settings.openaiModel||'gpt-4o-mini', temperature:0.7, messages:[{role:'system',content:sys},{role:'user',content:'Make a moody 1920s maritime investigation.'}]})
+    const res=await fetch('https://api.openai.com/v1/chat/completions',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+      body: JSON.stringify({model: state.settings.openaiModel||'gpt-4o-mini', temperature:0.8, messages:[{role:'system',content:sys},{role:'user',content:'Create a fresh 3‑act arc.'}]})
     });
-    if(!res.ok) throw new Error('OpenAI error');
-    const data=await res.json(); const txt=data.choices?.[0]?.message?.content||'{}';
-    const arc = JSON.parse(txt);
-    wizard.arc = arc; state.campaign = arc;
-    if(status) status.textContent = 'Arc generated.';
-    const prev=byId('arcPreview'); if(prev) prev.innerHTML = arcHtml(arc);
-  }catch(e){
-    wizard.arc=DEMO_ARC; state.campaign=DEMO_ARC;
-    if(status) status.textContent='Fell back to demo arc.';
-    const prev=byId('arcPreview'); if(prev) prev.innerHTML=arcHtml(DEMO_ARC);
-  }
+    if(!res.ok) throw new Error(await res.text());
+    const data=await res.json(); const txt=data.choices?.[0]?.message?.content||'{}'; const arc=JSON.parse(txt);
+    wizard.arc=arc; state.campaign=arc; if(status) status.textContent='Arc generated.'; const prev=byId('arcPreview'); if(prev) prev.innerHTML=arcHtml(arc);
+  }catch(e){ wizard.arc=DEMO_ARC; state.campaign=DEMO_ARC; if(status) status.textContent='Fell back to demo arc.'; const prev=byId('arcPreview'); if(prev) prev.innerHTML=arcHtml(DEMO_ARC); }
 }
 
+/* ---------- AUTO BUILD with PROGRESS ---------- */
+const PROG_STEPS = ["Create Scenes","Backgrounds","Spawn PCs","Spawn NPCs","Portraits (PCs)","Portraits (NPCs)","Handouts","NPC Catalog"];
+function progressOpen(title="Building…"){ byId('progTitle').textContent=title; const list=byId('progSteps'); list.innerHTML=''; PROG_STEPS.forEach((s,i)=> list.appendChild(el('div',{class:'stepItem',id:'step_'+i},[el('div',{class:'dot'}), el('div',{}, s)]))); byId('progBar').style.width='0%'; show('#modalProgress'); }
+function progressSet(i){ const pct=Math.round(((i+1)/PROG_STEPS.length)*100); byId('progBar').style.width=pct+'%'; for(let k=0;k<PROG_STEPS.length;k++){ const n=byId('step_'+k); n.classList.toggle('done', k<i); n.classList.toggle('cur', k===i); } }
+function progressClose(){ hide('#modalProgress'); }
 async function wizardAutoBuildEverything(){
-  const arc=wizard.arc||DEMO_ARC;
-  const status=byId('buildStatus'); if(status) status.textContent='Building…';
-
-  // Scenes for each act
-  state.scenes = []; 
-  arc.acts.forEach(a=> state.scenes.push(newScene(a.name)));
-  state.sceneIndex = 0;
-
-  // PCs — you + 4 companions
-  const picks = [wizard.youIndex, ...wizard.companions].map(i=> INVESTIGATORS[i]);
-  picks.forEach((p,i)=> addToken({name:p.name, type:'pc', x:i, y:GRID_H-1, persona:`${p.archetype}. Backstory: ${p.backstory}. Traits: ${p.traits}.`, speed:4}));
-
-  // YOU id
-  const youName = INVESTIGATORS[wizard.youIndex].name;
-  const youToken=currentScene().tokens.find(t=>t.name===youName && t.type==='pc'); state.youPCId=youToken?.id || null;
-
-  // NPCs on opening scene
-  (arc.npcs||DEMO_ARC.npcs).slice(0,4).forEach((n,i)=> addToken({name:n, type:'npc', x:GRID_W-1-i, y:0, persona:"NPC with local knowledge"}));
-
-  // Backgrounds
-  if(state.settings.useImages){
-    for(let i=0;i<state.scenes.length;i++){
-      const prompt = (arc.imagePrompts && arc.imagePrompts[i]) || arc.imagePrompts?.[0] || 'Foggy 1920s harbor at night, painterly';
-      try{ const url = await openaiImage(prompt, '1024x1024'); state.scenes[i].bg=url; if(i===state.sceneIndex) renderBackground(); }catch{}
-    }
-  } else {
-    // placeholders anyway
-    for(let i=0;i<state.scenes.length;i++){
-      const url = await placeholderImage(arc.imagePrompts?.[i]||arc.acts[i].name,'1024x1024'); state.scenes[i].bg=url;
-    }
+  const arc=wizard.arc||DEMO_ARC; const status=byId('buildStatus'); if(status) status.textContent='Building…';
+  progressOpen("Assembling your table"); try{
+    // Step 0: Scenes
+    progressSet(0);
+    state.scenes=[]; arc.acts.forEach(a=> state.scenes.push(newScene(a.name))); state.sceneIndex=0;
+    // Step 1: Backgrounds
+    progressSet(1);
+    for(let i=0;i<state.scenes.length;i++){ const prompt=(arc.imagePrompts&&arc.imagePrompts[i])||arc.imagePrompts?.[0]||`${arc.setting} — ${arc.acts[i].name}`; try{ const url=await openaiImage(prompt,'1024x1024'); state.scenes[i].bg=url; }catch{} }
     renderBackground();
-  }
-
-  // Portraits for PCs/NPCs (try images, else placeholders)
-  for(const t of currentScene().tokens){
-    await genPortraitFor(t);
-  }
-
-  // Handouts
-  await generateHandoutsAuto(arc);
-
-  renderAll();
-  if(status) status.textContent='Ready.';
+    // Step 2: PCs
+    progressSet(2);
+    const picks=[wizard.youIndex, ...wizard.companions].map(i=> INVESTIGATORS[i]); currentScene().tokens.length=0;
+    picks.forEach((p,i)=> addToken({name:p.name, type:'pc', x:i, y:GRID_H-1, persona:`${p.archetype}. Backstory: ${p.backstory}. Traits: ${p.traits}.`, speed:4}));
+    const youName=INVESTIGATORS[wizard.youIndex].name; const youToken=currentScene().tokens.find(t=>t.name===youName && t.type==='pc'); state.youPCId=youToken?.id||null;
+    // Step 3: NPCs
+    progressSet(3);
+    (arc.npcs||DEMO_ARC.npcs).slice(0,4).forEach((n,i)=> addToken({name:n, type:'npc', x:GRID_W-1-i, y:0, persona:"NPC with local knowledge"}));
+    // Step 4: Portraits (PCs)
+    progressSet(4);
+    for(const t of currentScene().tokens.filter(t=>t.type==='pc')) await genPortraitFor(t);
+    // Step 5: Portraits (NPCs on scene)
+    progressSet(5);
+    for(const t of currentScene().tokens.filter(t=>t.type==='npc')) await genPortraitFor(t);
+    // Step 6: Handouts
+    progressSet(6);
+    await generateHandoutsAuto(arc);
+    // Step 7: NPC Catalog (future encounters)
+    progressSet(7);
+    await ensureNPCCatalog(arc); // pre‑generate generic portraits
+    renderAll(); if(status) status.textContent='Ready.'; toast('Build complete.');
+  }catch(e){ if(status) status.textContent='Build failed'; }
+  finally{ setTimeout(progressClose, 400); }
 }
 
+/* NPC Catalog (prepare portraits for later) */
+async function ensureNPCCatalog(arc){
+  let catalog=[];
+  if(state.settings.openaiKey){
+    try{
+      const sys=`Return JSON {"npcs":[{"role":string,"name":string,"prompt":string}... 8 items]}
+Roles should match the scenario (${arc.title}) across varied professions (authority, scholar, worker, occult, medical, criminal, clergy, bystander).
+Prompts should describe a 1920s portrait in cinematic, painterly style. Return ONLY JSON.`;
+      const res=await fetch('https://api.openai.com/v1/chat/completions',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${state.settings.openaiKey}`},
+        body: JSON.stringify({model: state.settings.openaiModel||'gpt-4o-mini', temperature:0.6, messages:[{role:'system',content:sys},{role:'user',content:`Scenario summary: ${arc.logline}. Setting: ${arc.setting}.`}]})
+      });
+      if(res.ok){ const data=await res.json(); const txt=data.choices?.[0]?.message?.content||'{}'; const out=JSON.parse(txt); catalog=out.npcs||[]; }
+    }catch{ /* ignore */ }
+  }
+  if(!catalog.length){
+    const defaults = [
+      {role:'Sheriff', name:'Sheriff Ada Colton', prompt:'1920s sheriff portrait, wool uniform, side cap, stern gaze'},
+      {role:'Librarian', name:'Martha Kincaid', prompt:'1920s librarian portrait, card catalog backdrop'},
+      {role:'Dock Foreman', name:'Briggs Malloy', prompt:'1920s dock foreman, flat cap, oilskin coat'},
+      {role:'Clergyman', name:'Reverend Hale', prompt:'1920s pastor portrait, candlelit vestry'},
+      {role:'Doctor', name:'Dr. Samuel Pike', prompt:'1920s doctor portrait, hospital corridor'},
+      {role:'Antiquarian', name:'Elias Greaves', prompt:'1920s antiquarian, dusty shop, ledgers'},
+      {role:'Officer', name:'Constable Reed', prompt:'1920s police officer, lantern, drizzle'},
+      {role:'Cult Acolyte', name:'“Initiate”', prompt:'hooded figure, half‑lit, ritual threads'}
+    ];
+    catalog = defaults;
+  }
+  state.campaign = state.campaign || {}; state.campaign.npcPortraits = [];
+  for(const npc of catalog){
+    let portraitData; try{ portraitData = await openaiImage(`${npc.prompt}, chiaroscuro, painterly, round crop`, '1024x1024'); }catch{ portraitData = await placeholderImage(npc.prompt, '512x512'); }
+    state.campaign.npcPortraits.push({role:npc.role, name:npc.name, prompt:npc.prompt, portraitData});
+  }
+}
+
+/* ---------- HANDOUTS (AI or demo) ---------- */
 async function generateHandoutsAuto(arc=state.campaign||DEMO_ARC){
-  let handouts = [];
+  let handouts=[];
   if(state.settings.openaiKey){
     try{
       const sys=`You are preparing in-game "handouts" for an investigation scenario. Return JSON:
 {"handouts":[{"title":string,"text":string,"imagePrompt":string}... exactly 3 items]}
 The text should be short (2-5 lines) and diegetic (ledger snippets, ritual notes, map fragments). Return ONLY JSON.`;
-      const res=await fetch('https://api.openai.com/v1/chat/completions',{
-        method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${state.settings.openaiKey}`},
+      const res=await fetch('https://api.openai.com/v1/chat/completions',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${state.settings.openaiKey}`},
         body: JSON.stringify({model: state.settings.openaiModel||'gpt-4o-mini', temperature:0.5, messages:[
-          {role:'system',content:sys},
-          {role:'user',content:`Scenario: ${arc.title} — ${arc.logline}. Acts: ${arc.acts.map(a=>a.name).join(' | ')}`}
+          {role:'system',content:sys},{role:'user',content:`Scenario: ${arc.title} — ${arc.logline}. Acts: ${arc.acts.map(a=>a.name).join(' | ')}`}
         ]})
       });
-      if(!res.ok) throw new Error('handout gen failed');
-      const data=await res.json(); const txt=data.choices?.[0]?.message?.content||'{}';
-      const out=JSON.parse(txt); handouts = out.handouts||[];
-    }catch{
-      handouts = demoHandouts();
-    }
-  }else{
-    handouts = demoHandouts();
-  }
-
-  // Optional images (or placeholders)
-  for(const ho of handouts){
-    try{
-      ho.imageUrl = await openaiImage(ho.imagePrompt||'aged paper note, 1920s, moody, high detail', '1024x1024');
-    }catch{
-      ho.imageUrl = await placeholderImage(ho.title||'Handout', '1024x1024');
-    }
-  }
-  state.campaign = state.campaign || {};
-  state.campaign.handouts = handouts;
-  renderHandouts();
+      if(res.ok){ const data=await res.json(); const txt=data.choices?.[0]?.message?.content||'{}'; const out=JSON.parse(txt); handouts=out.handouts||[]; }
+    }catch{ handouts=demoHandouts(); }
+  }else{ handouts=demoHandouts(); }
+  for(const ho of handouts){ try{ ho.imageUrl=await openaiImage(ho.imagePrompt||'aged paper note, 1920s, moody', '1024x1024'); }catch{ ho.imageUrl=await placeholderImage(ho.title||'Handout','1024x1024'); } }
+  state.campaign = state.campaign || {}; state.campaign.handouts = handouts; renderHandouts();
 }
-function demoHandouts(){
-  return [
-    {title:"Ledger Scrap", text:"Shipment #3417 — 'for the Chapel Below'. Signed with a fishbone symbol.", imagePrompt:"A torn ledgersheet with ink smears, 1920s paper"},
-    {title:"Tidal Map", text:"Low-tide route noted in graphite; a cross near the cannery’s coldroom door.", imagePrompt:"Hand-drawn map fragment, pencil on damp paper"},
-    {title:"Ritual Note", text:"Bell once for warning, twice for welcome.", imagePrompt:"A stained index card with cursive notes"}
-  ];
-}
-
-function greetAndStart(){
-  addLine(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`,'keeper',
-          {ttsText: `${state.campaign?.title||'Welcome'}. ${state.campaign?.logline||''}`});
-  addLine(`Use <i>Start Encounter</i> when you want guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action, then type <i>/endturn</i>. Try <i>/roll 1d100</i> for a generic check.`, 'keeper', {ttsText:'Use Start Encounter for guided turns. Move up to four tiles, one action, then end turn.'});
-}
+function demoHandouts(){ return [
+  {title:"Ledger Scrap", text:"Shipment #3417 — 'for the Chapel Below'. Signed with a fishbone symbol.", imagePrompt:"A torn ledgersheet with ink smears, 1920s paper"},
+  {title:"Tidal Map", text:"Low-tide route noted in graphite; a cross near the cannery’s coldroom door.", imagePrompt:"Hand-drawn map fragment, pencil on damp paper"},
+  {title:"Ritual Note", text:"Bell once for warning, twice for welcome.", imagePrompt:"A stained index card with cursive notes"}
+]; }
 
 /* ---------- PORTRAITS ---------- */
-async function genPortraitFor(t){
-  const basePrompt = t.prompt || `Portrait, 1920s ${t.type==='pc'?'investigator':''} ${t.name||'character'}, moody film grain, chiaroscuro, painterly, round crop`;
-  try{ t.portraitData = await openaiImage(basePrompt,'1024x1024'); renderTokens(); }
-  catch{ t.portraitData = await placeholderImage(basePrompt,'512x512'); renderTokens(); }
-}
+async function genPortraitFor(t){ const base = t.prompt || `Portrait, 1920s ${t.type==='pc'?'investigator':''} ${t.name||'character'}, moody film grain, chiaroscuro, painterly, round crop`; try{ t.portraitData=await openaiImage(base,'1024x1024'); renderTokens(); } catch{ t.portraitData=await placeholderImage(base,'512x512'); renderTokens(); } }
 
-/* ---------- UTIL ---------- */
+/* ---------- SHOW/HIDE ---------- */
 function show(sel){ document.querySelector(sel).classList.add('show'); }
 function hide(sel){ document.querySelector(sel).classList.remove('show'); }
 
-/* ---------- ON LOAD ---------- */
-function initialSeed(){
-  if(currentScene().tokens.length===0){
-    addToken({name:'pc0',type:'pc',x:1,y:6, persona:"Generic learner"});
-    addToken({name:'pc1',type:'pc',x:2,y:6, persona:"Generic learner"});
-    addToken({name:'npc0',type:'npc',x:10,y:1, persona:"Local"});
-  }
+/* ---------- INIT ---------- */
+function initialSeed(){ if(currentScene().tokens.length===0){ addToken({name:'pc0',type:'pc',x:1,y:6, persona:"Generic learner"}); addToken({name:'pc1',type:'pc',x:2,y:6, persona:"Generic learner"}); addToken({name:'npc0',type:'npc',x:10,y:1, persona:"Local"}); } }
+function renderInitButtons(){ byId('btnInitRoll').onclick=rollAllInit; byId('btnInitNext').onclick=nextTurn; byId('btnInitClear').onclick=clearInit; }
+function genBG(){ }
+loadSettings(); initialSeed(); renderAll(); renderInitButtons(); if(!localStorage.getItem(LS_WIZARD)) startWizard(false);
+
+/* Keyboard tool binds */
+document.addEventListener('keydown', e=>{ if(e.key==='V'||e.key==='v') setTool('select'); if(e.key==='R'||e.key==='r') setTool('ruler'); if(e.key==='F'||e.key==='f') setTool('reveal'); if(e.key==='H'||e.key==='h') setTool('hide'); });
+
+/* Map clicks */
+function updateTurnBanner(){ if(!state.encounter.on){ byId('turnInfo').textContent='Free exploration'; return; } const t=getActiveToken(); if(!t){ byId('turnInfo').textContent='Encounter (no active)'; return; } byId('turnInfo').textContent=`Encounter: ${t.name} — Moves ${state.encounter.movesLeft}, Actions ${state.encounter.actionsLeft}`; }
+
+/* Utility */
+function addLineKeeper(text){ addLine(text,'keeper',{speaker:'Keeper'}); }
+
+/* Greeter */
+function greetAndStart(){
+  addLineKeeper(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`);
+  addLineKeeper(`Use <i>Start Encounter</i> when you want guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action, then type <i>/endturn</i>. Try <i>/roll 1d100</i> for a generic check.`);
 }
-initialSeed();
-renderAll();
-if(!localStorage.getItem(LS_WIZARD)) startWizard(false);
 </script>
 </body>
 </html>
