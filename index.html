@@ -958,9 +958,22 @@ byId('cmdInsert').onclick=()=>{
 };
 function addLine(text, who='you', opts={}){
   const line = el('div',{class:`line ${who}`});
-  const whoEl = el('div',{class:'who'}, who==='you'?'🧑 You':'👁️ Keeper');
-  const content = el('div',{class:'content'}); if(who==='you'){ content.textContent=text; } else { content.innerHTML=text; }
-  line.appendChild(whoEl); line.appendChild(content);
+  const content = el('div',{class:'content'});
+  if(who==='you'){ content.textContent=text; } else { content.innerHTML=text; }
+
+  if(who==='keeper'){
+    const whoEl = el('div',{class:'who'}, `👁️ ${opts.speaker||'Keeper'}`);
+    line.appendChild(whoEl);
+    line.appendChild(content);
+  }else{
+    const youToken=currentScene().tokens.find(t=> t.id===state.youPCId);
+    const name=opts.speaker || youToken?.name || 'You';
+    const av=el('div',{class:'avatar'});
+    av.appendChild(el('img',{src:speakerAvatar(name), alt:name}));
+    const whoEl=el('div',{class:'who'}, name);
+    line.appendChild(av); line.appendChild(whoEl); line.appendChild(content);
+  }
+
   const controls = el('div',{class:'controls'});
   if((who==='keeper' || opts.replayable) && state.settings.ttsOn){
     const btn=el('button',{class:'ghost',title:'Replay voice',onclick:async()=>{ await speak(stripTags(text), opts.speaker||'Keeper'); }},'▶');
@@ -991,7 +1004,7 @@ function addActionLine(text){
 
 function addSystemMessage(text){
   const line=el('div',{class:'line keeper'}, [
-    el('div',{class:'who'}, '👁️ System'),
+    el('div',{class:'who'}, '⚠️ System'),
     el('div',{class:'content'}, text)
   ]);
   chatLog.appendChild(line);
