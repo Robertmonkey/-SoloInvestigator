@@ -487,7 +487,9 @@ byId('btnStopVoice').onclick=()=> stopVoice(true);
 byId('btnAskKeeper').onclick=()=> askKeeperFromInput();
 function askKeeperFromInput(){
   const input=byId('chatInput'); const val=input.value.trim(); if(!val) return;
-  keeperReply(val); input.value='';
+  addLine(val,'you');
+  keeperReply(val);
+  input.value='';
 }
 function sendChat(){ const val=byId('chatInput').value.trim(); if(!val) return; byId('chatInput').value=''; addLine(val,'you');
   if(val.startsWith('/')){ runSlash(val); return; }
@@ -512,20 +514,22 @@ function runSlash(val){
 }
 function tryMoveCommand(t,gx,gy,isProgrammatic=false){
   const orig={x:t.x,y:t.y};
-  const dist=chebyshev(orig.x,orig.y,gx,gy);
 
   if(state.encounter.on && !isProgrammatic){
     const can=canMoveTo(t,gx,gy,orig);
     if(!can.ok){ addSystemMessage(`Can’t move ${t.name} there right now.`); return; }
     t.x=can.to.x; t.y=can.to.y;
-    state.encounter.movesLeft=Math.max(0,state.encounter.movesLeft-dist);
+    const moved=chebyshev(orig.x,orig.y,t.x,t.y);
+    state.encounter.movesLeft=Math.max(0,state.encounter.movesLeft-moved);
   }else if(state.encounter.on && isProgrammatic){
+    const dist=chebyshev(orig.x,orig.y,gx,gy);
     if(dist>state.encounter.movesLeft){
       addActionLine(`* ${t.name} tries to move to ${gx},${gy} but lacks the movement. *`);
       return;
     }
     t.x=clamp(gx,0,GRID_W-1); t.y=clamp(gy,0,GRID_H-1);
-    state.encounter.movesLeft=Math.max(0,state.encounter.movesLeft-dist);
+    const moved=chebyshev(orig.x,orig.y,t.x,t.y);
+    state.encounter.movesLeft=Math.max(0,state.encounter.movesLeft-moved);
     addActionLine(`* ${t.name} moves to ${t.x},${t.y}. *`);
   }else{
     t.x=clamp(gx,0,GRID_W-1); t.y=clamp(gy,0,GRID_H-1);
@@ -538,10 +542,14 @@ function tryMoveCommand(t,gx,gy,isProgrammatic=false){
 }
 
 /* ---------- SIMPLE DICE (chat-only) ---------- */
-function doRoll(expr, opts={}){ const p=expr.trim().toLowerCase().replace(/^d/,'1d'); const m=p.match(/^(\d+)d(\d+)([+-]\d+)?$/);
+function doRoll(expr, opts={}){
+  const p=expr.trim().toLowerCase().replace(/^d/,'1d');
+  const m=p.match(/^(\d+)d(\d+)([+-]\d+)?$/);
   if(!m){ addSystemMessage(`Bad roll: ${expr}`); return; }
   const n=Number(m[1]), sides=Number(m[2]), mod=Number(m[3]||0);
-  const rolls=[]; for(let i=0;i<n;i++) rolls.push(1+Math.floor(Math.random()*sides));
+  if(n<1 || sides<1 || n>100 || sides>1000){ addSystemMessage('Roll too large.'); return; }
+  const rolls=[];
+  for(let i=0;i<n;i++) rolls.push(1+Math.floor(Math.random()*sides));
   const sum=rolls.reduce((a,b)=>a+b,0)+mod;
   const label = opts.note ? ` (${opts.note})` : '';
   const line = `Roll ${n}d${sides}${mod?(mod>0?`+${mod}`:mod):''}${label} → ${sum} [${rolls.join(', ')}]`;
