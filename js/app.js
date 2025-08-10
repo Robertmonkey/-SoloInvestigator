@@ -13,16 +13,16 @@ const GRID_W = 12, GRID_H = 8;
 
 /* Ten core investigators (as before) */
 const INVESTIGATORS = [
-  { archetype:"Journalist", name:"Eleanor Shaw", prompt:"1920s journalist portrait, trench coat, press badge, film-noir lighting", backstory:"Reporter chasing labor abuses to redeem a career-stalling misquote.", traits:"Observant, stubborn, empathetic." },
-  { archetype:"Doctor", name:"Thomas Greer, MD", prompt:"1920s physician portrait, wireframe glasses, soft rim light", backstory:"War medic haunted by triage choices; volunteers at a charity clinic.", traits:"Calm, clinical, moral." },
-  { archetype:"Professor", name:"Miriam Kline", prompt:"1920s academic portrait, tweed, library bokeh", backstory:"Folklore professor cataloging 'drowned saints' myths.", traits:"Curious, cautious, enthralled." },
-  { archetype:"Detective", name:"Silas Hart", prompt:"1920s sleuth portrait, fedora, cigarette smoke", backstory:"Laid‑off Pinkerton with a code; hired off‑books to find the missing.", traits:"Dry wit, methodical, suspicious." },
-  { archetype:"Occultist", name:"Opal Reyes", prompt:"1920s medium portrait, candlelight, ectoplasmic haze", backstory:"Spiritualist who lost a sibling to the unknown; drawn to thin places.", traits:"Intense, intuitive, brittle." },
-  { archetype:"Photographer", name:"Beatrice “Bea” Hollis", prompt:"1920s field photographer, Graflex camera, raincoat", backstory:"Stringer who captured something impossible on a glass plate.", traits:"Composed, daring, curious." },
-  { archetype:"Sailor", name:"Franklin “Finn” MacReady", prompt:"1920s sailor portrait, peacoat, stormy backdrop", backstory:"Knows hidden inlets; talks in his sleep—answers back, too.", traits:"Superstitious, brave, practical." },
-  { archetype:"Psychiatrist", name:"Dr. Anjali Rao", prompt:"1920s psychiatrist, tidy bob, notebook", backstory:"Researching mass suggestion; her mentor vanished here.", traits:"Analytical, patient, fearless." },
-  { archetype:"Ex‑Priest", name:"Father Declan Byrne", prompt:"1920s clerical portrait, worn collar, hard eyes", backstory:"Left the cloth after a catastrophe; now studies apocrypha.", traits:"Grim, protective, resolute." },
-  { archetype:"Radio Operator", name:"Dorothy “Dot” Pennington", prompt:"1920s radio operator, headphones, desk lamp glow", backstory:"Intercepted a coded transmission about 'the Chapel Below'.", traits:"Wry, quick, technical." }
+  { archetype:"Journalist",   name:"Eleanor Shaw",             sex:"F", age:31, prompt:"1920s journalist portrait, trench coat, press badge, film-noir lighting", backstory:"Reporter chasing labor abuses to redeem a career-stalling misquote.", traits:"Observant, stubborn, empathetic." },
+  { archetype:"Doctor",       name:"Thomas Greer, MD",         sex:"M", age:40, prompt:"1920s physician portrait, wireframe glasses, soft rim light", backstory:"War medic haunted by triage choices; volunteers at a charity clinic.", traits:"Calm, clinical, moral." },
+  { archetype:"Professor",    name:"Miriam Kline",             sex:"F", age:37, prompt:"1920s academic portrait, tweed, library bokeh", backstory:"Folklore professor cataloging 'drowned saints' myths.", traits:"Curious, cautious, enthralled." },
+  { archetype:"Detective",    name:"Silas Hart",               sex:"M", age:33, prompt:"1920s sleuth portrait, fedora, cigarette smoke", backstory:"Laid‑off Pinkerton with a code; hired off‑books to find the missing.", traits:"Dry wit, methodical, suspicious." },
+  { archetype:"Occultist",    name:"Opal Reyes",               sex:"F", age:26, prompt:"1920s medium portrait, candlelight, ectoplasmic haze", backstory:"Spiritualist who lost a sibling to the unknown; drawn to thin places.", traits:"Intense, intuitive, brittle." },
+  { archetype:"Photographer", name:"Beatrice “Bea” Hollis",     sex:"F", age:28, prompt:"1920s field photographer, Graflex camera, raincoat", backstory:"Stringer who captured something impossible on a glass plate.", traits:"Composed, daring, curious." },
+  { archetype:"Sailor",       name:"Franklin “Finn” MacReady", sex:"M", age:35, prompt:"1920s sailor portrait, peacoat, stormy backdrop", backstory:"Knows hidden inlets; talks in his sleep—answers back, too.", traits:"Superstitious, brave, practical." },
+  { archetype:"Psychiatrist", name:"Dr. Anjali Rao",            sex:"F", age:34, prompt:"1920s psychiatrist, tidy bob, notebook", backstory:"Researching mass suggestion; her mentor vanished here.", traits:"Analytical, patient, fearless." },
+  { archetype:"Ex‑Priest",    name:"Father Declan Byrne",      sex:"M", age:45, prompt:"1920s clerical portrait, worn collar, hard eyes", backstory:"Left the cloth after a catastrophe; now studies apocrypha.", traits:"Grim, protective, resolute." },
+  { archetype:"Radio Operator",name:"Dorothy “Dot” Pennington", sex:"F", age:24, prompt:"1920s radio operator, headphones, desk lamp glow", backstory:"Intercepted a coded transmission about 'the Chapel Below'.", traits:"Wry, quick, technical." }
 ];
 
 /* Demo arcs (varied) */
@@ -626,8 +626,14 @@ function pcEditorRow(t){
   row.appendChild(voiceControlsForName(t.name||'PC'));
   return row;
 }
-function voiceControlsForName(name){
+function voiceControlsForName(actor){
+  if(typeof actor==='string') actor={name:actor};
+  const name=actor.name;
+  const parts=[]; const sex=actor.sex==='M'?'Male':(actor.sex==='F'?'Female':actor.sex); if(sex) parts.push(sex); if(actor.age) parts.push(actor.age);
+  const label = parts.length? `${name} (${parts.join(', ')})` : name;
+
   const wrap=el('div',{class:'row',style:'margin-top:.35rem;align-items:center;flex-wrap:wrap'});
+  wrap.appendChild(el('div',{class:'small',style:'min-width:12rem'},label));
   wrap.appendChild(el('div',{class:'small'},'Voice:'));
   const provSel=el('select',{}); ['browser','eleven','none'].forEach(p=> provSel.appendChild(el('option',{value:p, selected:(state.settings.voiceMap?.[name]?.provider || state.settings.ttsProviderDefault || 'browser')===p}, p)));
   const voiceSel=el('select',{}); // browser voices
@@ -957,7 +963,9 @@ function arcHtml(arc){ return `<b>${escapeHtml(arc.title)}</b><br>${escapeHtml(a
 function invOption(opt, idx){
   const wrap=el('div',{class:'card',id:`inv_${idx}`,style:'margin:.4rem 0'});
   if(wizard.youIndex===idx) wrap.classList.add('meSel'); if(wizard.companions.includes(idx)) wrap.classList.add('compSel');
-  wrap.appendChild(el('div',{html:`<b>${escapeHtml(opt.name)}</b> — ${escapeHtml(opt.archetype)}<br><span class="small">${escapeHtml(opt.backstory)} <i>(${escapeHtml(opt.traits)})</i></span>`}));
+  const sex = opt.sex==='M'?'Male': (opt.sex==='F'?'Female':(opt.sex||''));
+  const meta = `${sex}, ${opt.age}`;
+  wrap.appendChild(el('div',{html:`<b>${escapeHtml(opt.name)}</b> (${escapeHtml(meta)}) — ${escapeHtml(opt.archetype)}<br><span class="small">${escapeHtml(opt.backstory)} <i>(${escapeHtml(opt.traits)})</i></span>`}));
   const row=el('div',{class:'row',style:'margin-top:.25rem'});
   row.appendChild(el('button',{class:'ghost',onclick:()=> rollStats(idx)},'Roll Stats'));
   row.appendChild(el('button',{class:'primary',onclick:()=> chooseMe(idx)}, wizard.youIndex===idx?'Chosen (Me)':'Choose Me'));
@@ -985,12 +993,12 @@ function toggleCompanion(idx){ if(wizard.youIndex===idx){ toast('That is YOU.');
 function renderVoiceSetup(){
   const wrap=byId('voiceSetupRows'); if(!wrap) return; wrap.innerHTML='';
   const opts = wizard.arc?.pcOptions || INVESTIGATORS;
-  const names = [];
-  if(wizard.youIndex!=null) names.push(opts[wizard.youIndex].name);
-  wizard.companions.forEach(i=> names.push(opts[i].name));
-  names.unshift('Keeper');
-  names.forEach(n=>{
-    wrap.appendChild(voiceControlsForName(n));
+  const actors = [];
+  if(wizard.youIndex!=null) actors.push(opts[wizard.youIndex]);
+  wizard.companions.forEach(i=> actors.push(opts[i]));
+  actors.unshift({name:'Keeper'});
+  actors.forEach(a=>{
+    wrap.appendChild(voiceControlsForName(a));
   });
 }
 
