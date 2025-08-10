@@ -117,6 +117,7 @@
     background:linear-gradient(180deg,#0d1220,#0a0f19);border:1px solid #1a2231;padding:1rem;box-shadow:0 10px 40px rgba(0,0,0,.5)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem}
+  .grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.75rem}
   .thin{font-weight:500;color:#b6c1d6}
   .small{font-size:.85rem;color:#9fb0c8}
   .hr{height:1px;background:#1b2333;margin:.75rem 0}

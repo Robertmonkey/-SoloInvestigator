@@ -137,7 +137,8 @@ const state = {
   encounter:{on:false, movesLeft:0, actionsLeft:0, bonusLeft:0},
   browserVoices:[],
   memory:'', // local summary to keep prompts small (no extra tokens)
-  aiThinking:false // prevent concurrent AI calls
+  aiThinking:false, // prevent concurrent AI calls
+  lastRoll:null
 };
 function currentScene(){ return state.scenes[state.sceneIndex]; }
 
@@ -507,16 +508,36 @@ function sendChat(){ const val=byId('chatInput').value.trim(); if(!val) return; 
 /* ---------- SLASH ---------- */
 function runSlash(val){
   const ck=val.match(/^\/check\s+([A-Za-z][A-Za-z0-9 _-]*)\s+(\d{1,3})$/i);
-  if(ck){ const skill=ck[1].trim(); const base=clamp(Number(ck[2]),1,99); const r = rollPercentile(skill, base); addSystemMessage(r.text); return; }
+  if(ck){ const skill=ck[1].trim(); const base=clamp(Number(ck[2]),1,99); const r = rollPercentile(skill, base); addSystemMessage(r.text); const you=currentScene().tokens.find(t=> t.id===state.youPCId); if(you) state.lastRoll={who:you.id,skill,roll:r.roll,val:base,tier:r.tier}; return; }
 
   const kv=val.match(/^\/keeper\s+(.+)/i);
   if(kv){ keeperReply(kv[1]); return; }
 
   const m=val.match(/^\/roll\s+(.+)$/i); if(m){ doRoll(m[1], {who:'you'}); return; }
+  if(/^\/luck$/i.test(val)){
+    const you=currentScene().tokens.find(t=> t.id===state.youPCId);
+    if(!you){ addSystemMessage('No active PC to roll Luck.'); return; }
+    ensureSheet(you);
+    if(you.sheet.luckRolled){ addSystemMessage('Luck can only be rolled at the start of a new game.'); return; }
+    const roll=1+Math.floor(Math.random()*100);
+    const old=you.sheet.luck||0;
+    let gain;
+    if(roll>old){
+      gain=10+Math.floor(Math.random()*10)+Math.floor(Math.random()*10);
+    }else{
+      gain=5+Math.floor(Math.random()*10);
+    }
+    you.sheet.luck = Math.min(99, old + gain);
+    you.sheet.luckRolled=true;
+    addSystemMessage(`${you.name}: Luck roll ${roll} → gain ${gain} (Luck ${you.sheet.luck})`);
+    return;
+  }
+  const sp=val.match(/^\/spendluck\s+(\d+)$/i);
+  if(sp){ const amt=Number(sp[1]); const you=currentScene().tokens.find(t=> t.id===state.youPCId); if(!you){ addSystemMessage('No active PC to spend Luck.'); return; } ensureSheet(you); const lr=state.lastRoll; if(!lr||lr.who!==you.id||lr.tier!=='Failure'){ addSystemMessage('No failed roll to improve with Luck.'); return; } const needed=lr.roll - lr.val; if(amt<needed){ addSystemMessage(`Need ${needed} Luck to succeed.`); return; } if((you.sheet.luck||0)<amt){ addSystemMessage('Not enough Luck.'); return; } you.sheet.luck-=amt; state.lastRoll=null; addSystemMessage(`${you.name} spends ${amt} Luck to succeed. Remaining Luck ${you.sheet.luck}.`); return; }
   const mv=val.match(/^\/move\s+(.+)\s+to\s+(\d+)\s*,\s*(\d+)$/i);
   if(mv){ const nameOrId=mv[1].trim(); const t=currentScene().tokens.find(x=> x.id===nameOrId || (x.name||'').toLowerCase()===nameOrId.toLowerCase()); if(!t){ addSystemMessage("No such token."); return; } tryMoveCommand(t, Number(mv[2]), Number(mv[3])); return; }
   if(/^\/endturn/i.test(val)){ endTurn(); return; }
-  if(/^\/help/i.test(val)){ addSystemMessage("Commands: /roll NdM±K, /check Skill 60, /keeper question, /move [name] to x,y, /endturn."); return; }
+  if(/^\/help/i.test(val)){ addSystemMessage("Commands: /roll NdM±K, /check Skill 60, /luck, /spendluck N, /keeper question, /move [name] to x,y, /endturn."); return; }
   addSystemMessage("Unknown command. Try /help.");
 }
 function tryMoveCommand(t,gx,gy,isProgrammatic=false){
@@ -573,9 +594,10 @@ function rollPercentile(skillName, skillVal){
   let tier = (roll<=extreme) ? 'Extreme Success' : (roll<=hard) ? 'Hard Success' : (roll<=val) ? 'Success' : 'Failure';
   if(roll===1) tier='Critical Success';
   if(roll===100) tier='Fumble';
+  const luckNeeded = roll>val ? roll-val : 0;
   const safeName = escapeHtml(skillName);
-  const text = `Check ${safeName} ${val}: d100 → ${roll} → <b>${tier}</b>`;
-  return {roll, tier, text};
+  const text = `Check ${safeName} ${val}: d100 → ${roll} → <b>${tier}</b>${luckNeeded?` (needs ${luckNeeded} Luck)`:''}`;
+  return {roll, tier, text, val, luckNeeded};
 }
 
 /* ---------- PARTICLES ---------- */
@@ -1263,7 +1285,7 @@ function defaultSheet(t){
   return {
     archetype: t.type==='pc' ? 'Investigator' : 'NPC',
     persona: t.persona||'',
-    hp: 10, sanity: 50, speed: t.speed||4,
+    hp: 10, sanity: 50, speed: t.speed||4, luck: 50, luckRolled:false,
     attrs:{Brains:10,Brawn:10,Nerve:10,Perception:10,Charm:10},
     skills:{
       Spot:60,
@@ -1289,7 +1311,11 @@ let sheetTarget=null;
 function openSheet(t){
   sheetTarget=t; ensureSheet(t); fillSheet(t); show('#modalSheet');
 }
-function ensureSheet(t){ t.sheet = t.sheet || defaultSheet(t); }
+function ensureSheet(t){
+  t.sheet = t.sheet || defaultSheet(t);
+  if(t.sheet.luck==null) t.sheet.luck=50;
+  if(t.sheet.luckRolled==null) t.sheet.luckRolled=false;
+}
 function checkSanityThresholds(t){
   ensureSheet(t);
   const san=t.sheet.sanity||0;
@@ -1319,6 +1345,7 @@ function fillSheet(t){
   byId('csHP').value = t.sheet.hp||0;
   byId('csSAN').value = t.sheet.sanity||0;
   byId('csSPD').value = t.sheet.speed||4;
+  byId('csLuck').value = t.sheet.luck||0;
   byId('csBrains').value = t.sheet.attrs.Brains||10;
   byId('csBrawn').value = t.sheet.attrs.Brawn||10;
   byId('csNerve').value = t.sheet.attrs.Nerve||10;
@@ -1330,7 +1357,7 @@ function fillSheet(t){
   const sk=byId('csSkills'); sk.innerHTML=''; Object.entries(t.sheet.skills||{}).forEach(([k,v])=>{
     const row=el('div',{class:'row'},[
       el('div',{class:'small'},`${k} ${v}`),
-      el('button',{class:'ghost',onclick:()=>{ const r=rollPercentile(k, v); addSystemMessage(`${t.name}: ${r.text}`); }},'Roll'),
+      el('button',{class:'ghost',onclick:()=>{ const r=rollPercentile(k, v); addSystemMessage(`${t.name}: ${r.text}`); if(state.youPCId===t.id) state.lastRoll={who:t.id,skill:k,roll:r.roll,val:r.val,tier:r.tier}; }},'Roll'),
       el('button',{class:'ghost',onclick:()=>{ const nv=Number(prompt('New value', String(v))); if(!isNaN(nv)){ t.sheet.skills[k]=clamp(nv,1,99); fillSheet(t); }}},'Edit'),
       el('button',{class:'danger',onclick:()=>{ delete t.sheet.skills[k]; fillSheet(t); }},'Delete')
     ]);
@@ -1360,6 +1387,11 @@ byId('btnAddItem').onclick=()=>{
   const n=byId('csItemName').value.trim(); const q=clamp(Number(byId('csItemQty').value||1),1,999); const w=Math.max(0,Number(byId('csItemWt').value||0));
   if(!n) return; sheetTarget.sheet.inventory.push({name:n, qty:q, weight:w}); byId('csItemName').value=''; byId('csItemQty').value='1'; byId('csItemWt').value='0'; fillSheet(sheetTarget);
 };
+byId('btnRollLuck').onclick=()=>{
+  if(!sheetTarget) return;
+  const r=rollPercentile('Luck', sheetTarget.sheet.luck||0);
+  addSystemMessage(`${sheetTarget.name}: ${r.text}`);
+};
 byId('btnSheetSave').onclick=()=>{
   if(!sheetTarget) return;
   sheetTarget.name = byId('csName').value||sheetTarget.name;
@@ -1368,6 +1400,7 @@ byId('btnSheetSave').onclick=()=>{
   sheetTarget.sheet.hp = Number(byId('csHP').value)||sheetTarget.sheet.hp;
   sheetTarget.sheet.sanity = Number(byId('csSAN').value)||sheetTarget.sheet.sanity;
   sheetTarget.sheet.speed = sheetTarget.speed = Number(byId('csSPD').value)||sheetTarget.sheet.speed;
+  sheetTarget.sheet.luck = Number(byId('csLuck').value)||sheetTarget.sheet.luck;
   sheetTarget.sheet.attrs = {
     Brains: Number(byId('csBrains').value)||10,
     Brawn: Number(byId('csBrawn').value)||10,
@@ -1418,7 +1451,7 @@ byId('brush').addEventListener('change',e=> brush=Number(e.target.value));
 /* Begin play banner */
 function greetAndStart(){
   addSystemMessage(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`);
-  addSystemMessage(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action and <b>1</b> bonus action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i> or <i>/check Listen 55</i>.`);
+  addSystemMessage(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action and <b>1</b> bonus action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i> or <i>/check Listen 55</i>. Refresh Luck with <i>/luck</i> (once per game) and spend it after a failed roll with <i>/spendluck 5</i>.`);
 }
 
 /* Boot */
