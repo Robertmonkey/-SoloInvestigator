@@ -707,6 +707,32 @@ function updateSlots(){ const wrap=byId('slots'); wrap.innerHTML=''; const slots
   ]); wrap.appendChild(row);} }
 function saveSlots(slots){ localStorage.setItem(LS_SLOTS, JSON.stringify(slots)); }
 function loadSlots(){ const raw=localStorage.getItem(LS_SLOTS); return raw? JSON.parse(raw):[]; }
+function captureChat(){
+  const lines=[]; chatLog.querySelectorAll('.line').forEach(l=>{
+    if(l.classList.contains('action')){ lines.push({type:'action',text:l.textContent}); return; }
+    if(l.classList.contains('system')){ lines.push({type:'system',html:l.querySelector('.content')?.innerHTML||''}); return; }
+    if(l.classList.contains('keeper')){
+      const html=l.querySelector('.content')?.innerHTML||'';
+      const speaker=(l.querySelector('.who')?.textContent||'').replace(/^👁️\s*/, '');
+      lines.push({type:'keeper',html,speaker}); return;
+    }
+    if(l.classList.contains('you')){ lines.push({type:'you',text:l.querySelector('.content')?.textContent||''}); return; }
+    const whoEl=l.querySelector('.who');
+    const role=getComputedStyle(whoEl).color==='rgb(227, 185, 255)'?'npc':'pc';
+    lines.push({type:'say',speaker:whoEl?.textContent||'',html:l.querySelector('.content')?.innerHTML||'',role});
+  });
+  return lines;
+}
+function restoreChat(lines){
+  chatLog.innerHTML='';
+  (lines||[]).forEach(l=>{
+    if(l.type==='action') addActionLine(l.text);
+    else if(l.type==='system') addSystemMessage(l.html);
+    else if(l.type==='keeper') addLine(l.html,'keeper',{speaker:l.speaker,role:l.role||'npc'});
+    else if(l.type==='you') addLine(l.text,'you');
+    else if(l.type==='say') addSay(l.speaker,l.html,l.role||'pc');
+  });
+}
 function captureState(){
   return {
     meta:{ts:Date.now(), name: currentScene().name},
@@ -715,7 +741,12 @@ function captureState(){
     scenes: state.scenes,
     campaign: state.campaign,
     youPCId: state.youPCId,
-    npcCatalog: state.npcCatalog
+    npcCatalog: state.npcCatalog,
+    chat: captureChat(),
+    initOrder: state.initOrder,
+    activeTurn: state.activeTurn,
+    encounter: state.encounter,
+    memory: state.memory
   };
 }
 function applyState(data){
@@ -725,7 +756,13 @@ function applyState(data){
   state.campaign=data.campaign||null;
   state.youPCId=data.youPCId||null;
   state.npcCatalog=data.npcCatalog||[];
+  state.initOrder=data.initOrder||[];
+  state.activeTurn=data.activeTurn||0;
+  state.encounter=data.encounter||{on:false,movesLeft:0,actionsLeft:0};
+  state.memory=data.memory||'';
+  state.chat=data.chat||[];
   loadSettings(); renderAll();
+  restoreChat(state.chat);
 }
 function saveToSlot(i){ const slots=loadSlots(); slots[i]=captureState(); saveSlots(slots); updateSlots(); toast('Saved.'); }
 function loadFromSlot(i){ const slots=loadSlots(); if(!slots[i]){ toast('Empty slot'); return; } applyState(slots[i]); toast('Loaded.'); }
