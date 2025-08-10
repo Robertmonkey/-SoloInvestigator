@@ -981,7 +981,7 @@ function addLine(text, who='you', opts={}){
 
   const controls = el('div',{class:'controls'});
   if((who==='keeper' || opts.replayable) && state.settings.ttsOn){
-    const btn=el('button',{class:'ghost',title:'Replay voice',onclick:async()=>{ await speak(stripTags(text), opts.speaker||'Keeper'); }},'▶');
+    const btn=el('button',{class:'ghost',title:'Replay voice',onclick:async()=>{ await speak(stripTags(text), opts.speaker||'Keeper', opts.role || (who==='keeper'?'npc':'pc')); }},'▶');
     controls.appendChild(btn);
   }
   if(controls.childNodes.length) line.appendChild(controls);
@@ -996,7 +996,7 @@ function addSay(speaker, text, role='pc'){
   whoEl.style.color = role==='npc' ? '#e3b9ff' : '#b2ffda';
   const content=el('div',{class:'content'}, text);
   const controls=el('div',{class:'controls'});
-  if(state.settings.ttsOn){ controls.appendChild(el('button',{class:'ghost',title:'Replay voice',onclick:()=> speak(stripTags(text), speaker)},'▶')); }
+  if(state.settings.ttsOn){ controls.appendChild(el('button',{class:'ghost',title:'Replay voice',onclick:()=> speak(stripTags(text), speaker, role)},'▶')); }
   line.appendChild(av); line.appendChild(whoEl); line.appendChild(content); line.appendChild(controls);
   chatLog.appendChild(line); chatLog.scrollTop=chatLog.scrollHeight;
 }
@@ -1102,7 +1102,7 @@ async function applyEngineResponse(eng, actor){
   }
   if(eng.say){
     addSay(actor.name, eng.say, actor.type);
-    if(state.settings.ttsOn) speak(stripTags(eng.say), actor.name);
+    if(state.settings.ttsOn) speak(stripTags(eng.say), actor.name, actor.type);
   }
 }
 
@@ -1167,13 +1167,13 @@ async function keeperReply(userText){
       const data=await res.json(); text=data.choices?.[0]?.message?.content || '…';
     }else{ text=demoKeeper(userText); }
     const narr = text.replace(/<engine>[\s\S]*<\/engine>/i,'').trim();
-    if(narr) addLine(narr,'keeper',{speaker:'Keeper'});
+    if(narr) addLine(narr,'keeper',{speaker:'Keeper', role:'npc'});
     const eng=parseEngine(text); if(eng) applyEngine(eng);
-    if(state.settings.ttsOn && narr) speak(stripTags(narr),'Keeper');
+    if(state.settings.ttsOn && narr) speak(stripTags(narr),'Keeper','npc');
     maybeSummarizeLocal(); // keep memory fresh without extra tokens
   }catch(err){
-    addLine("The air stills… (AI call failed; offline demo).",'keeper',{speaker:'Keeper'});
-    const demo=demoKeeper(userText); addLine(demo,'keeper',{speaker:'Keeper'}); const eng=parseEngine(demo); if(eng) applyEngine(eng);
+    addLine("The air stills… (AI call failed; offline demo).",'keeper',{speaker:'Keeper', role:'npc'});
+    const demo=demoKeeper(userText); addLine(demo,'keeper',{speaker:'Keeper', role:'npc'}); const eng=parseEngine(demo); if(eng) applyEngine(eng);
   }
 }
 byId('chatSend').onclick=sendChat;
@@ -1466,24 +1466,21 @@ async function generateBackground(prompt){ try{ const dataUrl=await openaiImage(
 
 /* ---------- TTS (Browser + ElevenLabs) ---------- */
 let ttsQueue=[], ttsPlaying=false, currentAudio=null, currentUrl=null;
-function providerFor(speaker){ const m=state.settings.voiceMap?.[speaker]; return m?.provider || state.settings.ttsProviderDefault || 'browser'; }
-function voiceIdFor(speaker){ const m=state.settings.voiceMap?.[speaker]; return m?.id || (providerFor(speaker)==='eleven'? state.settings.voiceId : ''); }
-async function speak(text, speaker='Keeper'){
+function providerFor(speaker, role='pc'){ const key=(role==='npc' || speaker==='Keeper')?'npc':speaker; const m=state.settings.voiceMap?.[key]; return m?.provider || state.settings.ttsProviderDefault || 'browser'; }
+function voiceIdFor(speaker, role='pc'){ const key=(role==='npc' || speaker==='Keeper')?'npc':speaker; const m=state.settings.voiceMap?.[key]; return m?.id || (providerFor(speaker, role)==='eleven'? state.settings.voiceId : ''); }
+
+async function speak(text, speaker='Keeper', role='pc'){
   if(!state.settings.ttsOn || !text) return;
-  const provider=providerFor(speaker);
-  if(provider==='eleven' && state.settings.elevenKey){ const {blob}=await getOrCreateTTS(text, speaker); if(state.settings.ttsQueue) enqueueTTS(blob); else playBlobImmediate(blob); }
-  else if(provider==='browser'){ speakBrowser(text, speaker); }
+  const provider=providerFor(speaker, role);
+  if(provider==='eleven' && state.settings.elevenKey){ const {blob}=await getOrCreateTTS(text, speaker, role); if(state.settings.ttsQueue) enqueueTTS(blob); else playBlobImmediate(blob); }
+  else if(provider==='browser'){ speakBrowser(text, speaker, role); }
 }
-async function getOrCreateTTS(text, speaker){
-  const key = await hashKey(`tts|eleven|${voiceIdFor(speaker)}|${speaker}|${(text||'').trim()}`);
+async function getOrCreateTTS(text, speaker, role='pc'){
+  const key = await hashKey(`tts|eleven|${voiceIdFor(speaker, role)}|${speaker}|${(text||'').trim()}`);
   const hit=await idbGet('tts',key); if(hit){ return {blob:hit,key}; }
-  const blob=await fetchTTSBlob(text, voiceIdFor(speaker)); await idbSet('tts',key,blob); return {blob,key};
+  const blob=await fetchTTSBlob(text, voiceIdFor(speaker, role)); await idbSet('tts',key,blob); return {blob,key};
 }
-async function fetchTTSBlob(text, voice){ const res=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice||'21m00Tcm4TlvDq8ikWAM'}`,{ method:'POST', headers:{'xi-api-key':state.settings.elevenKey,'Content-Type':'application/json','Accept':'audio/mpeg'}, body: JSON.stringify({text, model_id:'eleven_multilingual_v2', voice_settings:{stability:0.4, similarity_boost:0.7}}) }); if(!res.ok) throw new Error('TTS failed'); return await res.blob(); }
-function enqueueTTS(blob){ ttsQueue.push(blob); if(!ttsPlaying) playNext(); }
-function playNext(){ const blob=ttsQueue.shift(); if(!blob){ ttsPlaying=false; return; } ttsPlaying=true; playBlobImmediate(blob, ()=> playNext()); }
-function playBlobImmediate(blob,onEnd){ stopVoice(false); currentUrl=URL.createObjectURL(blob); currentAudio=new Audio(currentUrl); currentAudio.addEventListener('ended',()=>{ if(currentUrl){ URL.revokeObjectURL(currentUrl); currentUrl=null; } currentAudio=null; if(onEnd) onEnd(); }); currentAudio.play().catch(()=>{}); }
-function speakBrowser(text, speaker){ try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); const id=voiceIdFor(speaker); const v=state.browserVoices.find(v=> v.name===id) || state.browserVoices[0]; if(v) u.voice=v; window.speechSynthesis.speak(u); }catch{} }
+function speakBrowser(text, speaker, role='pc'){ try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); const id=voiceIdFor(speaker, role); const v=state.browserVoices.find(v=> v.name===id) || state.browserVoices[0]; if(v) u.voice=v; window.speechSynthesis.speak(u); }catch{} }
 function stopVoice(clearQueue){ try{ if(currentAudio){ currentAudio.pause(); } if(currentUrl){ URL.revokeObjectURL(currentUrl); currentUrl=null; } currentAudio=null; window.speechSynthesis.cancel(); }catch{} if(clearQueue){ ttsQueue.length=0; ttsPlaying=false; } }
 
 /* Browser voices list */
@@ -1960,8 +1957,8 @@ byId('brush').addEventListener('change',e=> brush=Number(e.target.value));
 
 /* Begin play banner */
 function greetAndStart(){
-  addLine(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`,'keeper',{speaker:'Keeper'});
-  addLine(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i>.`,'keeper',{speaker:'Keeper'});
+  addLine(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`,'keeper',{speaker:'Keeper', role:'npc'});
+  addLine(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i>.`,'keeper',{speaker:'Keeper', role:'npc'});
 }
 
 /* Boot */
