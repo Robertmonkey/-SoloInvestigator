@@ -1255,7 +1255,23 @@ function defaultSheet(t){
     persona: t.persona||'',
     hp: 10, sanity: 50, speed: t.speed||4,
     attrs:{Brains:10,Brawn:10,Nerve:10,Perception:10,Charm:10},
-    skills:{Spot:60,Stealth:40,Medicine:30,Library:50,Persuade:40},
+    skills:{
+      Spot:60,
+      Stealth:40,
+      Medicine:30,
+      Library:50,
+      Persuade:40,
+      Listen:55,
+      Occult:25,
+      History:35,
+      Intimidate:45,
+      FirstAid:55,
+      Survival:30,
+      Firearms:40,
+      Mechanical:20,
+      Driving:40,
+      Climb:35
+    },
     inventory:[], conditions:[], bonds:[]
   };
 }
@@ -1392,7 +1408,7 @@ byId('brush').addEventListener('change',e=> brush=Number(e.target.value));
 /* Begin play banner */
 function greetAndStart(){
   addSystemMessage(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`);
-  addSystemMessage(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action and <b>1</b> bonus action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i>.`);
+  addSystemMessage(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action and <b>1</b> bonus action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i> or <i>/check Listen 55</i>.`);
 }
 
 /* Boot */
