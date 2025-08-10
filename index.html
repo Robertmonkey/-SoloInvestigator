@@ -80,6 +80,7 @@
   .token .letters{font-weight:700;color:#d8e4ff}
   .token.pc .bubble{background:radial-gradient(50% 50% at 30% 30%, var(--pc), #15251f)}
   .token.npc .bubble{background:radial-gradient(50% 50% at 30% 30%, var(--npc), #1f1521)}
+  .token.active-turn .bubble{box-shadow:0 0 12px 2px var(--accent);border-color:var(--accent)}
   .token .cap{position:absolute;bottom:-.25rem;left:50%;transform:translateX(-50%);
     font-size:.7rem;background:#0e1421;border:1px solid #223049;border-radius:6px;padding:.05rem .35rem;color:#cfe1ff}
 
@@ -95,6 +96,7 @@
     background:#0c121d;border:1px solid #1a2130;border-radius:8px;padding:.75rem;scroll-behavior:smooth;
   }
   #chatLog .line{display:flex;align-items:flex-start;gap:.6rem;margin:.45rem 0}
+  #chatLog .line.action{font-style:italic;color:var(--muted);background:#0c121d;border-radius:4px;padding:.2rem .4rem}
   #chatLog .who{opacity:.85;font-weight:600}
   #chatLog .content{flex:1}
   #chatLog .controls{display:flex;gap:.25rem}
@@ -156,6 +158,15 @@
   /* Toast */
   #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#0e1524;border:1px solid #223049;border-radius:10px;padding:.5rem .8rem;color:#cfe1ff;opacity:0;pointer-events:none;transition:opacity .25s;z-index:120}
   #toast.show{opacity:1}
+
+  /* Initiative Thinking Indicator */
+  @keyframes pulse { 0% { background-color: var(--accent); } 50% { background-color: var(--brand); } 100% { background-color: var(--accent); } }
+  .thinking-indicator {
+    display:inline-block;
+    width:8px;height:8px;border-radius:50%;
+    margin-left:8px;
+    animation:pulse 1.5s infinite ease-in-out;
+  }
 </style>
 </head>
 <body>
@@ -674,7 +685,8 @@ const state = {
   activeTurn:0,
   encounter:{on:false, movesLeft:0, actionsLeft:0},
   browserVoices:[],
-  memory:'' // local summary to keep prompts small (no extra tokens)
+  memory:'', // local summary to keep prompts small (no extra tokens)
+  aiThinking:false // prevent concurrent AI calls
 };
 function currentScene(){ return state.scenes[state.sceneIndex]; }
 
@@ -724,8 +736,10 @@ function initials(n){ return (n||'??').split(/\s+/).slice(0,2).map(s=>s[0]?.toUp
 function renderTokens(){
   [...mapEl.querySelectorAll('.token')].forEach(n=>n.remove());
   const sc=currentScene();
+  const activeToken=getActiveToken();
   sc.tokens.forEach(t=>{
     const n=el('div',{class:`token ${t.type}`,'data-id':t.id, style:cellStyle(t.x,t.y)});
+    if(activeToken && activeToken.id===t.id) n.classList.add('active-turn');
     const bubble=el('div',{class:'bubble'});
     if(t.portraitData) bubble.appendChild(el('img',{src:t.portraitData,alt:t.name}));
     else bubble.appendChild(el('div',{class:'letters'}, initials(t.name|| (t.type==='pc'?'PC':'NPC'))));
@@ -781,7 +795,8 @@ function renderReach(){
 function chebyshev(ax,ay,bx,by){ return Math.max(Math.abs(ax-bx),Math.abs(ay-by)); }
 function canMoveTo(t,gx,gy,orig){
   if(!state.encounter.on) return {ok:true,to:{x:clamp(gx,0,GRID_W-1),y:clamp(gy,0,GRID_H-1)}};
-  if(!isActiveToken(t)) return {ok:false,to:{x:t.x,y:t.y}};
+  // During an encounter, only the player's token can be dragged. AI moves are programmatic.
+  if(t.id !== state.youPCId) return {ok:false,to:{x:t.x,y:t.y}};
   const d=chebyshev(orig.x,orig.y,gx,gy); if(d>state.encounter.movesLeft) return {ok:false,to:{x:t.x,y:t.y}};
   return {ok:true,to:{x:clamp(gx,0,GRID_W-1),y:clamp(gy,0,GRID_H-1)}};
 }
@@ -825,21 +840,113 @@ function addToken(t){ const sc=currentScene(); t.id=t.id||('t_'+Math.random().to
 function removeToken(id){ const sc=currentScene(); sc.tokens=sc.tokens.filter(x=>x.id!==id); renderTokens(); renderTokenList(); renderReach(); }
 function editTokenPrompt(t){ const name=prompt('Name:', t.name||''); if(name===null) return; const type=prompt('Type (pc|npc):', t.type||'pc'); if(type===null) return; t.name=name.trim(); t.type=(type==='npc')?'npc':'pc'; renderTokens(); renderTokenList(); }
 
-/* ---------- INITIATIVE / TURN ---------- */
-function rollAllInit(){ const order=currentScene().tokens.map(t=>({id:t.id,name:t.name||t.id, roll:(Math.floor(Math.random()*20)+1)})); order.sort((a,b)=>b.roll-a.roll); state.initOrder=order; state.activeTurn=0; renderInit(); updateTurnBanner(); }
-function renderInit(){ const ol=byId('initList'); ol.innerHTML=''; state.initOrder.forEach((e,i)=> ol.appendChild(el('li',{}, `${i===state.activeTurn?'➡ ':''}${e.name} — ${e.roll}`))); }
-function nextTurn(){ if(!state.initOrder.length){ toast('Roll initiative first'); return; } state.activeTurn=(state.activeTurn+1)%state.initOrder.length; resetTurnBudget(); renderInit(); renderReach(); updateTurnBanner(); }
+/* ---------- INITIATIVE & TURN MANAGEMENT ---------- */
+function isAI(tokenId){
+  if(!tokenId) return false;
+  return tokenId !== state.youPCId;
+}
+
+function rollAllInit(){
+  const order = currentScene().tokens.map(t=>({
+    id:t.id,
+    name:t.name||t.id,
+    roll:(Math.floor(Math.random()*20)+1)+(t.sheet?.attrs?.Nerve||0)
+  }));
+  order.sort((a,b)=>b.roll-a.roll);
+  state.initOrder=order;
+  state.activeTurn=0;
+  renderInit();
+  updateTurnBanner();
+}
+
+function renderInit(){
+  const ol=byId('initList');
+  ol.innerHTML='';
+  state.initOrder.forEach((e,i)=>{
+    const item=el('li',{}, `${state.activeTurn===i?'➡️ ':''}${e.name} — ${e.roll}`);
+    if(state.aiThinking && state.activeTurn===i && isAI(e.id)){
+      item.appendChild(el('span',{class:'thinking-indicator'}));
+    }
+    ol.appendChild(item);
+  });
+  renderTokens();
+}
+
+function advanceTurn(){
+  if(!state.initOrder.length) return;
+  state.activeTurn=(state.activeTurn+1)%state.initOrder.length;
+  resetTurnBudget();
+  renderInit();
+  renderReach();
+  updateTurnBanner();
+  processTurn();
+}
+
+function processTurn(){
+  if(!state.encounter.on || state.aiThinking || !state.initOrder.length) return;
+  const activeToken=getActiveToken();
+  if(!activeToken) return;
+  if(isAI(activeToken.id)){
+    setTimeout(()=>executeAITurn(activeToken),1500);
+  }else{
+    toast(`It's your turn, ${activeToken.name}!`);
+  }
+}
+
 function clearInit(){ state.initOrder=[]; state.activeTurn=0; renderInit(); renderReach(); updateTurnBanner(); }
-function startEncounter(){ if(!state.initOrder.length) rollAllInit(); state.encounter.on=true; resetTurnBudget(); renderReach(); updateTurnBanner(); toast('Encounter started'); }
-function endEncounter(){ state.encounter.on=false; renderReach(); updateTurnBanner(); toast('Encounter ended'); }
-function endTurn(){ if(!state.encounter.on){ toast('Not in encounter'); return; } nextTurn(); }
+
+function startEncounter(){
+  if(state.encounter.on){ toast('Encounter already in progress.'); return; }
+  state.encounter.on=true;
+  if(!state.initOrder.length) rollAllInit();
+  resetTurnBudget();
+  renderReach();
+  updateTurnBanner();
+  toast('Encounter started');
+  processTurn();
+}
+
+function endEncounter(){
+  state.encounter.on=false;
+  state.aiThinking=false;
+  renderReach();
+  updateTurnBanner();
+  renderInit();
+  toast('Encounter ended');
+}
+
+function endTurn(){
+  if(!state.encounter.on){ toast('Not in encounter'); return; }
+  const active=getActiveToken();
+  if(active && active.id===state.youPCId){
+    advanceTurn();
+  }else{
+    toast('It is not your turn.');
+  }
+}
+
 function isActiveToken(t){ const activeEntry=state.initOrder[state.activeTurn]; return activeEntry && t.id===activeEntry.id; }
 function getActiveToken(){ const activeEntry=state.initOrder[state.activeTurn]; if(!activeEntry) return null; return currentScene().tokens.find(t=>t.id===activeEntry.id); }
-function resetTurnBudget(){ const t=getActiveToken(); state.encounter.movesLeft=t?.speed ?? (t?.sheet?.speed ?? 4); state.encounter.actionsLeft=1; }
+
+function resetTurnBudget(){
+  const t=getActiveToken();
+  if(!t) return;
+  const mov=t?.sheet?.speed || 8;
+  state.encounter.movesLeft=Math.floor(mov/2);
+  state.encounter.actionsLeft=1;
+}
+
 function updateTurnBanner(){
   if(!state.encounter.on){ byId('turnInfo').textContent='Free exploration'; return; }
-  const t=getActiveToken(); if(!t){ byId('turnInfo').textContent='Encounter (no active)'; return; }
-  byId('turnInfo').textContent=`Encounter: ${t.name} — Moves ${state.encounter.movesLeft}, Actions ${state.encounter.actionsLeft}`;
+  const t=getActiveToken();
+  if(!t){ byId('turnInfo').textContent='Encounter (no active)'; return; }
+  let turnText=`Turn: ${t.name}`;
+  if(isAI(t.id)){
+    turnText+= state.aiThinking ? ' (Thinking...)' : ' (AI)';
+  }else{
+    turnText+=` (You) — Moves: ${state.encounter.movesLeft}, Actions: ${state.encounter.actionsLeft}`;
+  }
+  byId('turnInfo').textContent=turnText;
 }
 
 /* ---------- CHAT & AVATARS ---------- */
@@ -875,6 +982,21 @@ function addSay(speaker, text, role='pc'){
   line.appendChild(av); line.appendChild(whoEl); line.appendChild(content); line.appendChild(controls);
   chatLog.appendChild(line); chatLog.scrollTop=chatLog.scrollHeight;
 }
+
+function addActionLine(text){
+  const line=el('div',{class:'line action'}, text);
+  chatLog.appendChild(line);
+  chatLog.scrollTop=chatLog.scrollHeight;
+}
+
+function addSystemMessage(text){
+  const line=el('div',{class:'line keeper'}, [
+    el('div',{class:'who'}, '👁️ System'),
+    el('div',{class:'content'}, text)
+  ]);
+  chatLog.appendChild(line);
+  chatLog.scrollTop=chatLog.scrollHeight;
+}
 function speakerAvatar(name){
   const t=currentScene().tokens.find(x=> (x.name||'').toLowerCase()===name.toLowerCase());
   if(t?.portraitData) return t.portraitData;
@@ -883,6 +1005,87 @@ function speakerAvatar(name){
   const cv=document.createElement('canvas'); cv.width=64; cv.height=64; const ctx=cv.getContext('2d'); ctx.fillStyle='#0e1524'; ctx.fillRect(0,0,64,64);
   ctx.fillStyle='#9fb4ff'; ctx.font='bold 20px ui-monospace,monospace'; const inis=(name||'??').split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join(''); ctx.fillText(inis, 12, 38);
   return cv.toDataURL('image/png');
+}
+
+/* ---------- KEEPER & AI HELPERS ---------- */
+function buildAIPrompt(actor){
+  const sc=currentScene();
+  const party=sc.tokens.filter(t=>t.type==='pc').map(t=>`${t.name} at (${t.x},${t.y})`).join('; ');
+  const npcs=sc.tokens.filter(t=>t.type==='npc').map(t=>`${t.name} at (${t.x},${t.y})`).join('; ');
+  const recentChat = Array.from(chatLog.querySelectorAll('.line')).slice(-5).map(l=>l.innerText).join('\n');
+
+  const persona = `You are ${actor.name}, a ${actor.sheet?.archetype}.
+Backstory: ${actor.persona || actor.sheet?.persona}
+Traits: ${actor.sheet?.traits || 'As defined by archetype.'}
+Your current health is ${actor.sheet?.hp} HP and ${actor.sheet?.sanity} Sanity.
+Your skills of note are: ${Object.entries(actor.sheet.skills).filter(([k,v])=>v>=50).map(([k,v])=>k).join(', ')}.`;
+
+  const instructions = `It's your turn in an encounter. You have ${state.encounter.movesLeft} movement tiles and 1 action.
+The scene is: ${sc.name}.
+Your allies are: ${party}. NPCs present: ${npcs}.
+Recent events:\n${recentChat}\n
+Based on your persona and the situation, decide what to do. Your goals are to survive and solve the mystery.
+Output ONLY a compact JSON object inside an <engine> tag.
+The JSON can have three optional keys: "say" (a string of what you say), "move" (an object with a "to" key like {"to":[x,y]}), and "perform" (a string describing a physical action like "searches the dusty bookshelf").
+Example: <engine>{"say": "I'll check over there!", "move": {"to":[${actor.x+1},${actor.y}]}, "perform": "shines their flashlight into the dark corner"}</engine>
+Be brief and in-character. Do not narrate. Just provide the JSON for your action.`;
+
+  return [{role:'system',content:persona},{role:'user',content:instructions}];
+}
+
+async function executeAITurn(actor){
+  if(state.aiThinking) return;
+  state.aiThinking=true;
+  updateTurnBanner();
+  renderInit();
+
+  const messages=buildAIPrompt(actor);
+  const model=state.settings.openaiModel||'gpt-4o-mini';
+  const key=state.settings.openaiKey;
+
+  try{
+    let text;
+    if(key && state.settings.keeperOn){
+      const res=await fetch('https://api.openai.com/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+        body:JSON.stringify({model, messages, temperature:0.8, max_tokens:200})
+      });
+      if(!res.ok) throw new Error(await res.text());
+      const data=await res.json();
+      text=data.choices?.[0]?.message?.content || '{}';
+    }else{
+      text=`<engine>{"say":"What should I do?", "perform":"looks around nervously"}</engine>`;
+    }
+
+    const eng=parseEngine(text);
+    if(eng) await applyEngineResponse(eng, actor);
+
+  }catch(err){
+    addSystemMessage(`The ether crackles... (${actor.name}'s AI failed).`);
+    console.error('AI turn error:', err);
+  }finally{
+    state.aiThinking=false;
+    updateTurnBanner();
+    renderInit();
+    setTimeout(advanceTurn,2000);
+  }
+}
+
+async function applyEngineResponse(eng, actor){
+  if(eng.perform){
+    addActionLine(`* ${actor.name} ${eng.perform} *`);
+    await new Promise(r=>setTimeout(r,700));
+  }
+  if(eng.move && eng.move.to){
+    const [gx,gy]=eng.move.to;
+    tryMoveCommand(actor, gx, gy, true);
+    await new Promise(r=>setTimeout(r,700));
+  }
+  if(eng.say){
+    addSay(actor.name, eng.say, actor.type);
+    if(state.settings.ttsOn) speak(stripTags(eng.say), actor.name);
+  }
 }
 
 /* ---------- KEEPER AI (token‑frugal) ---------- */
@@ -984,8 +1187,32 @@ function runSlash(val){
   if(/^\/help/i.test(val)){ addLine("Commands: /roll NdM±K, /check Skill 60, /keeper question, /move [name] to x,y, /endturn.","keeper"); return; }
   addLine("Unknown command. Try /help.","keeper");
 }
-function tryMoveCommand(t,gx,gy){ const orig={x:t.x,y:t.y}; const can=canMoveTo(t,gx,gy,orig); if(!can.ok){ addLine(`Can’t move ${t.name} there right now.`, 'keeper'); return; } t.x=can.to.x; t.y=can.to.y; renderTokens(); spawnFXAt(t.x,t.y);
-  if(state.encounter.on){ const d=chebyshev(orig.x,orig.y, t.x, t.y); state.encounter.movesLeft=Math.max(0,state.encounter.movesLeft-d); renderReach(); updateTurnBanner(); } }
+function tryMoveCommand(t,gx,gy,isProgrammatic=false){
+  const orig={x:t.x,y:t.y};
+  const dist=chebyshev(orig.x,orig.y,gx,gy);
+
+  if(state.encounter.on && !isProgrammatic){
+    const can=canMoveTo(t,gx,gy,orig);
+    if(!can.ok){ addLine(`Can’t move ${t.name} there right now.`, 'keeper'); return; }
+    t.x=can.to.x; t.y=can.to.y;
+    state.encounter.movesLeft=Math.max(0,state.encounter.movesLeft-dist);
+  }else if(state.encounter.on && isProgrammatic){
+    if(dist>state.encounter.movesLeft){
+      addActionLine(`* ${t.name} tries to move to ${gx},${gy} but lacks the movement. *`);
+      return;
+    }
+    t.x=clamp(gx,0,GRID_W-1); t.y=clamp(gy,0,GRID_H-1);
+    state.encounter.movesLeft=Math.max(0,state.encounter.movesLeft-dist);
+    addActionLine(`* ${t.name} moves to ${t.x},${t.y}. *`);
+  }else{
+    t.x=clamp(gx,0,GRID_W-1); t.y=clamp(gy,0,GRID_H-1);
+  }
+
+  renderTokens();
+  renderReach();
+  updateTurnBanner();
+  if(!isProgrammatic) spawnFXAt(t.x,t.y);
+}
 
 /* ---------- SIMPLE DICE (chat-only) ---------- */
 function doRoll(expr, opts={who:'you'}){ const p=expr.trim().toLowerCase().replace(/^d/,'1d'); const m=p.match(/^(\d+)d(\d+)([+-]\d+)?$/);
@@ -1473,7 +1700,16 @@ async function wizardAutoBuildEverything(){
     progressSet(2);
     const picks=[wizard.youIndex, ...wizard.companions].map(i=> INVESTIGATORS[i]); currentScene().tokens.length=0;
     picks.forEach((p,i)=> addToken({name:p.name, type:'pc', x:i, y:GRID_H-1, persona:`${p.archetype}. Backstory: ${p.backstory}. Traits: ${p.traits}.`, speed:4}));
-    const youName=INVESTIGATORS[wizard.youIndex].name; const youToken=currentScene().tokens.find(t=>t.name===youName && t.type==='pc'); state.youPCId=youToken?.id||null;
+    const youName=INVESTIGATORS[wizard.youIndex].name;
+    const youToken=currentScene().tokens.find(t=>t.name===youName && t.type==='pc');
+    if(youToken){
+      state.youPCId=youToken.id;
+      toast(`You will play as ${youToken.name}.`);
+    }else{
+      console.error('Could not assign player character!');
+      const firstPC=currentScene().tokens.find(t=>t.type==='pc');
+      if(firstPC) state.youPCId=firstPC.id;
+    }
     // 3: NPCs
     progressSet(3);
     (arc.npcs||[]).slice(0,4).forEach((n,i)=> addToken({name:n, type:'npc', x:GRID_W-1-i, y:0, persona:"NPC with local knowledge"}));
@@ -1661,7 +1897,7 @@ function maybeSummarizeLocal(){
 
 /* ---------- INIT ---------- */
 function initialSeed(){ if(currentScene().tokens.length===0){ addToken({name:'pc0',type:'pc',x:1,y:6}); addToken({name:'pc1',type:'pc',x:2,y:6}); addToken({name:'npc0',type:'npc',x:10,y:1}); } }
-function renderInitButtons(){ byId('btnInitRoll').onclick=rollAllInit; byId('btnInitNext').onclick=nextTurn; byId('btnInitClear').onclick=clearInit; }
+function renderInitButtons(){ byId('btnInitRoll').onclick=rollAllInit; byId('btnInitNext').onclick=advanceTurn; byId('btnInitClear').onclick=clearInit; }
 
 /* Keyboard tool binds */
 document.addEventListener('keydown', e=>{ if(e.key==='v'||e.key==='V') setTool('select'); if(e.key==='r'||e.key==='R') setTool('ruler'); if(e.key==='f'||e.key==='F') setTool('reveal'); if(e.key==='h'||e.key==='H') setTool('hide'); if(e.key==='u'||e.key==='U') fogUndo(); });
