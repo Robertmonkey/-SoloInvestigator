@@ -1615,16 +1615,28 @@ function invOption(opt, idx){
   return wrap;
 }
 function fmtStats(st){ return `Rolled: ${Object.entries(st).map(([k,v])=>`${k} ${v}`).join(' · ')}`; }
-function pickSummary(){ return `You: ${wizard.youIndex!=null? INVESTIGATORS[wizard.youIndex].name:'—'} · Companions (${wizard.companions.length}/4)`; }
+function pickSummary(){
+  const opts = wizard.arc?.pcOptions || INVESTIGATORS;
+  return `You: ${wizard.youIndex!=null? opts[wizard.youIndex].name:'—'} · Companions (${wizard.companions.length}/4)`;
+}
 function rollStats(idx){ const stats={Brains: roll3d6plus(3), Brawn: roll3d6plus(3), Nerve: roll3d6plus(3), Perception: roll3d6plus(3), Charm: roll3d6plus(3)}; wizard.rolls[idx]=stats; const elr=byId('rolled_'+idx); if(elr) elr.textContent=fmtStats(stats); }
 function roll3d6plus(a){ let s=0; for(let i=0;i<3;i++) s+=1+Math.floor(Math.random()*6); return s+a; }
-function chooseMe(idx){ wizard.youIndex=idx; toast('Selected '+INVESTIGATORS[idx].name); renderWizard(); }
+function chooseMe(idx){
+  const opts = wizard.arc?.pcOptions || INVESTIGATORS;
+  wizard.youIndex=idx;
+  toast('Selected '+opts[idx].name);
+  renderWizard();
+}
 function toggleCompanion(idx){ if(wizard.youIndex===idx){ toast('That is YOU.'); return; } const i=wizard.companions.indexOf(idx); if(i>=0) wizard.companions.splice(i,1); else { if(wizard.companions.length>=4){ toast('Already 4 companions.'); return; } wizard.companions.push(idx); } renderWizard(); }
 
 /* Voice setup in wizard */
 function renderVoiceSetup(){
   const wrap=byId('voiceSetupRows'); if(!wrap) return; wrap.innerHTML='';
-  const names = []; if(wizard.youIndex!=null) names.push(INVESTIGATORS[wizard.youIndex].name); wizard.companions.forEach(i=> names.push(INVESTIGATORS[i].name)); names.unshift('Keeper');
+  const opts = wizard.arc?.pcOptions || INVESTIGATORS;
+  const names = [];
+  if(wizard.youIndex!=null) names.push(opts[wizard.youIndex].name);
+  wizard.companions.forEach(i=> names.push(opts[i].name));
+  names.unshift('Keeper');
   names.forEach(n=>{
     wrap.appendChild(voiceControlsForName(n));
   });
@@ -1700,8 +1712,12 @@ function progressOpen(title="Building…"){ byId('progTitle').textContent=title;
 function progressSet(i){ const pct=Math.round(((i+1)/PROG_STEPS.length)*100); byId('progBar').style.width=pct+'%'; for(let k=0;k<PROG_STEPS.length;k++){ const n=byId('step_'+k); n.classList.toggle('done', k<i); n.classList.toggle('cur', k===i); } }
 function progressClose(){ hide('#modalProgress'); }
 async function wizardAutoBuildEverything(){
-  const arc=wizard.arc||pickDemoArc(); const status=byId('buildStatus'); if(status) status.textContent='Building…';
-  progressOpen("Assembling your table"); try{
+  const arc=wizard.arc||pickDemoArc();
+  const status=byId('buildStatus');
+  if(status) status.textContent='Building…';
+  state.campaign = arc;
+  progressOpen("Assembling your table");
+  try{
     // 0: Scenes
     progressSet(0);
     state.scenes=[]; arc.acts.forEach(a=> state.scenes.push(newScene(a.name))); state.sceneIndex=0;
@@ -1711,9 +1727,11 @@ async function wizardAutoBuildEverything(){
     renderBackground();
     // 2: PCs
     progressSet(2);
-    const picks=[wizard.youIndex, ...wizard.companions].map(i=> INVESTIGATORS[i]); currentScene().tokens.length=0;
+    const opts = arc.pcOptions || INVESTIGATORS;
+    const picks=[wizard.youIndex, ...wizard.companions].map(i=> opts[i]);
+    currentScene().tokens.length=0;
     picks.forEach((p,i)=> addToken({name:p.name, type:'pc', x:i, y:GRID_H-1, persona:`${p.archetype}. Backstory: ${p.backstory}. Traits: ${p.traits}.`, speed:4}));
-    const youName=INVESTIGATORS[wizard.youIndex].name;
+    const youName=opts[wizard.youIndex].name;
     const youToken=currentScene().tokens.find(t=>t.name===youName && t.type==='pc');
     if(youToken){
       state.youPCId=youToken.id;
