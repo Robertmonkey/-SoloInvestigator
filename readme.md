@@ -1,6 +1,6 @@
 # Solo Investigator — Enhanced Edition
 
-A single-file, client-only tabletop experience inspired by investigative horror RPGs. It teaches the basics through a guided wizard, runs entirely in your browser (or GitHub Pages), and can optionally use OpenAI for story/asset generation and ElevenLabs or your browser for voices.
+A modular, client-only tabletop experience inspired by investigative horror RPGs. It teaches the basics through a guided wizard, runs entirely in your browser (or GitHub Pages), and can optionally use OpenAI for story/asset generation and ElevenLabs or your browser for voices.
 
 > **Privacy-first:** No servers. Your API keys never leave your device. Saves (including generated assets) are stored locally or exported as a single JSON file.
 
@@ -23,22 +23,14 @@ A single-file, client-only tabletop experience inspired by investigative horror 
 
 ## 🗂 Project Structure
 
-This repo has a single app file:
-
-index.html # the entire application (HTML, CSS, JS)
-
-java
-Copy
-Edit
-
-Optional docs (for Codex and contributors):
-
-readme.md # this file
-agents.md # agent prompts, engine schema, and turn logic
-
-markdown
-Copy
-Edit
+```
+index.html   - HTML shell
+style.css    - global styles
+js/app.js    - core game logic and UI
+js/keeper.js - Keeper AI and engine
+agents.md    - agent prompts, engine schema, and turn logic
+readme.md    - documentation
+```
 
 ---
 
@@ -170,7 +162,7 @@ Generation tasks display a modal with:
 
 ## 🛠 Dev Notes
 
-- **Single file app** for easy GitHub Pages hosting.  
+- **Modular static app** for easy GitHub Pages hosting.  
 - **IndexedDB** stores `images` (DataURLs) and `tts` (Blobs).  
 - **Local caches** keyed by SHA-256 of prompt+model to prevent duplicate costs.
 
