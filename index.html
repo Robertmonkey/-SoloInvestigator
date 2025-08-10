@@ -98,6 +98,7 @@
   }
   #chatLog .line{display:flex;align-items:flex-start;gap:.6rem;margin:.45rem 0}
   #chatLog .line.action{font-style:italic;color:var(--muted);background:#0c121d;border-radius:4px;padding:.2rem .4rem}
+  #chatLog .line.system{color:var(--muted)}
   #chatLog .who{opacity:.85;font-weight:600}
   #chatLog .content{flex:1}
   #chatLog .controls{display:flex;gap:.25rem}
@@ -1009,9 +1010,9 @@ function addActionLine(text){
 }
 
 function addSystemMessage(text){
-  const line=el('div',{class:'line keeper'}, [
+  const line=el('div',{class:'line system'}, [
     el('div',{class:'who'}, '⚠️ System'),
-    el('div',{class:'content'}, text)
+    el('div',{class:'content', html:text})
   ]);
   chatLog.appendChild(line);
   chatLog.scrollTop=chatLog.scrollHeight;
@@ -1178,7 +1179,7 @@ async function keeperReply(userText){
     if(state.settings.ttsOn && narr) speak(stripTags(narr),'Keeper','npc');
     maybeSummarizeLocal(); // keep memory fresh without extra tokens
   }catch(err){
-    addLine("The air stills… (AI call failed; offline demo).",'keeper',{speaker:'Keeper', role:'npc'});
+    addSystemMessage("The air stills… (AI call failed; offline demo).");
     const demo=demoKeeper(userText); addLine(demo,'keeper',{speaker:'Keeper', role:'npc'}); const eng=parseEngine(demo); if(eng) applyEngine(eng);
   }
 }
@@ -1199,17 +1200,17 @@ function sendChat(){ const val=byId('chatInput').value.trim(); if(!val) return; 
 /* ---------- SLASH ---------- */
 function runSlash(val){
   const ck=val.match(/^\/check\s+([A-Za-z][A-Za-z0-9 _-]*)\s+(\d{1,3})$/i);
-  if(ck){ const skill=ck[1].trim(); const base=clamp(Number(ck[2]),1,99); const r = rollPercentile(skill, base); addLine(r.text,'you'); return; }
+  if(ck){ const skill=ck[1].trim(); const base=clamp(Number(ck[2]),1,99); const r = rollPercentile(skill, base); addSystemMessage(r.text); return; }
 
   const kv=val.match(/^\/keeper\s+(.+)/i);
   if(kv){ keeperReply(kv[1]); return; }
 
   const m=val.match(/^\/roll\s+(.+)$/i); if(m){ doRoll(m[1], {who:'you'}); return; }
   const mv=val.match(/^\/move\s+(.+)\s+to\s+(\d+)\s*,\s*(\d+)$/i);
-  if(mv){ const nameOrId=mv[1].trim(); const t=currentScene().tokens.find(x=> x.id===nameOrId || (x.name||'').toLowerCase()===nameOrId.toLowerCase()); if(!t){ addLine("No such token.","keeper"); return; } tryMoveCommand(t, Number(mv[2]), Number(mv[3])); return; }
+  if(mv){ const nameOrId=mv[1].trim(); const t=currentScene().tokens.find(x=> x.id===nameOrId || (x.name||'').toLowerCase()===nameOrId.toLowerCase()); if(!t){ addSystemMessage("No such token."); return; } tryMoveCommand(t, Number(mv[2]), Number(mv[3])); return; }
   if(/^\/endturn/i.test(val)){ endTurn(); return; }
-  if(/^\/help/i.test(val)){ addLine("Commands: /roll NdM±K, /check Skill 60, /keeper question, /move [name] to x,y, /endturn.","keeper"); return; }
-  addLine("Unknown command. Try /help.","keeper");
+  if(/^\/help/i.test(val)){ addSystemMessage("Commands: /roll NdM±K, /check Skill 60, /keeper question, /move [name] to x,y, /endturn."); return; }
+  addSystemMessage("Unknown command. Try /help.");
 }
 function tryMoveCommand(t,gx,gy,isProgrammatic=false){
   const orig={x:t.x,y:t.y};
@@ -1217,7 +1218,7 @@ function tryMoveCommand(t,gx,gy,isProgrammatic=false){
 
   if(state.encounter.on && !isProgrammatic){
     const can=canMoveTo(t,gx,gy,orig);
-    if(!can.ok){ addLine(`Can’t move ${t.name} there right now.`, 'keeper'); return; }
+    if(!can.ok){ addSystemMessage(`Can’t move ${t.name} there right now.`); return; }
     t.x=can.to.x; t.y=can.to.y;
     state.encounter.movesLeft=Math.max(0,state.encounter.movesLeft-dist);
   }else if(state.encounter.on && isProgrammatic){
@@ -1239,14 +1240,14 @@ function tryMoveCommand(t,gx,gy,isProgrammatic=false){
 }
 
 /* ---------- SIMPLE DICE (chat-only) ---------- */
-function doRoll(expr, opts={who:'you'}){ const p=expr.trim().toLowerCase().replace(/^d/,'1d'); const m=p.match(/^(\d+)d(\d+)([+-]\d+)?$/);
-  if(!m){ addLine(`Bad roll: ${expr}`,'you'); return; }
+function doRoll(expr, opts={}){ const p=expr.trim().toLowerCase().replace(/^d/,'1d'); const m=p.match(/^(\d+)d(\d+)([+-]\d+)?$/);
+  if(!m){ addSystemMessage(`Bad roll: ${expr}`); return; }
   const n=Number(m[1]), sides=Number(m[2]), mod=Number(m[3]||0);
   const rolls=[]; for(let i=0;i<n;i++) rolls.push(1+Math.floor(Math.random()*sides));
   const sum=rolls.reduce((a,b)=>a+b,0)+mod;
   const label = opts.note ? ` (${opts.note})` : '';
   const line = `Roll ${n}d${sides}${mod?(mod>0?`+${mod}`:mod):''}${label} → ${sum} [${rolls.join(', ')}]`;
-  addLine(line, opts.who==='keeper'?'keeper':'you');
+  addSystemMessage(line);
   return {n,sides,mod,rolls,sum};
 }
 
@@ -1878,7 +1879,7 @@ function fillSheet(t){
   const sk=byId('csSkills'); sk.innerHTML=''; Object.entries(t.sheet.skills||{}).forEach(([k,v])=>{
     const row=el('div',{class:'row'},[
       el('div',{class:'small'},`${k} ${v}`),
-      el('button',{class:'ghost',onclick:()=>{ const r=rollPercentile(k, v); addLine(`${t.name}: ${r.text}`,'you'); }},'Roll'),
+      el('button',{class:'ghost',onclick:()=>{ const r=rollPercentile(k, v); addSystemMessage(`${t.name}: ${r.text}`); }},'Roll'),
       el('button',{class:'ghost',onclick:()=>{ const nv=Number(prompt('New value', String(v))); if(!isNaN(nv)){ t.sheet.skills[k]=clamp(nv,1,99); fillSheet(t); }}},'Edit'),
       el('button',{class:'danger',onclick:()=>{ delete t.sheet.skills[k]; fillSheet(t); }},'Delete')
     ]);
@@ -1963,8 +1964,8 @@ byId('brush').addEventListener('change',e=> brush=Number(e.target.value));
 
 /* Begin play banner */
 function greetAndStart(){
-  addLine(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`,'keeper',{speaker:'Keeper', role:'npc'});
-  addLine(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i>.`,'keeper',{speaker:'Keeper', role:'npc'});
+  addSystemMessage(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`);
+  addSystemMessage(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i>.`);
 }
 
 /* Boot */
