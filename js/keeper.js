@@ -5,12 +5,18 @@ function buildAIPrompt(actor){
   const npcs=sc.tokens.filter(t=>t.type==='npc').map(t=>`${t.name} at (${t.x},${t.y})`).join(', ');
   const recentChat = Array.from(chatLog.querySelectorAll('.line')).slice(-5).map(l=>l.innerText).join('\n');
 
-  const persona = `You are ${actor.name}, a ${actor.sheet?.archetype}.
-Backstory: ${actor.persona || actor.sheet?.persona}
+  const notableSkills = Object
+    .entries(actor.sheet?.skills || {})
+    .filter(([k, v]) => v >= 50)
+    .map(([k]) => k)
+    .join(', ');
+
+  const persona = `You are ${actor.name}, a ${actor.sheet?.archetype || 'character'}.
+Backstory: ${actor.persona || actor.sheet?.persona || 'Unknown'}
 Traits: ${actor.sheet?.traits || 'As defined by archetype.'}
 You remember past events and companions.
-Your current health is ${actor.sheet?.hp} HP and ${actor.sheet?.sanity} Sanity.
-Your skills of note are: ${Object.entries(actor.sheet.skills).filter(([k,v])=>v>=50).map(([k,v])=>k).join(', ')}.`;
+Your current health is ${actor.sheet?.hp ?? '??'} HP and ${actor.sheet?.sanity ?? '??'} Sanity.
+Your skills of note are: ${notableSkills || 'none'}.`;
 
   const instructions = `It's your turn in an encounter. You have ${state.encounter.movesLeft} movement tiles and 1 action.
 The scene is: ${sc.name}.
@@ -151,6 +157,10 @@ async function keeperReply(userText){
     maybeSummarizeLocal(); // keep memory fresh without extra tokens
   }catch(err){
     addSystemMessage("The air stills… (AI call failed; offline demo).");
-    const demo=demoKeeper(userText); addLine(demo,'keeper',{speaker:'Keeper', role:'npc'}); const eng=parseEngine(demo); if(eng) applyEngine(eng);
+    const demo=demoKeeper(userText);
+    const narr = demo.replace(/<engine>[\s\S]*<\/engine>/i, '').trim();
+    if(narr) addLine(narr, 'keeper', { speaker: 'Keeper', role: 'npc' });
+    const eng = parseEngine(demo);
+    if(eng) applyEngine(eng);
   }
 }
