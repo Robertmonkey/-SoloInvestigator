@@ -14,20 +14,21 @@ function buildAIPrompt(actor){
   const persona = `You are ${actor.name}, a ${actor.sheet?.archetype || 'character'}.
 Backstory: ${actor.persona || actor.sheet?.persona || 'Unknown'}
 Traits: ${actor.sheet?.traits || 'As defined by archetype.'}
+Bonds: ${(actor.sheet?.bonds||[]).join(', ') || 'none'}
 You remember past events and companions.
 Your current health is ${actor.sheet?.hp ?? '??'} HP and ${actor.sheet?.sanity ?? '??'} Sanity.
 Your skills of note are: ${notableSkills || 'none'}.`;
 
-  const instructions = `It's your turn in an encounter. You have ${state.encounter.movesLeft} movement tiles and 1 action.
+  const instructions = `It's your turn in an encounter. You have ${state.encounter.movesLeft} movement tiles, 1 action, and 1 bonus action.
 The scene is: ${sc.name}.
 Your allies are: ${party}. NPCs present: ${npcs}.
 Story so far: ${state.memory || '(just beginning)'}
 Recent events:\n${recentChat}\n
-Speak as if you are a player guiding ${actor.name}; use a vivid, in-character voice and refer to allies by name when it makes sense.
+Speak as if you are a player guiding ${actor.name}; use 1920s-appropriate language rich in sensory detail and refer to allies by name when it makes sense.
 Based on your persona and the situation, decide what to do. Your goals are to survive and solve the mystery.
 Output ONLY a compact JSON object inside an <engine> tag.
-The JSON can have three optional keys: "say" (a string of what you say), "move" (an object with a "to" key like {"to":[x,y]}), and "perform" (a string describing a physical action like "searches the dusty bookshelf").
-Example: <engine>{"say": "I'll check over there!", "move": {"to":[${actor.x+1},${actor.y}]}, "perform": "shines their flashlight into the dark corner"}</engine>
+The JSON can have up to four optional keys: "say" (a string of what you say), "move" (an object with a "to" key like {"to":[x,y]}), "perform" (a string describing your main action), and "bonus" (a quick secondary action).
+Example: <engine>{"say": "I'll check over there!", "move": {"to":[${actor.x+1},${actor.y}]}, "perform": "shines their flashlight into the dark corner", "bonus":"draws a pistol"}</engine>
 Be brief but expressive. Do not narrate. Just provide the JSON for your action.`;
 
   return [{role:'system',content:persona},{role:'user',content:instructions}];
@@ -78,6 +79,10 @@ async function applyEngineResponse(eng, actor){
     addActionLine(`* ${actor.name} ${eng.perform} *`);
     await new Promise(r=>setTimeout(r,700));
   }
+  if(eng.bonus){
+    addActionLine(`* ${actor.name} ${eng.bonus} (bonus) *`);
+    await new Promise(r=>setTimeout(r,700));
+  }
   if(eng.move && eng.move.to){
     const [gx,gy]=eng.move.to;
     tryMoveCommand(actor, gx, gy, true);
@@ -103,13 +108,17 @@ function keeperSystem(){
 - Use generic percentile checks (Success/Hard/Extreme). Avoid proprietary rule text.
 - In Encounter mode, prompt the active investigator; ALSO add one short, persona-rich line for a companion and one NPC when present.
 - Weave in past events and relationships from the Memory when it helps roleplay.
+- Use 1920s-appropriate language and sensory detail.
+ - To whisper privately, include say lines with a "to" field.
+ - You may add clues via "clues":[{"title":string,"text":string}].
  - Output compact markup + an <engine>{...}</engine> JSON:
-  {"say":[{"speaker":string,"role":"pc"|"npc"|"keeper","text":string}...],
+  {"say":[{"speaker":string,"role":"pc"|"npc"|"keeper","text":string,"to"?:string}...],
    "moves":[{"tokenId":string,"to":[x,y]}...],
    "rollRequests":[{"character":string,"skill":string,"mod":number}...],
    "handouts":[number|{"title":string,"text":string,"imageUrl":string}],
    "items":[{"tokenId":string,"name":string,"qty":number}],
-   "stats":[{"tokenId":string,"hp":number,"sanity":number,...}]}
+   "stats":[{"tokenId":string,"hp":number,"sanity":number,...}],
+   "clues":[{"title":string,"text":string}]}
 
 <campaign>
 Title: ${state.campaign?.title||'Scenario'}
@@ -131,15 +140,20 @@ function applyEngine(eng){
       const speaker = s.speaker || 'Someone';
       const text = s.text || '';
       const role = s.role || 'pc';
-      addSay(speaker, escapeHtml(text), role);
-      if(state.settings.ttsOn) speak(stripTags(text), speaker, role);
+      if(s.to){
+        addWhisper(s.to, `${speaker}: ${escapeHtml(text)}`);
+      }else{
+        addSay(speaker, escapeHtml(text), role);
+        if(state.settings.ttsOn) speak(stripTags(text), speaker, role);
+      }
     });
   }
   if(eng.moves){ eng.moves.forEach(m=>{ const t=currentScene().tokens.find(x=>x.id===m.tokenId); if(t){ tryMoveCommand(t, m.to?.[0], m.to?.[1]); } }); }
   if(eng.rollRequests){ eng.rollRequests.forEach(r=> doRoll('1d100', {who:'keeper', note:`${r.character||'PC'} ${r.skill?`(${r.skill})`:''}`})); }
   if(eng.handouts){ eng.handouts.forEach(h=>{ if(typeof h==='number') dropHandout(h); else if(h && h.title){ state.campaign=state.campaign||{}; state.campaign.handouts=state.campaign.handouts||[]; state.campaign.handouts.push(h); renderHandouts(); dropHandout(state.campaign.handouts.length-1); } }); }
   if(eng.items){ eng.items.forEach(it=>{ const t=currentScene().tokens.find(x=>x.id===it.tokenId); if(!t) return; ensureSheet(t); t.sheet.inventory=t.sheet.inventory||[]; const existing=t.sheet.inventory.find(x=>x.name===it.name); if(existing){ existing.qty=(existing.qty||0)+(it.qty||1); } else { t.sheet.inventory.push({name:it.name, qty:it.qty||1, weight:it.weight||0}); } }); }
-  if(eng.stats){ eng.stats.forEach(st=>{ const t=currentScene().tokens.find(x=>x.id===st.tokenId); if(!t) return; ensureSheet(t); for(const k in st){ if(k!=='tokenId'){ t.sheet[k]=(t.sheet[k]||0)+(st[k]||0); } } }); }
+  if(eng.stats){ eng.stats.forEach(st=>{ const t=currentScene().tokens.find(x=>x.id===st.tokenId); if(!t) return; ensureSheet(t); for(const k in st){ if(k!=='tokenId'){ t.sheet[k]=(t.sheet[k]||0)+(st[k]||0); } } checkSanityThresholds(t); }); }
+  if(eng.clues){ eng.clues.forEach(c=>{ state.campaign=state.campaign||{}; state.campaign.clues=state.campaign.clues||[]; state.campaign.clues.push(c); addSystemMessage(`<b>Clue:</b> ${escapeHtml(c.title||'')} — ${escapeHtml(c.text||'')}`); }); renderClues(); }
   renderTokenList(); if(sheetTarget) fillSheet(sheetTarget);
 }
 function demoKeeper(userText){

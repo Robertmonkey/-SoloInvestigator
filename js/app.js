@@ -101,6 +101,12 @@ const DEMO_ARCS = [
   }
 ];
 
+const RANDOM_OMENS = [
+  "A distant scream echoes, then cuts off.",
+  "A chill wind carries the scent of brine.",
+  "Somewhere nearby, a door slams though none are open."
+];
+
 /* ---------- STATE ---------- */
 function newScene(name){
   return { id:'scn_'+Math.random().toString(36).slice(2,8), name:name||'Untitled Scene',
@@ -128,7 +134,7 @@ const state = {
   chat:[],
   initOrder:[],
   activeTurn:0,
-  encounter:{on:false, movesLeft:0, actionsLeft:0},
+  encounter:{on:false, movesLeft:0, actionsLeft:0, bonusLeft:0},
   browserVoices:[],
   memory:'', // local summary to keep prompts small (no extra tokens)
   aiThinking:false // prevent concurrent AI calls
@@ -379,6 +385,7 @@ function resetTurnBudget(){
   const mov=t?.sheet?.speed || 8;
   state.encounter.movesLeft=Math.floor(mov/2);
   state.encounter.actionsLeft=1;
+  state.encounter.bonusLeft=1;
 }
 
 function updateTurnBanner(){
@@ -389,7 +396,7 @@ function updateTurnBanner(){
   if(isAI(t.id)){
     turnText+= state.aiThinking ? ' (Thinking...)' : ' (AI)';
   }else{
-    turnText+=` (You) — Moves: ${state.encounter.movesLeft}, Actions: ${state.encounter.actionsLeft}`;
+    turnText+=` (You) — Moves: ${state.encounter.movesLeft}, Actions: ${state.encounter.actionsLeft}, Bonus: ${state.encounter.bonusLeft}`;
   }
   byId('turnInfo').textContent=turnText;
 }
@@ -451,6 +458,15 @@ function addSystemMessage(text){
   const line=el('div',{class:'line system'}, [
     el('div',{class:'who'}, '⚠️ System'),
     el('div',{class:'content', html:text})
+  ]);
+  chatLog.appendChild(line);
+  chatLog.scrollTop=chatLog.scrollHeight;
+}
+
+function addWhisper(target, text){
+  const line=el('div',{class:'line whisper'},[
+    el('div',{class:'who'}, `Whisper to ${target}`),
+    el('div',{class:'content'}, text)
   ]);
   chatLog.appendChild(line);
   chatLog.scrollTop=chatLog.scrollHeight;
@@ -556,6 +572,7 @@ byId('btnScenes').onclick  =()=> { updateSceneList(); show('#modalScenes'); };
 byId('btnParty').onclick   =()=> { renderParty(); show('#modalParty'); };
 byId('btnNPCs').onclick    =()=> { renderNPCs(); show('#modalNPCs'); };
 byId('btnHandouts').onclick=()=> { renderHandouts(); show('#modalHandouts'); };
+byId('btnClues').onclick   =()=> { renderClues(); show('#modalClues'); };
 byId('btnSaveLoad').onclick=()=> { updateSlots(); show('#modalSave'); };
 
 byId('btnSaveSettings').onclick=()=>{
@@ -581,6 +598,10 @@ byId('btnHideAll').onclick=()=> fogAll(true);
 byId('btnUndo').onclick=fogUndo;
 byId('btnParticles').onclick=()=> spawnFXAt(Math.floor(GRID_W/2),Math.floor(GRID_H/2));
 byId('btnGenBG').onclick=genBGQuick;
+byId('btnOmen').onclick=()=>{
+  const omen=RANDOM_OMENS[Math.floor(Math.random()*RANDOM_OMENS.length)];
+  addLine(omen,'keeper',{speaker:'Keeper',role:'npc'});
+};
 byId('btnNewScene').onclick=()=> addScene(prompt('Scene name?','New Scene')||'New Scene');
 byId('btnSwitchScene').onclick=()=> { updateSceneList(); show('#modalScenes'); };
 byId('btnStartEncounter').onclick=startEncounter;
@@ -705,7 +726,37 @@ function dropHandout(idx){
     `<div class="small">${escapeHtml(ho.text||'')}</div></div>`;
   addLine(html,'keeper',{speaker:'Keeper',role:'npc'});
 }
+/* ---------- CLUES ---------- */
+function renderClues(){
+  const list=byId('clueList');
+  if(!list) return;
+  list.innerHTML='';
+  const c=state.campaign?.clues||[];
+  if(!c.length){ list.innerHTML='<div class="note">No clues yet.</div>'; return; }
+  c.forEach((cl,i)=>{
+    const d=el('div',{class:'clue'});
+    d.appendChild(el('h4',{}, cl.title||(`Clue ${i+1}`)));
+    d.appendChild(el('div',{class:'small'}, cl.text||''));
+    d.appendChild(el('button',{class:'ghost',style:'margin-top:.4rem',onclick:()=>dropClue(i)},'Send to Chat'));
+    list.appendChild(d);
+  });
+}
+function dropClue(idx){
+  const c=state.campaign?.clues?.[idx];
+  if(!c) return;
+  addSystemMessage(`<b>Clue:</b> ${escapeHtml(c.title||'')} — ${escapeHtml(c.text||'')}`);
+}
 byId('btnGenHandouts').onclick=()=> generateHandoutsAuto();
+byId('btnAddClue').onclick=()=>{
+  state.campaign=state.campaign||{};
+  state.campaign.clues=state.campaign.clues||[];
+  const title=byId('clueTitle').value.trim();
+  const text=byId('clueText').value.trim();
+  if(!title && !text) return;
+  state.campaign.clues.push({title, text});
+  byId('clueTitle').value=''; byId('clueText').value='';
+  renderClues();
+};
 
 /* ---------- SAVE/LOAD (assets included) ---------- */
 function updateSlots(){ const wrap=byId('slots'); wrap.innerHTML=''; const slots=loadSlots(); for(let i=0;i<6;i++){ const slot=slots[i]||null; const row=el('div',{class:'slot'},[
@@ -1197,7 +1248,7 @@ function defaultSheet(t){
     hp: 10, sanity: 50, speed: t.speed||4,
     attrs:{Brains:10,Brawn:10,Nerve:10,Perception:10,Charm:10},
     skills:{Spot:60,Stealth:40,Medicine:30,Library:50,Persuade:40},
-    inventory:[], conditions:[]
+    inventory:[], conditions:[], bonds:[]
   };
 }
 let sheetTarget=null;
@@ -1205,11 +1256,32 @@ function openSheet(t){
   sheetTarget=t; ensureSheet(t); fillSheet(t); show('#modalSheet');
 }
 function ensureSheet(t){ t.sheet = t.sheet || defaultSheet(t); }
+function checkSanityThresholds(t){
+  ensureSheet(t);
+  const san=t.sheet.sanity||0;
+  t.sheet.conditions=t.sheet.conditions||[];
+  let changed=false;
+  if(san<=0 && !t.sheet.conditions.includes('catatonic')){
+    t.sheet.conditions.push('catatonic');
+    addSystemMessage(`${t.name} collapses into catatonia!`);
+    changed=true;
+  }else if(san<=10 && !t.sheet.conditions.includes('unhinged')){
+    t.sheet.conditions.push('unhinged');
+    addSystemMessage(`${t.name} suffers a mental break!`);
+    changed=true;
+  }else if(san<=25 && !t.sheet.conditions.includes('shaken')){
+    t.sheet.conditions.push('shaken');
+    addSystemMessage(`${t.name} is shaken by eldritch horrors.`);
+    changed=true;
+  }
+  if(changed && sheetTarget===t) fillSheet(t);
+}
 function fillSheet(t){
   byId('sheetTitle').textContent=`Character Sheet — ${t.name||'Unknown'}`;
   byId('csName').value = t.name||'';
   byId('csArch').value = t.sheet.archetype||'';
   byId('csPersona').value = t.persona || t.sheet.persona || '';
+  byId('csBonds').value = (t.sheet.bonds||[]).join(', ');
   byId('csHP').value = t.sheet.hp||0;
   byId('csSAN').value = t.sheet.sanity||0;
   byId('csSPD').value = t.sheet.speed||4;
@@ -1270,6 +1342,8 @@ byId('btnSheetSave').onclick=()=>{
     Charm: Number(byId('csCharm').value)||10
   };
   sheetTarget.sheet.conditions = (byId('csConds').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  sheetTarget.sheet.bonds = (byId('csBonds').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  checkSanityThresholds(sheetTarget);
   renderTokens(); renderTokenList(); toast('Sheet saved');
   hide('#modalSheet');
 };
@@ -1310,7 +1384,7 @@ byId('brush').addEventListener('change',e=> brush=Number(e.target.value));
 /* Begin play banner */
 function greetAndStart(){
   addSystemMessage(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`);
-  addSystemMessage(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i>.`);
+  addSystemMessage(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action and <b>1</b> bonus action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i>.`);
 }
 
 /* Boot */
