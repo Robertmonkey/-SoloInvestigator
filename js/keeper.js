@@ -103,10 +103,13 @@ function keeperSystem(){
 - Use generic percentile checks (Success/Hard/Extreme). Avoid proprietary rule text.
 - In Encounter mode, prompt the active investigator; ALSO add one short, persona-rich line for a companion and one NPC when present.
 - Weave in past events and relationships from the Memory when it helps roleplay.
-- Output compact markup + an <engine>{...}</engine> JSON:
+ - Output compact markup + an <engine>{...}</engine> JSON:
   {"say":[{"speaker":string,"role":"pc"|"npc"|"keeper","text":string}...],
    "moves":[{"tokenId":string,"to":[x,y]}...],
-   "rollRequests":[{"character":string,"skill":string,"mod":number}...]}
+   "rollRequests":[{"character":string,"skill":string,"mod":number}...],
+   "handouts":[number|{"title":string,"text":string,"imageUrl":string}],
+   "items":[{"tokenId":string,"name":string,"qty":number}],
+   "stats":[{"tokenId":string,"hp":number,"sanity":number,...}]}
 
 <campaign>
 Title: ${state.campaign?.title||'Scenario'}
@@ -126,6 +129,10 @@ function applyEngine(eng){
   if(eng.say){ eng.say.forEach(s=> addSay(s.speaker||'Someone', escapeHtml(s.text||''), s.role||'pc')); }
   if(eng.moves){ eng.moves.forEach(m=>{ const t=currentScene().tokens.find(x=>x.id===m.tokenId); if(t){ tryMoveCommand(t, m.to?.[0], m.to?.[1]); } }); }
   if(eng.rollRequests){ eng.rollRequests.forEach(r=> doRoll('1d100', {who:'keeper', note:`${r.character||'PC'} ${r.skill?`(${r.skill})`:''}`})); }
+  if(eng.handouts){ eng.handouts.forEach(h=>{ if(typeof h==='number') dropHandout(h); else if(h && h.title){ state.campaign=state.campaign||{}; state.campaign.handouts=state.campaign.handouts||[]; state.campaign.handouts.push(h); renderHandouts(); dropHandout(state.campaign.handouts.length-1); } }); }
+  if(eng.items){ eng.items.forEach(it=>{ const t=currentScene().tokens.find(x=>x.id===it.tokenId); if(!t) return; ensureSheet(t); t.sheet.inventory=t.sheet.inventory||[]; const existing=t.sheet.inventory.find(x=>x.name===it.name); if(existing){ existing.qty=(existing.qty||0)+(it.qty||1); } else { t.sheet.inventory.push({name:it.name, qty:it.qty||1, weight:it.weight||0}); } }); }
+  if(eng.stats){ eng.stats.forEach(st=>{ const t=currentScene().tokens.find(x=>x.id===st.tokenId); if(!t) return; ensureSheet(t); for(const k in st){ if(k!=='tokenId'){ t.sheet[k]=(t.sheet[k]||0)+(st[k]||0); } } }); }
+  renderTokenList(); if(sheetTarget) fillSheet(sheetTarget);
 }
 function demoKeeper(userText){
   const tips=[

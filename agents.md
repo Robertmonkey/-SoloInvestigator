@@ -47,6 +47,15 @@ Edit
   ],
   "rollRequests": [
     {"character":"You","skill":"Spot","mod":0}
+  ],
+  "handouts": [
+    {"title":"Mysterious Note","text":"scrawled coordinates","imageUrl":"data:url"}
+  ],
+  "items": [
+    {"tokenId":"t_you","name":"Brass Key","qty":1}
+  ],
+  "stats": [
+    {"tokenId":"t_you","hp":-2,"sanity":1}
   ]
 }
 say (array) — lines to render in chat with speaker portraits & per-speaker TTS.
@@ -54,6 +63,12 @@ say (array) — lines to render in chat with speaker portraits & per-speaker TTS
 moves (array) — programmatic moves (used sparingly by Keeper to reposition scene).
 
 rollRequests (array) — ask the UI/log to roll checks; the app formats and displays percentile results.
+
+handouts (array) — send handouts to chat; either reference by index or include title/text/imageUrl.
+
+items (array) — modify inventories; each adds an item with quantity to the specified token.
+
+stats (array) — delta changes applied to a token’s stats (hp, sanity, etc.).
 
 Prompts
 Keeper System Prompt (Summary)
@@ -65,7 +80,7 @@ Avoid proprietary rules text; use generic percentile checks (Success/Hard/Extrem
 
 In encounters: prompt the active investigator; also add one brief line for a companion and an NPC (if present).
 
-Return compact narrative + <engine> JSON with say[], moves[], rollRequests[].
+Return compact narrative + <engine> JSON with say[], moves[], rollRequests[], handouts[], items[], stats[].
 
 Context provided:
 

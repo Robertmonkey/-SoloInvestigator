@@ -673,8 +673,32 @@ byId('btnGenNPCs').onclick=()=>{ const arche=['Dockhand','Fishmonger','Librarian
 byId('btnAddNPC').onclick=()=>{ addToken({name:prompt('Name?','Mysterious NPC')||'Mysterious NPC', type:'npc', x:GRID_W-1, y:0}); renderNPCs(); };
 
 /* ---------- HANDOUTS ---------- */
-function renderHandouts(){ const list=byId('handoutsList'); list.innerHTML=''; const h=state.campaign?.handouts||[]; if(!h.length){ list.innerHTML='<div class="note">No handouts yet. Click “Generate Handouts”.</div>'; return; }
-  h.forEach((ho,i)=>{ const d=el('div',{class:'ho'}); d.appendChild(el('h4',{}, `${ho.title||('Handout '+(i+1))}`)); if(ho.imageUrl) d.appendChild(el('img',{src:ho.imageUrl,alt:ho.title||('handout'+(i+1))})); d.appendChild(el('div',{class:'small'}, ho.text||'')); list.appendChild(d); }); }
+function renderHandouts(){
+  const list=byId('handoutsList');
+  list.innerHTML='';
+  const h=state.campaign?.handouts||[];
+  if(!h.length){
+    list.innerHTML='<div class="note">No handouts yet. Click “Generate Handouts”.</div>';
+    return;
+  }
+  h.forEach((ho,i)=>{
+    const d=el('div',{class:'ho'});
+    d.appendChild(el('h4',{}, `${ho.title||('Handout '+(i+1))}`));
+    if(ho.imageUrl) d.appendChild(el('img',{src:ho.imageUrl,alt:ho.title||('handout'+(i+1))}));
+    d.appendChild(el('div',{class:'small'}, ho.text||''));
+    d.appendChild(el('button',{class:'ghost',style:'margin-top:.4rem',onclick:()=>dropHandout(i)},'Send to Chat'));
+    list.appendChild(d);
+  });
+}
+
+function dropHandout(idx){
+  const ho = state.campaign?.handouts?.[idx];
+  if(!ho) return;
+  const html = `<div class="chat-handout"><strong>${escapeHtml(ho.title||'Handout')}</strong>`+
+    `${ho.imageUrl?`<br><img src="${ho.imageUrl}" alt="${escapeHtml(ho.title||'handout')}">`:''}`+
+    `<div class="small">${escapeHtml(ho.text||'')}</div></div>`;
+  addLine(html,'keeper',{speaker:'Keeper',role:'npc'});
+}
 byId('btnGenHandouts').onclick=()=> generateHandoutsAuto();
 
 /* ---------- SAVE/LOAD (assets included) ---------- */
