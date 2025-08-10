@@ -11,6 +11,7 @@ A single-file, client-only tabletop experience inspired by investigative horror 
 - **Tutorial Wizard:** Step-by-step setup → story variety → pick your character + 4 companions → auto-build maps, portraits, NPCs, and handouts.
 - **Proactive AI Turns:** Companions/NPCs act automatically on their initiative. You watch the scene unfold, then take your turn.
 - **Persona-Driven Agents:** Each AI character gets a tailored prompt (skills, persona, map position, recent events) to feel distinct.
+- **Shared Memory & Voice:** Keeper, companions, and NPCs recall past events and party members to speak in a more colorful, in-character way.
 - **Keeper Guidance:** A friendly tutorial Keeper that nudges you with clear next actions (manual or auto-trigger).
 - **Tactical Board:** Grid, fog of war (reveal/hide/undo), ruler, pings, tokens w/ portraits, active-turn highlight, movement budgets.
 - **Voices:** Queue-based TTS with **Browser voices (free)** or **ElevenLabs** (premium). Per-speaker voice selection + local caching for replays.

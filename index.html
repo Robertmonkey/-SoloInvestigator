@@ -1030,24 +1030,27 @@ function speakerAvatar(name){
 function buildAIPrompt(actor){
   const sc=currentScene();
   const party=sc.tokens.filter(t=>t.type==='pc').map(t=>`${t.name} at (${t.x},${t.y})`).join('; ');
-  const npcs=sc.tokens.filter(t=>t.type==='npc').map(t=>`${t.name} at (${t.x},${t.y})`).join('; ');
+  const npcs=sc.tokens.filter(t=>t.type==='npc').map(t=>`${t.name} at (${t.x},${t.y})`).join(', ');
   const recentChat = Array.from(chatLog.querySelectorAll('.line')).slice(-5).map(l=>l.innerText).join('\n');
 
   const persona = `You are ${actor.name}, a ${actor.sheet?.archetype}.
 Backstory: ${actor.persona || actor.sheet?.persona}
 Traits: ${actor.sheet?.traits || 'As defined by archetype.'}
+You remember past events and companions.
 Your current health is ${actor.sheet?.hp} HP and ${actor.sheet?.sanity} Sanity.
 Your skills of note are: ${Object.entries(actor.sheet.skills).filter(([k,v])=>v>=50).map(([k,v])=>k).join(', ')}.`;
 
   const instructions = `It's your turn in an encounter. You have ${state.encounter.movesLeft} movement tiles and 1 action.
 The scene is: ${sc.name}.
 Your allies are: ${party}. NPCs present: ${npcs}.
+Story so far: ${state.memory || '(just beginning)'}
 Recent events:\n${recentChat}\n
+Speak as if you are a player guiding ${actor.name}; use a vivid, in-character voice and refer to allies by name when it makes sense.
 Based on your persona and the situation, decide what to do. Your goals are to survive and solve the mystery.
 Output ONLY a compact JSON object inside an <engine> tag.
 The JSON can have three optional keys: "say" (a string of what you say), "move" (an object with a "to" key like {"to":[x,y]}), and "perform" (a string describing a physical action like "searches the dusty bookshelf").
 Example: <engine>{"say": "I'll check over there!", "move": {"to":[${actor.x+1},${actor.y}]}, "perform": "shines their flashlight into the dark corner"}</engine>
-Be brief and in-character. Do not narrate. Just provide the JSON for your action.`;
+Be brief but expressive. Do not narrate. Just provide the JSON for your action.`;
 
   return [{role:'system',content:persona},{role:'user',content:instructions}];
 }
@@ -1074,11 +1077,12 @@ async function executeAITurn(actor){
       const data=await res.json();
       text=data.choices?.[0]?.message?.content || '{}';
     }else{
-      text=`<engine>{"say":"What should I do?", "perform":"looks around nervously"}</engine>`;
+      text=`<engine>{"say":"I'm thinking…", "perform":"recalls recent events and scans the room"}</engine>`;
     }
 
     const eng=parseEngine(text);
     if(eng) await applyEngineResponse(eng, actor);
+    maybeSummarizeLocal();
 
   }catch(err){
     addSystemMessage(`The ether crackles... (${actor.name}'s AI failed).`);
@@ -1117,9 +1121,10 @@ function keeperSystem(){
   const style = state.settings.keeperStyle;
   const brevity = style==='brief' ? 'Use 1–3 sentences.' : (style==='verbose' ? 'Use 4–8 sentences.' : 'Use 2–5 sentences.');
   return `You are The Keeper (tutorial). Teach gently. ${brevity}
-- Narrate a beat then give a single clear choice or prompt; keep scenes varied.
+- Narrate a beat with personality then give a single clear choice or prompt; keep scenes varied.
 - Use generic percentile checks (Success/Hard/Extreme). Avoid proprietary rule text.
-- In Encounter mode, prompt the active investigator; ALSO add one short in‑character line for a companion and one NPC when present.
+- In Encounter mode, prompt the active investigator; ALSO add one short, persona-rich line for a companion and one NPC when present.
+- Weave in past events and relationships from the Memory when it helps roleplay.
 - Output compact markup + an <engine>{...}</engine> JSON:
   {"say":[{"speaker":string,"role":"pc"|"npc"|"keeper","text":string}...],
    "moves":[{"tokenId":string,"to":[x,y]}...],
@@ -1938,10 +1943,10 @@ function maybeSummarizeLocal(){
   if(lines.length<12) return;
   const points=[];
   lines.forEach(l=>{
-    const who = l.classList.contains('you')?'You':'Keeper';
-    const txt = stripTags((l.querySelector('.content')?.innerHTML||'')).trim();
+    const who = l.querySelector('.who')?.textContent || (l.classList.contains('you')?'You':l.classList.contains('keeper')?'Keeper':'');
+    const txt = stripTags((l.querySelector('.content')?.innerHTML||l.innerHTML||'')).trim();
     if(!txt) return;
-    if(points.length<10 && txt.length>6) points.push(`${who}: ${txt.slice(0,140)}`);
+    if(points.length<10 && txt.length>6) points.push(`${who||'Narration'}: ${txt.slice(0,140)}`);
   });
   state.memory = points.slice(-8).join(' | ');
 }
