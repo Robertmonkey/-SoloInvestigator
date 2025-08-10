@@ -126,7 +126,15 @@ Rules notes: """${state.settings.rulesPack||''}"""
 }
 function parseEngine(text){ const m=text.match(/<engine>([\s\S]+?)<\/engine>/i); if(!m) return null; try{ return JSON.parse(m[1]); }catch{ return null; } }
 function applyEngine(eng){
-  if(eng.say){ eng.say.forEach(s=> addSay(s.speaker||'Someone', escapeHtml(s.text||''), s.role||'pc')); }
+  if(eng.say){
+    eng.say.forEach(s=> {
+      const speaker = s.speaker || 'Someone';
+      const text = s.text || '';
+      const role = s.role || 'pc';
+      addSay(speaker, escapeHtml(text), role);
+      if(state.settings.ttsOn) speak(stripTags(text), speaker, role);
+    });
+  }
   if(eng.moves){ eng.moves.forEach(m=>{ const t=currentScene().tokens.find(x=>x.id===m.tokenId); if(t){ tryMoveCommand(t, m.to?.[0], m.to?.[1]); } }); }
   if(eng.rollRequests){ eng.rollRequests.forEach(r=> doRoll('1d100', {who:'keeper', note:`${r.character||'PC'} ${r.skill?`(${r.skill})`:''}`})); }
   if(eng.handouts){ eng.handouts.forEach(h=>{ if(typeof h==='number') dropHandout(h); else if(h && h.title){ state.campaign=state.campaign||{}; state.campaign.handouts=state.campaign.handouts||[]; state.campaign.handouts.push(h); renderHandouts(); dropHandout(state.campaign.handouts.length-1); } }); }
