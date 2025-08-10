@@ -87,9 +87,13 @@
   .measure .label{position:absolute;top:-1.35rem;right:-.25rem;background:#0e1626;border:1px solid #24324c;border-radius:8px;padding:.1rem .35rem;
     color:#cfe1ff;font-size:.75rem}
 
-  /* Chat */
-  #chat{display:flex;flex-direction:column;min-height:460px}
-  #chatLog{flex:1;overflow:auto;background:#0c121d;border:1px solid #1a2130;border-radius:8px;padding:.75rem;scroll-behavior:smooth;min-height:280px}
+  /* Chat (fixed height + scrollbar) */
+  #chat{display:flex;flex-direction:column}
+  #chatLog{
+    height:340px; /* fixed, scrollable */
+    overflow-y:auto;
+    background:#0c121d;border:1px solid #1a2130;border-radius:8px;padding:.75rem;scroll-behavior:smooth;
+  }
   #chatLog .line{display:flex;align-items:flex-start;gap:.6rem;margin:.45rem 0}
   #chatLog .who{opacity:.85;font-weight:600}
   #chatLog .content{flex:1}
@@ -100,7 +104,7 @@
   .avatar img{width:100%;height:100%;object-fit:cover}
   .speakerName{font-weight:700}
   #chatEntry{display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap}
-  #chatEntry input{flex:1;min-width:200px}
+  #chatEntry input{flex:1;min-width:220px}
   #chatEntry button{white-space:nowrap}
 
   .note{font-size:.85rem;color:#a6b4cc}
@@ -181,15 +185,17 @@
             <option value="/roll 1d100">Roll 1d100</option>
             <option value="/roll 1d20">Roll 1d20</option>
             <option value="/roll 3d6">Roll 3d6</option>
+            <option value="/check Spot 60">Check Spot 60</option>
             <option value="/endturn">End Turn</option>
             <option value="/help">Help</option>
           </select>
           <button id="cmdInsert" class="ghost">Insert</button>
-          <input id="chatInput" placeholder="Say something… (try /roll 1d100, /move Eleanor to 6,3, /endturn, /help)" />
+          <input id="chatInput" placeholder="Say something… (try /roll 1d100, /check Spot 60, /keeper What do we notice?)" />
           <button class="primary" id="chatSend">Send</button>
+          <button class="ghost" id="btnAskKeeper" title="Ask Keeper without sending more tokens by default">Ask Keeper</button>
           <button class="ghost" id="btnStopVoice" title="Stop voices & clear queue">Stop Voice</button>
         </div>
-        <div class="note small">Keeper guides you and companions speak with their own voices. Click ▶ to replay. Browser TTS is free; ElevenLabs is optional.</div>
+        <div class="note small">Keeper replies only when you click <b>Ask Keeper</b> or use <b>/keeper …</b> (change in Settings → Trigger). Browser voices are free; ElevenLabs is cached to save tokens.</div>
       </div>
     </div>
   </section>
@@ -288,6 +294,19 @@
         </select>
         <label><input type="checkbox" id="useImages" /> Enable Image Generation</label>
         <label><input type="checkbox" id="keeperOn" checked/> Keeper AI On</label>
+        <label>Keeper Trigger</label>
+        <select id="keeperTrigger">
+          <option value="manual" selected>Manual (Ask Keeper or /keeper)</option>
+          <option value="auto">Auto (every non-slash message)</option>
+        </select>
+        <label>Keeper Style</label>
+        <select id="keeperStyle">
+          <option value="brief">Brief</option>
+          <option value="normal" selected>Normal</option>
+          <option value="verbose">Verbose</option>
+        </select>
+        <label>Keeper Max Tokens</label>
+        <input id="keeperMax" type="number" min="128" max="2000" value="450"/>
       </div>
       <div class="col">
         <label>TTS Provider (default)</label>
@@ -449,23 +468,94 @@
   </div>
 </div>
 
+<!-- CHARACTER SHEET -->
+<div class="modal" id="modalSheet">
+  <div class="scrim" data-close="#modalSheet"></div>
+  <div class="sheet">
+    <h2 id="sheetTitle">Character Sheet</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3>Identity</h3>
+        <div class="col">
+          <label>Name</label>
+          <input id="csName"/>
+          <label>Archetype</label>
+          <input id="csArch"/>
+          <label>Persona / Notes</label>
+          <textarea id="csPersona" rows="4"></textarea>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Vitals</h3>
+        <div class="grid3">
+          <div class="col"><label>HP</label><input id="csHP" type="number" min="0"/></div>
+          <div class="col"><label>Sanity</label><input id="csSAN" type="number" min="0"/></div>
+          <div class="col"><label>Speed</label><input id="csSPD" type="number" min="1"/></div>
+        </div>
+        <div class="hr"></div>
+        <div class="grid3">
+          <div class="col"><label>Brains</label><input id="csBrains" type="number" min="1"/></div>
+          <div class="col"><label>Brawn</label><input id="csBrawn" type="number" min="1"/></div>
+          <div class="col"><label>Nerve</label><input id="csNerve" type="number" min="1"/></div>
+          <div class="col"><label>Perception</label><input id="csPerc" type="number" min="1"/></div>
+          <div class="col"><label>Charm</label><input id="csCharm" type="number" min="1"/></div>
+        </div>
+        <div class="hr"></div>
+        <label>Conditions (comma separated)</label>
+        <input id="csConds" placeholder="wounded, rattled"/>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Skills</h3>
+        <div id="csSkills" class="col"></div>
+        <div class="row" style="margin-top:.5rem">
+          <input id="csSkillName" placeholder="Skill name"/>
+          <input id="csSkillVal" type="number" min="1" max="99" placeholder="50"/>
+          <button class="ghost" id="btnAddSkill">Add/Update</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Inventory</h3>
+        <div id="csInv" class="col"></div>
+        <div class="row" style="margin-top:.5rem">
+          <input id="csItemName" placeholder="Item name"/>
+          <input id="csItemQty" type="number" min="1" value="1"/>
+          <input id="csItemWt" type="number" min="0" step="0.1" value="0"/>
+          <button class="ghost" id="btnAddItem">Add</button>
+        </div>
+        <div class="small" id="invWeight">Weight: 0</div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+    <div class="row right">
+      <button class="ghost" data-close="#modalSheet">Close</button>
+      <button class="primary" id="btnSheetSave">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
 /* =========================================================
    SOLO INVESTIGATOR — Tutorial Solo VTT (client‑only)
-   Updates: story variety, party voice controls, responsive chat bar,
-            animated progress, asset‑full save files, quick commands
+   Token‑frugal, with Character Sheets + Inventory, stable chat scroll,
+   asset‑full saves, manual Keeper trigger, stronger variety
    ========================================================= */
 
 /* ---------- CONSTANTS ---------- */
-const LS_SETTINGS = 'si_settings_v7';
-const LS_SLOTS    = 'si_slots_v5';
-const LS_WIZARD   = 'si_wizard_done_v5';
-const LS_ARC_FP   = 'si_recent_arc_fps_v1';
+const LS_SETTINGS = 'si_settings_v8';
+const LS_SLOTS    = 'si_slots_v6';
+const LS_WIZARD   = 'si_wizard_done_v6';
+const LS_ARC_FP   = 'si_recent_arc_fps_v2';
 const GRID_W = 12, GRID_H = 8;
 
-/* Ten core investigators */
+/* Ten core investigators (as before) */
 const INVESTIGATORS = [
   { archetype:"Journalist", name:"Eleanor Shaw", prompt:"1920s journalist portrait, trench coat, press badge, film-noir lighting", backstory:"Reporter chasing labor abuses to redeem a career-stalling misquote.", traits:"Observant, stubborn, empathetic." },
   { archetype:"Doctor", name:"Thomas Greer, MD", prompt:"1920s physician portrait, wireframe glasses, soft rim light", backstory:"War medic haunted by triage choices; volunteers at a charity clinic.", traits:"Calm, clinical, moral." },
@@ -479,7 +569,7 @@ const INVESTIGATORS = [
   { archetype:"Radio Operator", name:"Dorothy “Dot” Pennington", prompt:"1920s radio operator, headphones, desk lamp glow", backstory:"Intercepted a coded transmission about 'the Chapel Below'.", traits:"Wry, quick, technical." }
 ];
 
-/* Demo arcs (varied, so fallback isn't repetitive) */
+/* Demo arcs (varied) */
 const DEMO_ARCS = [
   {
     title:"Dust on the Stacks",
@@ -569,7 +659,10 @@ const state = {
     ttsOn:false, ttsQueue:true, ttsProviderDefault:'browser',
     elevenKey:'', voiceId:'',
     rulesPack:'',
-    voiceMap:{} // { "Keeper":{provider:'browser'|'eleven'|'none', id:'VoiceNameOrId'}, "Eleanor Shaw":{...} }
+    keeperTrigger:'manual',
+    keeperStyle:'normal',
+    keeperMax:450,
+    voiceMap:{} // { name: {provider:'browser'|'eleven'|'none', id:'VoiceNameOrId'} }
   },
   campaign:null,
   npcCatalog:[],
@@ -580,7 +673,8 @@ const state = {
   initOrder:[],
   activeTurn:0,
   encounter:{on:false, movesLeft:0, actionsLeft:0},
-  browserVoices:[]
+  browserVoices:[],
+  memory:'' // local summary to keep prompts small (no extra tokens)
 };
 function currentScene(){ return state.scenes[state.sceneIndex]; }
 
@@ -613,6 +707,9 @@ function loadSettings(){
   byId('ttsQueue').checked = state.settings.ttsQueue;
   byId('ttsProviderDefault').value = state.settings.ttsProviderDefault || 'browser';
   byId('rulesPack').value = state.settings.rulesPack;
+  byId('keeperTrigger').value = state.settings.keeperTrigger || 'manual';
+  byId('keeperStyle').value = state.settings.keeperStyle || 'normal';
+  byId('keeperMax').value = state.settings.keeperMax || 450;
 }
 
 /* ---------- MAP RENDER ---------- */
@@ -644,6 +741,7 @@ function renderTokenList(){
       [el('div',{}, `${t.type.toUpperCase()} • ${t.name||'Unnamed'} @ ${t.x},${t.y}`),
        el('div',{class:'row'},[
          el('button',{class:'ghost',onclick:()=> spawnFXAt(t.x,t.y)},'Ping'),
+         el('button',{class:'ghost',onclick:()=> openSheet(t)},'Open Sheet'),
          el('button',{class:'ghost',onclick:()=> editTokenPrompt(t)},'Edit'),
          el('button',{class:'danger',onclick:()=> removeToken(t.id)},'Remove')
        ])]);
@@ -723,7 +821,7 @@ function endMeasure(){ if(measureEl){ measureEl.remove(); measureEl=null; } }
 function gridDistance(a,b){ const [ax,ay]=pxToGrid(a[0],a[1]), [bx,by]=pxToGrid(b[0],b[1]); return Math.max(Math.abs(ax-bx),Math.abs(ay-by)); }
 
 /* ---------- TOKENS ---------- */
-function addToken(t){ const sc=currentScene(); t.id=t.id||('t_'+Math.random().toString(36).slice(2,8)); t.x=clamp(t.x ?? 1,0,GRID_W-1); t.y=clamp(t.y ?? 1,0,GRID_H-1); t.type=t.type||'pc'; t.speed=t.speed ?? 4; sc.tokens.push(t); renderTokens(); renderTokenList(); }
+function addToken(t){ const sc=currentScene(); t.id=t.id||('t_'+Math.random().toString(36).slice(2,8)); t.x=clamp(t.x ?? 1,0,GRID_W-1); t.y=clamp(t.y ?? 1,0,GRID_H-1); t.type=t.type||'pc'; t.speed=t.speed ?? 4; t.sheet = t.sheet||defaultSheet(t); sc.tokens.push(t); renderTokens(); renderTokenList(); }
 function removeToken(id){ const sc=currentScene(); sc.tokens=sc.tokens.filter(x=>x.id!==id); renderTokens(); renderTokenList(); renderReach(); }
 function editTokenPrompt(t){ const name=prompt('Name:', t.name||''); if(name===null) return; const type=prompt('Type (pc|npc):', t.type||'pc'); if(type===null) return; t.name=name.trim(); t.type=(type==='npc')?'npc':'pc'; renderTokens(); renderTokenList(); }
 
@@ -737,7 +835,7 @@ function endEncounter(){ state.encounter.on=false; renderReach(); updateTurnBann
 function endTurn(){ if(!state.encounter.on){ toast('Not in encounter'); return; } nextTurn(); }
 function isActiveToken(t){ const activeEntry=state.initOrder[state.activeTurn]; return activeEntry && t.id===activeEntry.id; }
 function getActiveToken(){ const activeEntry=state.initOrder[state.activeTurn]; if(!activeEntry) return null; return currentScene().tokens.find(t=>t.id===activeEntry.id); }
-function resetTurnBudget(){ const t=getActiveToken(); state.encounter.movesLeft=t?.speed ?? 4; state.encounter.actionsLeft=1; }
+function resetTurnBudget(){ const t=getActiveToken(); state.encounter.movesLeft=t?.speed ?? (t?.sheet?.speed ?? 4); state.encounter.actionsLeft=1; }
 function updateTurnBanner(){
   if(!state.encounter.on){ byId('turnInfo').textContent='Free exploration'; return; }
   const t=getActiveToken(); if(!t){ byId('turnInfo').textContent='Encounter (no active)'; return; }
@@ -787,18 +885,20 @@ function speakerAvatar(name){
   return cv.toDataURL('image/png');
 }
 
-/* ---------- KEEPER AI ---------- */
+/* ---------- KEEPER AI (token‑frugal) ---------- */
 function keeperSystem(){
   const sc=currentScene();
-  const party=sc.tokens.filter(t=>t.type==='pc').map(t=>`${t.name} — persona: ${t.persona||'N/A'}`).join('; ');
+  const party=sc.tokens.filter(t=>t.type==='pc').map(t=>`${t.name} — persona: ${t.persona||t.sheet?.persona||'N/A'}`).join('; ');
   const npcs=sc.tokens.filter(t=>t.type==='npc').map(t=>t.name).join(', ');
   const you = sc.tokens.find(t=> t.id===state.youPCId);
   const enc = state.encounter.on ? `Encounter ON — ${getActiveToken()?.name||'n/a'} to act, moves ${state.encounter.movesLeft}.` : 'Free exploration';
-  return `You are The Keeper (tutorial). Teach gently.
-- Narrate 2–5 sentences, then offer one clear next step (move, roll, talk).
-- Use generic percentile checks (Success/Hard/Extreme/Crit). Avoid proprietary rule text.
-- In Encounter mode, prompt the active investigator. ALSO include short in‑character lines for companions and at least one NPC when present.
-- Always include <engine>{...}</engine> JSON with:
+  const style = state.settings.keeperStyle;
+  const brevity = style==='brief' ? 'Use 1–3 sentences.' : (style==='verbose' ? 'Use 4–8 sentences.' : 'Use 2–5 sentences.');
+  return `You are The Keeper (tutorial). Teach gently. ${brevity}
+- Narrate a beat then give a single clear choice or prompt; keep scenes varied.
+- Use generic percentile checks (Success/Hard/Extreme). Avoid proprietary rule text.
+- In Encounter mode, prompt the active investigator; ALSO add one short in‑character line for a companion and one NPC when present.
+- Output compact markup + an <engine>{...}</engine> JSON:
   {"say":[{"speaker":string,"role":"pc"|"npc"|"keeper","text":string}...],
    "moves":[{"tokenId":string,"to":[x,y]}...],
    "rollRequests":[{"character":string,"skill":string,"mod":number}...]}
@@ -807,13 +907,12 @@ function keeperSystem(){
 Title: ${state.campaign?.title||'Scenario'}
 Acts: ${(state.campaign?.acts||[]).map(a=>a.name).join(' | ')}
 Mode: ${enc}
+Memory: ${state.memory||'(none)'}
 </campaign>
 
 Players (PCs): ${party||'none yet'}
 NPCs on scene: ${npcs||'none'}
-
-YOU are: ${you? you.name+' ('+(you.persona||'no persona')+')' : 'not yet chosen'}
-
+YOU are: ${you? you.name+' ('+(you.persona||you.sheet?.persona||'no persona')+')' : 'not yet chosen'}
 Rules notes: """${state.settings.rulesPack||''}"""
 `;
 }
@@ -826,21 +925,22 @@ function applyEngine(eng){
 function demoKeeper(userText){
   const tips=[
    "You can move up to 4 tiles on your turn. Try <i>/endturn</i> when done.",
-   "Try a careful search. Use <i>/roll 1d100</i> for a generic check.",
-   "Consider calling out; sometimes NPCs answer with more than words."
+   "Try a careful search. Use <i>/roll 1d100</i> or <i>/check Spot 60</i>.",
+   "Consider talking to an NPC; short questions reveal clues."
   ];
   return `A faint draft lifts the dust. ${tips[Math.floor(Math.random()*tips.length)]}
-<engine>{"say":[{"speaker":"Local Clerk","role":"npc","text":"If you’re new here, mind the rules written nowhere."}]}</engine>`;
+<engine>{"say":[{"speaker":"Local Clerk","role":"npc","text":"First time? Ask if you’re lost—people do."}]}</engine>`;
 }
 async function keeperReply(userText){
   const sys=keeperSystem(); const msgs=[{role:'system',content:sys},{role:'user',content:userText}];
   const model=state.settings.openaiModel||'gpt-4o-mini'; const key=state.settings.openaiKey;
+  const maxTok = Number(state.settings.keeperMax)||450;
   try{
     let text;
     if(key){
       const res=await fetch('https://api.openai.com/v1/chat/completions',{
         method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-        body: JSON.stringify({model, messages:msgs, temperature:0.8})
+        body: JSON.stringify({model, messages:msgs, temperature:0.8, max_tokens:maxTok})
       });
       if(!res.ok) throw new Error(await res.text());
       const data=await res.json(); text=data.choices?.[0]?.message?.content || '…';
@@ -849,6 +949,7 @@ async function keeperReply(userText){
     if(narr) addLine(narr,'keeper',{speaker:'Keeper'});
     const eng=parseEngine(text); if(eng) applyEngine(eng);
     if(state.settings.ttsOn && narr) speak(stripTags(narr),'Keeper');
+    maybeSummarizeLocal(); // keep memory fresh without extra tokens
   }catch(err){
     addLine("The air stills… (AI call failed; offline demo).",'keeper',{speaker:'Keeper'});
     const demo=demoKeeper(userText); addLine(demo,'keeper',{speaker:'Keeper'}); const eng=parseEngine(demo); if(eng) applyEngine(eng);
@@ -857,15 +958,30 @@ async function keeperReply(userText){
 byId('chatSend').onclick=sendChat;
 byId('chatInput').addEventListener('keydown',e=>{ if(e.key==='Enter') sendChat(); });
 byId('btnStopVoice').onclick=()=> stopVoice(true);
-function sendChat(){ const val=byId('chatInput').value.trim(); if(!val) return; byId('chatInput').value=''; addLine(val,'you'); if(val.startsWith('/')){ runSlash(val); return; } if(!state.settings.keeperOn){ addLine("Keeper is off. Enable in Settings.","keeper"); return; } keeperReply(val); }
+byId('btnAskKeeper').onclick=()=> askKeeperFromInput();
+function askKeeperFromInput(){
+  const input=byId('chatInput'); const val=input.value.trim(); if(!val) return;
+  keeperReply(val); input.value='';
+}
+function sendChat(){ const val=byId('chatInput').value.trim(); if(!val) return; byId('chatInput').value=''; addLine(val,'you');
+  if(val.startsWith('/')){ runSlash(val); return; }
+  if(!state.settings.keeperOn) return;
+  if((state.settings.keeperTrigger||'manual')==='auto'){ keeperReply(val); }
+}
 
 /* ---------- SLASH ---------- */
 function runSlash(val){
+  const ck=val.match(/^\/check\s+([A-Za-z][A-Za-z0-9 _-]*)\s+(\d{1,3})$/i);
+  if(ck){ const skill=ck[1].trim(); const base=clamp(Number(ck[2]),1,99); const r = rollPercentile(skill, base); addLine(r.text,'you'); return; }
+
+  const kv=val.match(/^\/keeper\s+(.+)/i);
+  if(kv){ keeperReply(kv[1]); return; }
+
   const m=val.match(/^\/roll\s+(.+)$/i); if(m){ doRoll(m[1], {who:'you'}); return; }
   const mv=val.match(/^\/move\s+(.+)\s+to\s+(\d+)\s*,\s*(\d+)$/i);
   if(mv){ const nameOrId=mv[1].trim(); const t=currentScene().tokens.find(x=> x.id===nameOrId || (x.name||'').toLowerCase()===nameOrId.toLowerCase()); if(!t){ addLine("No such token.","keeper"); return; } tryMoveCommand(t, Number(mv[2]), Number(mv[3])); return; }
   if(/^\/endturn/i.test(val)){ endTurn(); return; }
-  if(/^\/help/i.test(val)){ addLine("Commands: /roll NdM±K, /move [name] to x,y, /endturn. Use the wizard to auto-build your game.","keeper"); return; }
+  if(/^\/help/i.test(val)){ addLine("Commands: /roll NdM±K, /check Skill 60, /keeper question, /move [name] to x,y, /endturn.","keeper"); return; }
   addLine("Unknown command. Try /help.","keeper");
 }
 function tryMoveCommand(t,gx,gy){ const orig={x:t.x,y:t.y}; const can=canMoveTo(t,gx,gy,orig); if(!can.ok){ addLine(`Can’t move ${t.name} there right now.`, 'keeper'); return; } t.x=can.to.x; t.y=can.to.y; renderTokens(); spawnFXAt(t.x,t.y);
@@ -881,6 +997,17 @@ function doRoll(expr, opts={who:'you'}){ const p=expr.trim().toLowerCase().repla
   const line = `Roll ${n}d${sides}${mod?(mod>0?`+${mod}`:mod):''}${label} → ${sum} [${rolls.join(', ')}]`;
   addLine(line, opts.who==='keeper'?'keeper':'you');
   return {n,sides,mod,rolls,sum};
+}
+
+/* Percentile check with tiers */
+function rollPercentile(skillName, skillVal){
+  const roll = 1+Math.floor(Math.random()*100);
+  const hard = Math.floor(skillVal/2), extreme = Math.max(1,Math.floor(skillVal/5));
+  let tier = (roll<=extreme) ? 'Extreme Success' : (roll<=hard) ? 'Hard Success' : (roll<=skillVal) ? 'Success' : 'Failure';
+  if(roll===1) tier='Critical Success';
+  if(roll===100) tier='Fumble';
+  const text = `Check ${skillName} ${skillVal}: d100 → ${roll} → <b>${tier}</b>`;
+  return {roll, tier, text};
 }
 
 /* ---------- PARTICLES ---------- */
@@ -909,6 +1036,9 @@ byId('btnSaveSettings').onclick=()=>{
   state.settings.ttsQueue=byId('ttsQueue').checked;
   state.settings.ttsProviderDefault=byId('ttsProviderDefault').value;
   state.settings.rulesPack=byId('rulesPack').value;
+  state.settings.keeperTrigger=byId('keeperTrigger').value;
+  state.settings.keeperStyle=byId('keeperStyle').value;
+  state.settings.keeperMax=Number(byId('keeperMax').value)||450;
   saveSettings(); hide('#modalSettings');
 };
 
@@ -943,23 +1073,23 @@ function switchScene(idx){ if(idx<0||idx>=state.scenes.length) return; state.sce
 function updateSceneList(){ const wrap=byId('sceneList'); wrap.innerHTML=''; state.scenes.forEach((s,i)=> wrap.appendChild(el('div',{class:'row',style:'justify-content:space-between;align-items:center;margin:.25rem 0;'},
   [el('div',{class:'meta small'},[el('div',{html:`<b>${escapeHtml(s.name)}</b>`}), el('div',{class:'ts'},[`ID: ${s.id}`])]), el('button',{class:'ghost',onclick:()=> switchScene(i)},'Switch')] ))); }
 
-/* Party modal (+ voice controls) */
+/* Party modal (+ voice & sheet controls) */
 function renderParty(){
   const wrap=byId('partyList'); wrap.innerHTML='';
   currentScene().tokens.filter(t=>t.type==='pc').forEach(t=> wrap.appendChild(pcEditorRow(t)));
 }
 function pcEditorRow(t){
   const row=el('div',{class:'card',style:'margin:.3rem 0;'});
-  row.appendChild(el('div',{html:`<b>${escapeHtml(t.name||'Unnamed')}</b> @ ${t.x},${t.y}`}));
+  row.appendChild(el('div',{html:`<b>${escapeHtml(t.name||'Unnamed')}</b> — ${escapeHtml(t.sheet?.archetype||'Investigator')} @ ${t.x},${t.y}`}));
   const ctrls=el('div',{class:'row',style:'margin-top:.35rem'});
   ctrls.appendChild(el('button',{class:'ghost',onclick:async()=>{ await genPortraitFor(t); renderParty(); }},'Portrait'));
+  ctrls.appendChild(el('button',{class:'ghost',onclick:()=> openSheet(t)},'Open Sheet'));
   ctrls.appendChild(el('button',{class:'ghost',onclick:()=>{ const n=prompt('Rename',t.name||''); if(n!==null){ t.name=n; renderTokens(); renderParty(); }}},'Rename'));
   ctrls.appendChild(el('button',{class:'danger',onclick:()=>{ removeToken(t.id); renderParty(); }},'Remove'));
-  row.appendChild(ctrlls);
+  row.appendChild(ctrls);
 
   // Voice controls for this PC
   row.appendChild(voiceControlsForName(t.name||'PC'));
-
   return row;
 }
 function voiceControlsForName(name){
@@ -991,8 +1121,8 @@ function voiceControlsForName(name){
   wrap.appendChild(provSel); wrap.appendChild(voiceSel); wrap.appendChild(voiceInp); wrap.appendChild(testBtn);
   return wrap;
 }
-byId('btnGenParty').onclick=()=>{ const names=["Eleanor Shaw","Caleb Finch","Iris Caldwell","Thomas Greer","Miriam Kline","Walter Rourke","Opal Reyes","Jonah Pike","Vera Doyle","Silas Hart"]; for(let i=0;i<5;i++) addToken({name:names[Math.floor(Math.random()*names.length)], type:'pc', x:i, y:GRID_H-1, persona:"Driven investigator"}); renderParty(); toast('5 investigators added'); };
-byId('btnAddPC').onclick=()=>{ addToken({name:prompt('Name?','New Investigator')||'Investigator', type:'pc', x:0, y:GRID_H-1, persona:""}); renderParty(); };
+byId('btnGenParty').onclick=()=>{ const names=["Eleanor Shaw","Caleb Finch","Iris Caldwell","Thomas Greer","Miriam Kline","Walter Rourke","Opal Reyes","Jonah Pike","Vera Doyle","Silas Hart"]; for(let i=0;i<5;i++){ const n=names[Math.floor(Math.random()*names.length)]; addToken({name:n, type:'pc', x:i, y:GRID_H-1}); } renderParty(); toast('5 investigators added'); };
+byId('btnAddPC').onclick=()=>{ addToken({name:prompt('Name?','New Investigator')||'Investigator', type:'pc', x:0, y:GRID_H-1}); renderParty(); };
 byId('btnPortraits').onclick=async()=>{ for(const t of currentScene().tokens.filter(t=>t.type==='pc')) await genPortraitFor(t); renderParty(); };
 
 /* NPC modal */
@@ -1000,11 +1130,12 @@ function renderNPCs(){ const wrap=byId('npcList'); wrap.innerHTML=''; currentSce
 function npcEditorRow(t){ const row=el('div',{class:'row',style:'align-items:center;justify-content:space-between;margin:.25rem 0;flex-wrap:wrap'});
   row.appendChild(el('div',{}, `${t.name||'Unnamed'} @ ${t.x},${t.y}`)); const ctrls=el('div',{class:'row'});
   ctrls.appendChild(el('button',{class:'ghost',onclick:async()=>{ await genPortraitFor(t); renderNPCs(); }},'Portrait'));
+  ctrls.appendChild(el('button',{class:'ghost',onclick:()=> openSheet(t)},'Open Sheet'));
   ctrls.appendChild(el('button',{class:'ghost',onclick:()=>{ const n=prompt('Rename',t.name||''); if(n!==null){ t.name=n; renderTokens(); renderNPCs(); }}},'Rename'));
   ctrls.appendChild(el('button',{class:'danger',onclick:()=>{ removeToken(t.id); renderNPCs(); }},'Remove'));
-  row.appendChild(ctrlls); return row; }
-byId('btnGenNPCs').onclick=()=>{ const arche=['Dockhand','Fishmonger','Librarian','Professor','Journalist','Doctor','Officer','Priest','Innkeeper','Smuggler']; for(let i=0;i<4;i++) addToken({name: arche[Math.floor(Math.random()*arche.length)]+' '+(i+1), type:'npc', x:GRID_W-1-i, y:0, persona:"Townsperson with secret"}); renderNPCs(); };
-byId('btnAddNPC').onclick=()=>{ addToken({name:prompt('Name?','Mysterious NPC')||'Mysterious NPC', type:'npc', x:GRID_W-1, y:0, persona:""}); renderNPCs(); };
+  row.appendChild(ctrls); return row; }
+byId('btnGenNPCs').onclick=()=>{ const arche=['Dockhand','Fishmonger','Librarian','Professor','Journalist','Doctor','Officer','Priest','Innkeeper','Smuggler']; for(let i=0;i<4;i++) addToken({name: arche[Math.floor(Math.random()*arche.length)]+' '+(i+1), type:'npc', x:GRID_W-1-i, y:0}); renderNPCs(); };
+byId('btnAddNPC').onclick=()=>{ addToken({name:prompt('Name?','Mysterious NPC')||'Mysterious NPC', type:'npc', x:GRID_W-1, y:0}); renderNPCs(); };
 
 /* ---------- HANDOUTS ---------- */
 function renderHandouts(){ const list=byId('handoutsList'); list.innerHTML=''; const h=state.campaign?.handouts||[]; if(!h.length){ list.innerHTML='<div class="note">No handouts yet. Click “Generate Handouts”.</div>'; return; }
@@ -1018,28 +1149,50 @@ function updateSlots(){ const wrap=byId('slots'); wrap.innerHTML=''; const slots
   ]); wrap.appendChild(row);} }
 function saveSlots(slots){ localStorage.setItem(LS_SLOTS, JSON.stringify(slots)); }
 function loadSlots(){ const raw=localStorage.getItem(LS_SLOTS); return raw? JSON.parse(raw):[]; }
-function captureState(){ return {meta:{ts:Date.now(), name: currentScene().name}, settings: state.settings, sceneIndex: state.sceneIndex, scenes: state.scenes, campaign: state.campaign, youPCId: state.youPCId, npcCatalog: state.npcCatalog}; }
-function applyState(data){ Object.assign(state.settings, data.settings||{}); state.sceneIndex=data.sceneIndex||0; state.scenes=data.scenes||[newScene('Recovered')]; state.campaign=data.campaign||null; state.youPCId=data.youPCId||null; state.npcCatalog=data.npcCatalog||[]; loadSettings(); renderAll(); }
+function captureState(){
+  return {
+    meta:{ts:Date.now(), name: currentScene().name},
+    settings: state.settings,
+    sceneIndex: state.sceneIndex,
+    scenes: state.scenes,
+    campaign: state.campaign,
+    youPCId: state.youPCId,
+    npcCatalog: state.npcCatalog
+  };
+}
+function applyState(data){
+  Object.assign(state.settings, data.settings||{});
+  state.sceneIndex=data.sceneIndex||0;
+  state.scenes=data.scenes||[newScene('Recovered')];
+  state.campaign=data.campaign||null;
+  state.youPCId=data.youPCId||null;
+  state.npcCatalog=data.npcCatalog||[];
+  loadSettings(); renderAll();
+}
 function saveToSlot(i){ const slots=loadSlots(); slots[i]=captureState(); saveSlots(slots); updateSlots(); toast('Saved.'); }
 function loadFromSlot(i){ const slots=loadSlots(); if(!slots[i]){ toast('Empty slot'); return; } applyState(slots[i]); toast('Loaded.'); }
 function clearSlot(i){ const slots=loadSlots(); slots[i]=null; saveSlots(slots); updateSlots(); }
-byId('btnExport').onclick=()=>{ const blob=new Blob([JSON.stringify(captureState(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='solo-investigator-save.json'; a.click(); URL.revokeObjectURL(url); };
+byId('btnExport').onclick=()=>{ const blob=new Blob([JSON.stringify(captureState(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='solo-investigator-save.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 2000); };
 byId('btnImport').onclick=()=>{ try{ const data=JSON.parse(byId('importText').value.trim()); applyState(data); toast('Imported.'); }catch{ toast('Bad JSON'); } };
 
-/* ---------- IMAGES (always return DATA URLs; cached) ---------- */
+/* ---------- IMAGES (Data URLs; cached) ---------- */
 async function openaiImage(prompt, size='1024x1024'){
   // Return a data URL so saves keep assets; cache by prompt+model+size
   const key=state.settings.openaiKey; const use=state.settings.useImages && state.settings.imageModel!=='placeholders';
   const model=state.settings.imageModel || 'dall-e-3';
   const cacheKey = await hashKey(`img|${model}|${size}|${prompt}`);
-  const cached=await idbGet('images',cacheKey); if(cached) return cached; // cached as dataURL string
+  const cached=await idbGet('images',cacheKey); if(cached) return cached;
 
   if(!key || !use){
     const ph = await placeholderImage(prompt,size); await idbSet('images',cacheKey,ph); return ph;
   }
   try{
     const res=await fetch('https://api.openai.com/v1/images/generations',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`}, body: JSON.stringify({model, prompt, size, response_format:'b64_json'}) });
-    if(!res.ok){ try{ const j=await res.json(); addLine(`Image generation failed (${res.status}). ${escapeHtml(j?.error?.message||res.statusText)} — using placeholders.`,'keeper'); }catch{} const ph=await placeholderImage(prompt,size); await idbSet('images',cacheKey,ph); return ph; }
+    if(!res.ok){
+      // gracefully fallback without spamming tokens next time
+      const ph = await placeholderImage(prompt,size); await idbSet('images',cacheKey,ph);
+      return ph;
+    }
     const data=await res.json(); const b64=data.data?.[0]?.b64_json; if(!b64){ const ph=await placeholderImage(prompt,size); await idbSet('images',cacheKey,ph); return ph; }
     const dataUrl = `data:image/png;base64,${b64}`; await idbSet('images',cacheKey,dataUrl); return dataUrl;
   }catch(e){
@@ -1153,7 +1306,7 @@ function renderWizard(){
     ]);
     body.appendChild(el('div',{class:'card'},[
       el('h3',{},'3) Choose YOU + 4 companions'),
-      el('div',{class:'small'},'Click “Me” on one investigator, then “Add Companion” on exactly four others. Click “Roll Stats” to see their starting attributes.'),
+      el('div',{class:'small'},'Click “Me” on one investigator, then “Add Companion” on exactly four others. Click “Roll Stats” to set starting attributes.'),
       el('div',{class:'hr'}), list, el('div',{class:'small',id:'partyPickInfo',style:'margin-top:.5rem;color:#bcd1ff'}, pickSummary())
     ]));
     body.appendChild(voiceSetup);
@@ -1169,7 +1322,7 @@ function renderWizard(){
       ]),
       el('div',{class:'card'},[
         el('h3',{},'Tips'),
-        el('div',{class:'small'},'Encounter mode: Start Encounter → move up to 4 tiles → one action → /endturn. Dice results appear in chat.')
+        el('div',{class:'small'},'Encounter mode: Start Encounter → move up to 4 tiles → one action → /endturn. Use /check Skill 60 for generic checks.')
       ])
     ]));
   }
@@ -1238,9 +1391,7 @@ function renderVoiceSetup(){
 }
 
 /* ---------- STORY ARC (AI) with variety & anti-repetition ---------- */
-function randomFrom(arr, seed){ return arr[Math.floor(Math.abs(seed*9301+49297)%233280/233280 * arr.length) % arr.length]; }
 function pickDemoArc(){
-  // choose a demo arc that roughly matches the chosen locale; default random if no match
   const v = wizard.variety;
   let pool = DEMO_ARCS.slice();
   if(v.locale.includes('University')||v.locale.includes('Museum')) pool = DEMO_ARCS.filter(a=> /library|archives|museum/i.test(a.setting));
@@ -1257,7 +1408,6 @@ async function genStoryArcAI(retryOnSimilar=false){
   if(status) status.textContent='Generating arc…';
   const v=wizard.variety;
   const diversityId = Math.random().toString(36).slice(2,10)+'-'+v.seed;
-  // Rotating creative ingredients & banned motifs to break sameness
   const ingredientsPacks = [
     {locales:["rail depot","hydroelectric dam","sanitarium","opera house","desert dig site","orphanage","subway tunnels","clock factory"], motifs:["echoes","paper monsters","misnumbered doors","stolen faces","timekeeping errors"], threats:["administrator","archivist collective","sleepwalkers","signalman"], ban:["coast","docks","cannery","fog horn"]},
     {locales:["planetarium","radio tower","ice rink","observatory dome","mountain hotel","seance parlor","ship graveyard (avoid unless coastal chosen)","salt flats"], motifs:["wrong shadows","repeating names","letters that bruise skin","bloodless blood"], threats:["radio host","surgeon","antiquarian ring","chorus"], ban:["sailors","harbor","tide","wharf"]}
@@ -1294,11 +1444,9 @@ Constraints:
     if(!arc){ continue; }
     const fp = arcFingerprint(arc);
     if(retryOnSimilar && recent.includes(fp)){ arc=null; continue; }
-    // accept
     recent.push(fp); localStorage.setItem(LS_ARC_FP, JSON.stringify(recent.slice(-6)));
     wizard.arc=arc; state.campaign=arc; const prev=byId('arcPreview'); if(prev) prev.innerHTML=arcHtml(arc); if(status) status.textContent='Arc generated.'; return;
   }
-  // Fallback
   const d=pickDemoArc(); if(status) status.textContent='Fell back to demo arc.';
 }
 function arcFingerprint(arc){
@@ -1355,7 +1503,7 @@ async function ensureNPCCatalog(arc){
 Roles should match the scenario (${arc.title}) across varied professions (authority, scholar, worker, occult, medical, criminal, clergy, bystander).
 Prompts should describe a 1920s portrait in cinematic, painterly style. Return ONLY JSON.`;
       const res=await fetch('https://api.openai.com/v1/chat/completions',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${state.settings.openaiKey}`},
-        body: JSON.stringify({model: state.settings.openaiModel||'gpt-4o-mini', temperature:0.6, messages:[{role:'system',content:sys},{role:'user',content:`Scenario summary: ${arc.logline}. Setting: ${arc.setting}.`}]})
+        body: JSON.stringify({model: state.settings.openaiModel||'gpt-4o-mini', temperature:0.6, max_tokens:350, messages:[{role:'system',content:sys},{role:'user',content:`Scenario summary: ${arc.logline}. Setting: ${arc.setting}.`}]})
       });
       if(res.ok){ const data=await res.json(); const txt=data.choices?.[0]?.message?.content||'{}'; const out=JSON.parse(txt); catalog=out.npcs||[]; }
     }catch{ /* ignore */ }
@@ -1388,7 +1536,7 @@ async function generateHandoutsAuto(arc=state.campaign){
 {"handouts":[{"title":string,"text":string,"imagePrompt":string}... exactly 3 items]}
 The text should be short (2-5 lines) and diegetic (ledger snippets, ritual notes, map fragments). Return ONLY JSON.`;
       const res=await fetch('https://api.openai.com/v1/chat/completions',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${state.settings.openaiKey}`},
-        body: JSON.stringify({model: state.settings.openaiModel||'gpt-4o-mini', temperature:0.5, messages:[
+        body: JSON.stringify({model: state.settings.openaiModel||'gpt-4o-mini', temperature:0.5, max_tokens:380, messages:[
           {role:'system',content:sys},{role:'user',content:`Scenario: ${arc.title} — ${arc.logline}. Acts: ${arc.acts.map(a=>a.name).join(' | ')}`}
         ]})
       });
@@ -1407,12 +1555,112 @@ function demoHandouts(){ return [
 /* ---------- PORTRAITS ---------- */
 async function genPortraitFor(t){ const base = t.prompt || `Portrait, 1920s ${t.type==='pc'?'investigator':''} ${t.name||'character'}, moody film grain, chiaroscuro, painterly, round crop`; try{ t.portraitData=await openaiImage(base,'1024x1024'); renderTokens(); } catch{ t.portraitData=await placeholderImage(base,'512x512'); renderTokens(); } }
 
+/* ---------- CHARACTER SHEETS ---------- */
+function defaultSheet(t){
+  return {
+    archetype: t.type==='pc' ? 'Investigator' : 'NPC',
+    persona: t.persona||'',
+    hp: 10, sanity: 50, speed: t.speed||4,
+    attrs:{Brains:10,Brawn:10,Nerve:10,Perception:10,Charm:10},
+    skills:{Spot:60,Stealth:40,Medicine:30,Library:50,Persuade:40},
+    inventory:[], conditions:[]
+  };
+}
+let sheetTarget=null;
+function openSheet(t){
+  sheetTarget=t; ensureSheet(t); fillSheet(t); show('#modalSheet');
+}
+function ensureSheet(t){ t.sheet = t.sheet || defaultSheet(t); }
+function fillSheet(t){
+  byId('sheetTitle').textContent=`Character Sheet — ${t.name||'Unknown'}`;
+  byId('csName').value = t.name||'';
+  byId('csArch').value = t.sheet.archetype||'';
+  byId('csPersona').value = t.persona || t.sheet.persona || '';
+  byId('csHP').value = t.sheet.hp||0;
+  byId('csSAN').value = t.sheet.sanity||0;
+  byId('csSPD').value = t.sheet.speed||4;
+  byId('csBrains').value = t.sheet.attrs.Brains||10;
+  byId('csBrawn').value = t.sheet.attrs.Brawn||10;
+  byId('csNerve').value = t.sheet.attrs.Nerve||10;
+  byId('csPerc').value = t.sheet.attrs.Perception||10;
+  byId('csCharm').value = t.sheet.attrs.Charm||10;
+  byId('csConds').value = (t.sheet.conditions||[]).join(', ');
+
+  // skills list
+  const sk=byId('csSkills'); sk.innerHTML=''; Object.entries(t.sheet.skills||{}).forEach(([k,v])=>{
+    const row=el('div',{class:'row'},[
+      el('div',{class:'small'},`${k} ${v}`),
+      el('button',{class:'ghost',onclick:()=>{ const r=rollPercentile(k, v); addLine(`${t.name}: ${r.text}`,'you'); }},'Roll'),
+      el('button',{class:'ghost',onclick:()=>{ const nv=Number(prompt('New value', String(v))); if(!isNaN(nv)){ t.sheet.skills[k]=clamp(nv,1,99); fillSheet(t); }}},'Edit'),
+      el('button',{class:'danger',onclick:()=>{ delete t.sheet.skills[k]; fillSheet(t); }},'Delete')
+    ]);
+    sk.appendChild(row);
+  });
+
+  // inventory list
+  const inv=byId('csInv'); inv.innerHTML='';
+  let totalWt=0;
+  (t.sheet.inventory||[]).forEach((it,idx)=>{
+    totalWt += (Number(it.weight)||0)*(Number(it.qty)||1);
+    inv.appendChild(el('div',{class:'row'},[
+      el('div',{class:'small'},`${it.name} ×${it.qty||1} (wt ${it.weight||0})`),
+      el('button',{class:'ghost',onclick:()=>{ addLine(`${t.name} uses ${it.name}.`,'you'); if(it.qty>1){ it.qty--; } else { t.sheet.inventory.splice(idx,1); } fillSheet(t);} },'Use'),
+      el('button',{class:'danger',onclick:()=>{ t.sheet.inventory.splice(idx,1); fillSheet(t);} },'Drop')
+    ]));
+  });
+  byId('invWeight').textContent = `Weight: ${totalWt.toFixed(1)}`;
+}
+byId('btnAddSkill').onclick=()=>{
+  if(!sheetTarget) return;
+  const n=byId('csSkillName').value.trim(); const v=clamp(Number(byId('csSkillVal').value||0),1,99);
+  if(!n||!v) return; sheetTarget.sheet.skills[n]=v; byId('csSkillName').value=''; byId('csSkillVal').value=''; fillSheet(sheetTarget);
+};
+byId('btnAddItem').onclick=()=>{
+  if(!sheetTarget) return;
+  const n=byId('csItemName').value.trim(); const q=clamp(Number(byId('csItemQty').value||1),1,999); const w=Math.max(0,Number(byId('csItemWt').value||0));
+  if(!n) return; sheetTarget.sheet.inventory.push({name:n, qty:q, weight:w}); byId('csItemName').value=''; byId('csItemQty').value='1'; byId('csItemWt').value='0'; fillSheet(sheetTarget);
+};
+byId('btnSheetSave').onclick=()=>{
+  if(!sheetTarget) return;
+  sheetTarget.name = byId('csName').value||sheetTarget.name;
+  sheetTarget.sheet.archetype = byId('csArch').value||sheetTarget.sheet.archetype;
+  sheetTarget.persona = byId('csPersona').value||'';
+  sheetTarget.sheet.hp = Number(byId('csHP').value)||sheetTarget.sheet.hp;
+  sheetTarget.sheet.sanity = Number(byId('csSAN').value)||sheetTarget.sheet.sanity;
+  sheetTarget.sheet.speed = sheetTarget.speed = Number(byId('csSPD').value)||sheetTarget.sheet.speed;
+  sheetTarget.sheet.attrs = {
+    Brains: Number(byId('csBrains').value)||10,
+    Brawn: Number(byId('csBrawn').value)||10,
+    Nerve: Number(byId('csNerve').value)||10,
+    Perception: Number(byId('csPerc').value)||10,
+    Charm: Number(byId('csCharm').value)||10
+  };
+  sheetTarget.sheet.conditions = (byId('csConds').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  renderTokens(); renderTokenList(); toast('Sheet saved');
+  hide('#modalSheet');
+};
+
 /* ---------- SHOW/HIDE ---------- */
-function show(sel){ document.querySelector(sel).classList.add('show'); }
-function hide(sel){ document.querySelector(sel).classList.remove('show'); }
+function show(sel){ const m=document.querySelector(sel); if(m) m.classList.add('show'); }
+function hide(sel){ const m=document.querySelector(sel); if(m) m.classList.remove('show'); }
+
+/* ---------- LOCAL MEMORY SUMMARIZATION (no API) ---------- */
+function maybeSummarizeLocal(){
+  // After every ~12 Keeper lines, make a tiny stitched summary to shrink future prompts
+  const lines = Array.from(chatLog.querySelectorAll('.line')).slice(-40);
+  if(lines.length<12) return;
+  const points=[];
+  lines.forEach(l=>{
+    const who = l.classList.contains('you')?'You':'Keeper';
+    const txt = stripTags((l.querySelector('.content')?.innerHTML||'')).trim();
+    if(!txt) return;
+    if(points.length<10 && txt.length>6) points.push(`${who}: ${txt.slice(0,140)}`);
+  });
+  state.memory = points.slice(-8).join(' | ');
+}
 
 /* ---------- INIT ---------- */
-function initialSeed(){ if(currentScene().tokens.length===0){ addToken({name:'pc0',type:'pc',x:1,y:6, persona:"Generic learner"}); addToken({name:'pc1',type:'pc',x:2,y:6, persona:"Generic learner"}); addToken({name:'npc0',type:'npc',x:10,y:1, persona:"Local"}); } }
+function initialSeed(){ if(currentScene().tokens.length===0){ addToken({name:'pc0',type:'pc',x:1,y:6}); addToken({name:'pc1',type:'pc',x:2,y:6}); addToken({name:'npc0',type:'npc',x:10,y:1}); } }
 function renderInitButtons(){ byId('btnInitRoll').onclick=rollAllInit; byId('btnInitNext').onclick=nextTurn; byId('btnInitClear').onclick=clearInit; }
 
 /* Keyboard tool binds */
@@ -1421,10 +1669,10 @@ function setTool(t){ tool=t; byId('tool').value=t; toast('Tool: '+t); }
 byId('tool').addEventListener('change',e=> setTool(e.target.value));
 byId('brush').addEventListener('change',e=> brush=Number(e.target.value));
 
-/* Map clicks banner (exists above) */
+/* Begin play banner */
 function greetAndStart(){
   addLine(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`,'keeper',{speaker:'Keeper'});
-  addLine(`Use <i>Start Encounter</i> when you want guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action, then type <i>/endturn</i>. Try <i>/roll 1d100</i> for a generic check.`,'keeper',{speaker:'Keeper'});
+  addLine(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i>.`,'keeper',{speaker:'Keeper'});
 }
 
 /* Boot */
