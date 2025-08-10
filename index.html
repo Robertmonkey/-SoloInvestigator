@@ -16,6 +16,7 @@
     <button id="btnParty">Party</button>
     <button id="btnNPCs">NPCs</button>
     <button id="btnHandouts">Handouts</button>
+    <button id="btnClues">Clues</button>
     <button id="btnSaveLoad">Save/Load</button>
     <span class="pill">Shortcuts: <span class="kbd">V</span> select · <span class="kbd">R</span> ruler · <span class="kbd">F</span> reveal · <span class="kbd">H</span> hide · <span class="kbd">U</span> undo</span>
   </nav>
@@ -82,6 +83,7 @@
         <button id="btnCenter" class="ghost">Center Tokens</button>
         <button id="btnParticles" class="ghost">Ping FX</button>
         <button id="btnGenBG" class="primary">Generate Background</button>
+        <button id="btnOmen" class="ghost">Random Omen</button>
       </div>
       <div class="row" style="margin-top:.5rem">
         <button id="btnRevealAll" class="success">Reveal All</button>
@@ -278,7 +280,7 @@
     <div id="npcList" class="small" style="margin-top:.5rem"></div>
     <div class="hr"></div>
     <div class="row right"><button class="ghost" data-close="#modalNPCs">Close</button></div>
-  </div>
+</div>
 </div>
 
 <!-- HANDOUTS -->
@@ -292,6 +294,22 @@
     <div id="handoutsList" class="small" style="margin-top:.5rem"></div>
     <div class="hr"></div>
     <div class="row right"><button class="ghost" data-close="#modalHandouts">Close</button></div>
+</div>
+</div>
+
+<!-- CLUES -->
+<div class="modal" id="modalClues">
+  <div class="scrim" data-close="#modalClues"></div>
+  <div class="sheet">
+    <h2>Clue Journal</h2>
+    <div id="clueList" class="col" style="margin-bottom:.5rem"></div>
+    <div class="row" style="margin-top:.5rem">
+      <input id="clueTitle" placeholder="Title"/>
+      <input id="clueText" placeholder="Details"/>
+      <button id="btnAddClue" class="ghost">Add</button>
+    </div>
+    <div class="hr"></div>
+    <div class="row right"><button class="ghost" data-close="#modalClues">Close</button></div>
   </div>
 </div>
 
@@ -331,6 +349,8 @@
           <input id="csArch"/>
           <label>Persona / Notes</label>
           <textarea id="csPersona" rows="4"></textarea>
+          <label>Bonds</label>
+          <input id="csBonds" placeholder="family, debts"/>
         </div>
       </div>
       <div class="card">
