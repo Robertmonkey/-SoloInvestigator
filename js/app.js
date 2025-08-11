@@ -1121,7 +1121,8 @@ function defaultVoiceFor(actor, provider){
 }
 
 function defaultBrowserVoice(sex, age){
-  const voices = (state.browserVoices||[]).filter(v=> v.name.includes('Microsoft') && v.name.includes('Natural'));
+  const voices = (state.browserVoices||[])
+    .filter(v=> v.name.includes('Microsoft') && v.name.includes('Natural') && v.name.includes('English'));
   if(sex==='M'){
     const mvo = voices.find(v=> /Guy|Eric|Brandon|Christopher|Tony/i.test(v.name));
     if(mvo) return mvo.name;
@@ -1129,7 +1130,7 @@ function defaultBrowserVoice(sex, age){
     const fvo = voices.find(v=> /Aria|Jenny|Sara|Samantha|Michelle/i.test(v.name));
     if(fvo) return fvo.name;
   }
-  return (voices[0] || state.browserVoices[0] || {}).name || '';
+  return ((voices[0]) || (state.browserVoices||[]).find(v=> !(v.name.includes('Microsoft') && v.name.includes('Natural'))) || state.browserVoices[0] || {}).name || '';
 }
 
 function defaultElevenVoice(sex){
@@ -1198,7 +1199,8 @@ async function fetchOpenAITTSBlob(text, voiceId){
 }
 /* Browser voices list */
 function refreshBrowserVoices(){
-  state.browserVoices = window.speechSynthesis.getVoices()||[];
+  state.browserVoices = (window.speechSynthesis.getVoices()||[])
+    .filter(v=> !(v.name.includes('Microsoft') && v.name.includes('Natural') && !v.name.includes('English')));
   applyDefaultVoices();
 }
 if('speechSynthesis' in window){ window.speechSynthesis.onvoiceschanged = refreshBrowserVoices; refreshBrowserVoices(); }
