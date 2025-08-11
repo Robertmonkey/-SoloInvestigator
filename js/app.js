@@ -168,8 +168,16 @@ function currentScene(){ return state.scenes[state.sceneIndex]; }
 
 /* ---------- UI HELPERS ---------- */
 const byId=id=>document.getElementById(id);
-function el(tag,attrs={},children=[]){ const e=document.createElement(tag);
-  for(const k in attrs){ if(k==='class') e.className=attrs[k]; else if(k==='html') e.innerHTML=attrs[k]; else if(k==='onclick') e.onclick=attrs[k]; else e.setAttribute(k,attrs[k]); }
+function el(tag,attrs={},children=[]){
+  const e=document.createElement(tag);
+  for(const k in attrs){
+    if(k==='class') e.className=attrs[k];
+    else if(k==='html') e.innerHTML=attrs[k];
+    else if(k==='onclick') e.onclick=attrs[k];
+    else if(k==='value') e.value=attrs[k];
+    else if(k==='checked' || k==='selected') e[k]=!!attrs[k];
+    else e.setAttribute(k,attrs[k]);
+  }
   if(!Array.isArray(children)) children=[children];
   children.filter(Boolean).forEach(c=> e.appendChild(typeof c==='string'? document.createTextNode(c): c));
   return e;
@@ -190,7 +198,10 @@ function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
 function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
 
 /* ---------- PERSISTENCE ---------- */
-function saveSettings(){ localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings)); toast('Settings saved'); }
+function saveSettings(showToast=true){
+  localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings));
+  if(showToast) toast('Settings saved');
+}
 function loadSettings(){
   const raw=localStorage.getItem(LS_SETTINGS); if(raw){ try{ Object.assign(state.settings, JSON.parse(raw)); }catch{} }
   byId('openaiKey').value = state.settings.openaiKey;
@@ -531,7 +542,7 @@ function addWhisper(target, text){
   chatLog.scrollTop=chatLog.scrollHeight;
 }
 function speakerAvatar(name){
-  const key=(name||'').toLowerCase();
+  const key=(name||'').trim().toLowerCase();
   const t=currentScene().tokens.find(x=> (x.name||'').toLowerCase()===key);
   if(t?.portraitData) return t.portraitData;
   const np=(state.campaign?.npcPortraits||[]).find(p=> (p.name||p.role||'').toLowerCase()===key);
@@ -545,7 +556,7 @@ function speakerAvatar(name){
   ctx.font='bold 20px ui-monospace,monospace';
   ctx.textAlign='center';
   ctx.textBaseline='middle';
-  const inis=(name||'??').split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join('');
+  const inis=(name||'??').trim().split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join('');
   ctx.fillText(inis,32,32);
   return cv.toDataURL('image/png');
 }
@@ -637,7 +648,7 @@ function tryMoveCommand(t,gx,gy,isProgrammatic=false){
 
 /* ---------- SIMPLE DICE (chat-only) ---------- */
 function doRoll(expr, opts={}){
-  const p=expr.trim().toLowerCase().replace(/^d/,'1d');
+  const p=expr.trim().toLowerCase().replace(/\s+/g,'').replace(/^d/,'1d');
   const m=p.match(/^(\d+)d(\d+)([+-]\d+)?$/);
   if(!m){ addSystemMessage(`Bad roll: ${expr}`); return; }
   const n=Number(m[1]), sides=Number(m[2]), mod=Number(m[3]||0);
@@ -767,7 +778,7 @@ function voiceControlsForName(actor){
   const parts=[];
   const sex=actor.sex==='M'? 'Male' : (actor.sex==='F'? 'Female' : actor.sex);
   if(sex) parts.push(sex);
-  if(actor.age) parts.push(actor.age);
+  if(actor.age!=null) parts.push(actor.age);
   const label = parts.length? `${name} (${parts.join(', ')})` : name;
 
   const wrap=el('div',{class:'row',style:'margin-top:.35rem;align-items:center;flex-wrap:wrap'});
@@ -786,7 +797,12 @@ function voiceControlsForName(actor){
   function fillVoiceOptions(){
     voiceSel.innerHTML='';
     if(provSel.value==='browser'){
-      (state.browserVoices||[]).forEach(v=> voiceSel.appendChild(el('option',{value:v.name, selected: v.name===chosenId}, v.name)));
+      (state.browserVoices||[]).forEach(v=>{
+        const opt=el('option',{value:v.name}, v.name);
+        if(v.name===chosenId) opt.selected=true;
+        voiceSel.appendChild(opt);
+      });
+      if(!voiceSel.value && voiceSel.options.length){ voiceSel.value = voiceSel.options[0].value; }
     }
   }
   fillVoiceOptions();
@@ -804,12 +820,12 @@ function voiceControlsForName(actor){
     }else{
       state.settings.voiceMap[name] = {provider: provSel.value, id: idVal, auto:false};
     }
-    saveSettings();
+    saveSettings(false);
   }
 
   provSel.onchange = ()=>{ fillVoiceOptions(); refreshVis(); updateMap(); };
   voiceSel.onchange = updateMap;
-  voiceInp.oninput = updateMap;
+  voiceInp.onchange = updateMap;
 
   // initialize inputs
   if(chosenId && (provSel.value==='browser')){ voiceSel.value=chosenId; }
@@ -1173,7 +1189,7 @@ function applyDefaultVoices(){
       state.settings.voiceMap[t.name] = {provider, id, auto:true};
     }
   });
-  saveSettings();
+  saveSettings(false);
 }
 
 async function speak(text, speaker='Keeper', role='pc'){
@@ -1345,7 +1361,7 @@ async function wizardNext(){
     state.settings.ttsProviderDefault = byId('w_ttsdef').value;
     state.settings.ttsOn     = byId('w_tts').checked;
     state.settings.ttsQueue  = byId('w_queue').checked;
-    saveSettings();
+    saveSettings(false);
   }
   if(wizard.step===1){
     wizard.variety.era    = byId('v_era').value;
