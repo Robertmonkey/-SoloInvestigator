@@ -32,14 +32,23 @@ window.KOKORO_VOICES = window.KOKORO_VOICES || [];
 let kokoroInit = null;
 let ort;
 
+async function loadOrt(){
+  if(window.ort) return window.ort;
+  await new Promise((resolve, reject)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js';
+    s.onload=resolve;
+    s.onerror=()=>reject(new Error('onnxruntime-web failed to load'));
+    document.head.appendChild(s);
+  });
+  return window.ort;
+}
+
 async function ensureKokoro(){
   if(!kokoroInit){
     kokoroInit = (async()=>{
       try{
-        if(!ort){
-          ort = await import('https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js');
-          window.ort = ort;
-        }
+        if(!ort){ ort = await loadOrt(); }
         // Load helper libs for phonemization and npy/npz parsing
         const [{phonemize}, {unzipSync}, npyjsMod, config] = await Promise.all([
           import('https://cdn.jsdelivr.net/npm/phonemizer@1.2.1/dist/phonemizer.js').catch(()=>({phonemize:async t=>[t]})),
@@ -53,7 +62,10 @@ async function ensureKokoro(){
         async function fetchMaybe(localUrl, remoteUrl){
           try{
             const r = await fetch(localUrl);
-            if(r.ok) return r.arrayBuffer();
+            if(r.ok){
+              const buf = await r.arrayBuffer();
+              if(buf.byteLength > 100000) return buf;
+            }
           }catch(e){/* ignore */}
           const res = await fetch(remoteUrl);
           if(!res.ok) throw new Error(`HTTP ${res.status} for ${remoteUrl}`);
