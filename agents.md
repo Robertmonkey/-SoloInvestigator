@@ -159,7 +159,7 @@ Local caches:
 
 Images — keyed by (model + size + prompt) hash; avoids re-billing for repeats.
 
-TTS (ElevenLabs) — audio blobs cached by (voice + text + speaker) hash; replay is free.
+TTS (ElevenLabs/OpenAI) — audio blobs cached by (voice + text + speaker) hash; replay is free.
 
 Browser TTS — zero cost fallback with per-speaker mapping.
 
@@ -176,7 +176,7 @@ Images → placeholder generator (painterly gradient with prompt caption).
 
 Audio:
 
-If ElevenLabs fails, the line is still logged; user can replay later after credentials are fixed.
+If ElevenLabs or OpenAI fails, the line is still logged; user can replay later after credentials are fixed.
 
 Browser TTS is used when selected or when premium is unavailable.
 

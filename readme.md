@@ -1,6 +1,6 @@
 # Solo Investigator — Enhanced Edition
 
-A modular, client-only tabletop experience inspired by investigative horror RPGs. It teaches the basics through a guided wizard, runs entirely in your browser (or GitHub Pages), and can optionally use OpenAI for story/asset generation and ElevenLabs, Kokoro, or your browser for voices.
+A modular, client-only tabletop experience inspired by investigative horror RPGs. It teaches the basics through a guided wizard, runs entirely in your browser (or GitHub Pages), and can optionally use OpenAI for story/asset generation and ElevenLabs, OpenAI TTS, or your browser for voices.
 
 > **Privacy-first:** No servers. Your API keys never leave your device. Saves (including generated assets) are stored locally or exported as a single JSON file.
 
@@ -16,7 +16,7 @@ A modular, client-only tabletop experience inspired by investigative horror RPGs
 - **Handouts in Chat:** Keeper can drop handouts directly into chat and update party inventory and stats automatically.
 - **System Messages:** Generic engine notices (start prompts, dice rolls, invalid moves) appear as ⚙️ lines, separate from the Keeper.
 - **Tactical Board:** Grid, fog of war (reveal/hide/undo), ruler, pings, tokens w/ portraits, active-turn highlight, movement budgets.
-- **Voices:** Queue-based TTS with **Browser voices (free)**, **ElevenLabs** (premium), or **Kokoro** (local neural). Per-speaker voice selection + local caching for replays.
+- **Voices:** Queue-based TTS with **Browser voices (free)**, **ElevenLabs** (premium), or **OpenAI TTS**. Per-speaker voice selection + local caching for replays.
 - **Asset-Full Saves:** Export/import includes scenes, portraits, and handouts as data URLs—no re-generation needed when you reload.
 - **Cost Controls:** Local asset cache, Keeper auto-trigger (switch to manual anytime), quick command picker, offline placeholders if you disable images.
 
@@ -61,7 +61,7 @@ readme.md    - documentation
 - **TTS Provider (default):**
   - **Browser (free)** — system voices, zero cost.
   - **ElevenLabs** — premium quality. Set API key + voice ID. All audio is cached locally and replayable.
-  - **Kokoro** — open neural TTS that runs fully in-browser via WebGPU/WASM.
+  - **OpenAI** — versatile voices via OpenAI’s TTS models. Cached locally after first use.
   - **None** — silent mode.
 - **Keeper Trigger:** `Auto` (Keeper replies to normal messages) or `Manual` (click **Ask Keeper** or `/keeper …`).
 - **Keeper Style/Max Tokens:** Control verbosity and token budget to reduce spend.
@@ -116,8 +116,7 @@ See **`agents.md`** for full prompts and engine schema.
 
 - **Queue & Replay:** When TTS is on and queueing is enabled, lines won’t overlap. Each chat line has a ▶ replay button if a voice is available for that speaker.
 - **Per-Speaker Mapping:** Set provider and voice per speaker (Keeper + each PC/NPC) in **Party**.
-- **Cost Control:** Prefer **Browser** or **Kokoro** for routine chatter; reserve **ElevenLabs** for key moments. The app caches ElevenLabs audio locally to avoid re-charges.
- - **Kokoro Setup:** Use the wizard's "Download Kokoro Voices" button to fetch the open model (~120 MB) from a CORS-friendly mirror before assigning Kokoro voices. The runtime is now loaded via CDN to avoid "ort is not defined" errors, and the loader skips tiny placeholder files so remote assets are used automatically.
+- **Cost Control:** Prefer **Browser** for routine chatter; reserve **ElevenLabs** or **OpenAI** for key moments. The app caches premium audio locally to avoid re-charges.
 
 ---
 
@@ -133,7 +132,7 @@ Generation tasks display a modal with:
 ## 🔐 Security & Privacy
 
 - **Keys never leave your machine** except when calling the vendor API directly from your browser.
-- **No backend**: calls go from your browser → OpenAI/ElevenLabs endpoints; Kokoro runs fully locally.
+- **No backend**: calls go from your browser → OpenAI/ElevenLabs endpoints.
 - **Storage**: keys/preferences in `localStorage`; generated assets/voices in IndexedDB.
 - **Exports**: your save file contains embedded images/audio as Data URLs (no network required to reload).
 
@@ -152,7 +151,7 @@ Generation tasks display a modal with:
 - Enable **Queue voice** in Settings (on by default).
 - Browser voices need a user interaction before autoplay on some browsers.
 - ElevenLabs: verify API key and Voice ID; audio is cached after first play.
-- Kokoro: first use downloads the open model (~80MB) and may take a moment; falls back to WASM if WebGPU is unavailable.
+- OpenAI TTS or ElevenLabs: verify API key, model, and voice; audio is cached after first play.
 
 **CORS/network**  
 - All generated assets are saved as Data URLs → no cross-origin fetching after generation.

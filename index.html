@@ -47,7 +47,7 @@
           <button class="ghost" id="btnAskKeeper" title="Ask Keeper without sending more tokens by default">Ask Keeper</button>
           <button class="ghost" id="btnStopVoice" title="Stop voices & clear queue">Stop Voice</button>
         </div>
-        <div class="note small">Keeper replies only when you click <b>Ask Keeper</b> or use <b>/keeper …</b> (change in Settings → Trigger). Browser voices are free; ElevenLabs is cached to save tokens.</div>
+        <div class="note small">Keeper replies only when you click <b>Ask Keeper</b> or use <b>/keeper …</b> (change in Settings → Trigger). Browser voices are free; ElevenLabs and OpenAI are cached to save tokens.</div>
       </div>
     </div>
   </section>
@@ -166,13 +166,19 @@
         <select id="ttsProviderDefault">
           <option value="browser" selected>Browser (free)</option>
           <option value="eleven">ElevenLabs</option>
-          <option value="kokoro">Kokoro (local)</option>
+          <option value="openai">OpenAI</option>
           <option value="none">None</option>
         </select>
         <label>ElevenLabs API Key</label>
         <input id="elevenKey" placeholder="eleven‑..." />
         <label>ElevenLabs Default Voice ID</label>
         <input id="voiceId" placeholder="e.g., 21m00Tcm4TlvDq8ikWAM" />
+        <label>ElevenLabs TTS Model</label>
+        <input id="elevenModel" placeholder="eleven_multilingual_v2" />
+        <label>OpenAI TTS Model</label>
+        <input id="openaiTTSModel" placeholder="gpt-4o-mini-tts" />
+        <label>OpenAI Default Voice</label>
+        <input id="openaiVoice" placeholder="alloy" />
         <label><input type="checkbox" id="ttsOn" /> Enable Voices</label>
         <label><input type="checkbox" id="ttsQueue" checked /> Queue voice (no overlaps)</label>
       </div>
@@ -415,7 +421,6 @@
 <div id="toast"></div>
 
 <script src="js/keeper.js"></script>
-<script src="js/kokoro.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
