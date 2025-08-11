@@ -30,13 +30,15 @@ const KOKORO_VOICE_LIST = [
 
 window.KOKORO_VOICES = window.KOKORO_VOICES || [];
 let kokoroInit = null;
+let ort;
 
 async function ensureKokoro(){
   if(!kokoroInit){
     kokoroInit = (async()=>{
       try{
-        if(!window.ort){
-          await import('https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js');
+        if(!ort){
+          ort = await import('https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js');
+          window.ort = ort;
         }
         // Load helper libs for phonemization and npy/npz parsing
         const [{phonemize}, {unzipSync}, npyjsMod, config] = await Promise.all([
