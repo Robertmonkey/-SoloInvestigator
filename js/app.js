@@ -487,8 +487,13 @@ function addSay(speaker, text, role='pc'){
   whoEl.style.color = role==='npc' ? '#e3b9ff' : '#b2ffda';
   const content=el('div',{class:'content'}, text);
   const controls=el('div',{class:'controls'});
-  if(state.settings.ttsOn){ controls.appendChild(el('button',{class:'ghost',title:'Replay voice',onclick:()=> speak(stripTags(text), speaker, role)},'▶')); }
-  line.appendChild(av); line.appendChild(whoEl); line.appendChild(content); line.appendChild(controls);
+  if(state.settings.ttsOn){
+    controls.appendChild(el('button',{class:'ghost',title:'Replay voice',onclick:()=> speak(stripTags(text), speaker, role)},'▶'));
+  }
+  line.appendChild(av);
+  line.appendChild(whoEl);
+  line.appendChild(content);
+  if(controls.childNodes.length) line.appendChild(controls);
   chatLog.appendChild(line); chatLog.scrollTop=chatLog.scrollHeight;
 }
 
@@ -737,13 +742,18 @@ function pcEditorRow(t){
 function voiceControlsForName(actor){
   if(typeof actor==='string') actor={name:actor};
   const name=actor.name;
-  const parts=[]; const sex=actor.sex==='M'?'Male':(actor.sex==='F'?'Female':actor.sex); if(sex) parts.push(sex); if(actor.age) parts.push(actor.age);
+  const parts=[];
+  const sex=actor.sex==='M'? 'Male' : (actor.sex==='F'? 'Female' : actor.sex);
+  if(sex) parts.push(sex);
+  if(actor.age) parts.push(actor.age);
   const label = parts.length? `${name} (${parts.join(', ')})` : name;
 
   const wrap=el('div',{class:'row',style:'margin-top:.35rem;align-items:center;flex-wrap:wrap'});
   wrap.appendChild(el('div',{class:'small',style:'min-width:12rem'},label));
   wrap.appendChild(el('div',{class:'small'},'Voice:'));
-  const provSel=el('select',{}); ['browser','eleven','openai','none'].forEach(p=> provSel.appendChild(el('option',{value:p, selected:(state.settings.voiceMap?.[name]?.provider || state.settings.ttsProviderDefault || 'browser')===p}, p)));
+  const provSel=el('select',{});
+  ['browser','eleven','openai','none'].forEach(p=>
+    provSel.appendChild(el('option',{value:p, selected:(state.settings.voiceMap?.[name]?.provider || state.settings.ttsProviderDefault || 'browser')===p}, p)));
   const voiceSel=el('select',{}); // browser voices
   const voiceInp=el('input',{placeholder:'Voice ID or Name'}); // eleven/openai
   const role = actor.type || (name==='Keeper'?'npc':'pc');
@@ -758,22 +768,38 @@ function voiceControlsForName(actor){
     }
   }
   fillVoiceOptions();
-  function refreshVis(){ voiceSel.style.display = (provSel.value==='browser')?'inline-block':'none'; voiceInp.style.display = (provSel.value==='eleven' || provSel.value==='openai')?'inline-block':'none'; }
+
+  function refreshVis(){
+    voiceSel.style.display = (provSel.value==='browser') ? 'inline-block' : 'none';
+    voiceInp.style.display = (provSel.value==='eleven' || provSel.value==='openai') ? 'inline-block' : 'none';
+  }
+
   function updateMap(){
-    const idVal = (provSel.value==='browser')? voiceSel.value : ((provSel.value==='eleven' || provSel.value==='openai')? voiceInp.value.trim(): '');
-    state.settings.voiceMap[name] = {provider: provSel.value, id: idVal};
+    const idVal = (provSel.value==='browser') ? voiceSel.value : ((provSel.value==='eleven' || provSel.value==='openai') ? voiceInp.value.trim() : '');
+    state.settings.voiceMap = state.settings.voiceMap || {};
+    if(provSel.value==='none'){
+      delete state.settings.voiceMap[name];
+    }else{
+      state.settings.voiceMap[name] = {provider: provSel.value, id: idVal};
+    }
     saveSettings();
   }
-  provSel.onchange=()=>{ fillVoiceOptions(); refreshVis(); updateMap(); };
-  voiceSel.onchange=updateMap;
-  voiceInp.oninput=updateMap;
+
+  provSel.onchange = ()=>{ fillVoiceOptions(); refreshVis(); updateMap(); };
+  voiceSel.onchange = updateMap;
+  voiceInp.oninput = updateMap;
 
   // initialize inputs
   if(chosenId && (provSel.value==='browser')){ voiceSel.value=chosenId; }
-  if(state.settings.voiceMap?.[name]?.provider==='eleven' || state.settings.voiceMap?.[name]?.provider==='openai'){ voiceInp.value=state.settings.voiceMap?.[name]?.id || ''; }
+  if(state.settings.voiceMap?.[name]?.provider==='eleven' || state.settings.voiceMap?.[name]?.provider==='openai'){
+    voiceInp.value = state.settings.voiceMap?.[name]?.id || '';
+  }
   refreshVis();
 
-  wrap.appendChild(provSel); wrap.appendChild(voiceSel); wrap.appendChild(voiceInp); wrap.appendChild(testBtn);
+  wrap.appendChild(provSel);
+  wrap.appendChild(voiceSel);
+  wrap.appendChild(voiceInp);
+  wrap.appendChild(testBtn);
   return wrap;
 }
 byId('btnGenParty').onclick=()=>{ const names=["Eleanor Shaw","Caleb Finch","Iris Caldwell","Thomas Greer","Miriam Kline","Walter Rourke","Opal Reyes","Jonah Pike","Vera Doyle","Silas Hart"]; for(let i=0;i<5;i++){ const n=names[Math.floor(Math.random()*names.length)]; addToken({name:n, type:'pc', x:i, y:GRID_H-1}); } renderParty(); toast('5 investigators added'); };
@@ -815,7 +841,7 @@ function dropHandout(idx){
   const ho = state.campaign?.handouts?.[idx];
   if(!ho) return;
   const html = `<div class="chat-handout"><strong>${escapeHtml(ho.title||'Handout')}</strong>`+
-    `${ho.imageUrl?`<br><img src="${ho.imageUrl}" alt="${escapeHtml(ho.title||'handout')}">`:''}`+
+    `${ho.imageUrl?`<br><img src="${escapeHtml(ho.imageUrl)}" alt="${escapeHtml(ho.title||'handout')}">`:''}`+
     `<div class="small">${escapeHtml(ho.text||'')}</div></div>`;
   addLine(html,'keeper',{speaker:'Keeper',role:'npc',html:true});
 }
