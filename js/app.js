@@ -309,6 +309,7 @@ mapEl.addEventListener('pointerup', ()=>{
     if(!isActiveToken(draggingToken) || d>state.encounter.movesLeft){ draggingToken.x=dragOrig.x; draggingToken.y=dragOrig.y; renderTokens(); }
     else{ state.encounter.movesLeft -= d; renderReach(); updateTurnBanner(); }
   }
+  if(draggingToken) renderTokenList();
   draggingToken=null; dragOrig=null; endMeasure();
 });
 window.addEventListener('resize', ()=>{ renderFog(); renderReach(); });
@@ -1416,7 +1417,7 @@ async function wizardAutoBuildEverything(){
     const opts = arc.pcOptions || INVESTIGATORS;
     const picks=[wizard.youIndex, ...wizard.companions].map(i=> opts[i]);
     currentScene().tokens.length=0;
-    picks.forEach((p,i)=> addToken({name:p.name, type:'pc', x:i, y:GRID_H-1, persona:`${p.archetype}. Backstory: ${p.backstory}. Traits: ${p.traits}.`, speed:4, portraitData:p.img}));
+    picks.forEach((p,i)=> addToken({name:p.name, type:'pc', x:i, y:GRID_H-1, persona:`${p.archetype}. Backstory: ${p.backstory}. Traits: ${p.traits}.`, backstory:p.backstory, traits:p.traits, speed:4, portraitData:p.img}));
     const youName=opts[wizard.youIndex].name;
     const youToken=currentScene().tokens.find(t=>t.name===youName && t.type==='pc');
     if(youToken){
@@ -1523,6 +1524,8 @@ function defaultSheet(t){
   return {
     archetype: t.type==='pc' ? 'Investigator' : 'NPC',
     persona: t.persona||'',
+    backstory: t.backstory||'',
+    traits: t.traits||'',
     hp: 10, sanity: 50, speed: t.speed||4, luck: 50, luckRolled:false,
     attrs:{Brains:10,Brawn:10,Nerve:10,Perception:10,Charm:10},
     skills:{

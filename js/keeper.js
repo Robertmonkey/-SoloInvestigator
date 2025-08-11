@@ -14,7 +14,7 @@ function buildAIPrompt(actor){
     .join(', ');
 
   const persona = `You are ${actor.name}, a ${actor.sheet?.archetype || 'character'}.
-Backstory: ${actor.persona || actor.sheet?.persona || 'Unknown'}
+Backstory: ${actor.backstory || actor.sheet?.backstory || actor.persona || actor.sheet?.persona || 'Unknown'}
 Traits: ${actor.traits || actor.sheet?.traits || 'As defined by archetype.'}
 Bonds: ${(actor.sheet?.bonds||[]).join(', ') || 'none'}
 You remember past events and companions.
@@ -165,7 +165,7 @@ function applyEngine(eng){
       }
     });
   }
-  if(eng.moves){ eng.moves.forEach(m=>{ const t=currentScene().tokens.find(x=>x.id===m.tokenId); if(t){ tryMoveCommand(t, m.to?.[0], m.to?.[1]); } }); }
+  if(eng.moves){ eng.moves.forEach(m=>{ const t=currentScene().tokens.find(x=>x.id===m.tokenId); if(t){ tryMoveCommand(t, m.to?.[0], m.to?.[1], true); } }); }
   if(eng.rollRequests){
     eng.rollRequests.forEach(r=>{
       const modStr = r.mod ? (r.mod >= 0 ? `+${r.mod}` : `${r.mod}`) : '';
