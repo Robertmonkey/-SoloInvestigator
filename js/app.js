@@ -230,8 +230,9 @@ function renderTokens(){
 function renderTokenList(){
   const list=byId('tokenList'); list.innerHTML='';
   currentScene().tokens.forEach(t=>{
+    const label = `${escapeHtml(t.type.toUpperCase())} • ${escapeHtml(t.name||'Unnamed')} @ ${t.x},${t.y}`;
     const row=el('div',{class:'row',style:'justify-content:space-between;margin:.25rem 0;align-items:center;'},
-      [el('div',{}, `${t.type.toUpperCase()} • ${t.name||'Unnamed'} @ ${t.x},${t.y}`),
+      [el('div',{html:label}),
        el('div',{class:'row'},[
          el('button',{class:'ghost',onclick:()=> spawnFXAt(t.x,t.y)},'Ping'),
          el('button',{class:'ghost',onclick:()=> openSheet(t)},'Open Sheet'),
@@ -243,7 +244,11 @@ function renderTokenList(){
 }
 
 /* ---------- FOG ---------- */
-function pxToGrid(px,py){ return [Math.floor((px/GRID_WPX())*GRID_W), Math.floor((py/GRID_HPX())*GRID_H)]; }
+function pxToGrid(px,py){
+  const gx = Math.min(GRID_W-1, Math.floor((px/GRID_WPX())*GRID_W));
+  const gy = Math.min(GRID_H-1, Math.floor((py/GRID_HPX())*GRID_H));
+  return [gx,gy];
+}
 function renderFog(){ const cv=fogCv, sc=currentScene(), ctx=cv.getContext('2d'); cv.width=GRID_WPX(); cv.height=GRID_HPX(); ctx.clearRect(0,0,cv.width,cv.height);
   const cw=cv.width/GRID_W, ch=cv.height/GRID_H; ctx.fillStyle='rgba(4,6,10,.82)';
   for(let y=0;y<GRID_H;y++) for(let x=0;x<GRID_W;x++) if(sc.fog[y][x]) ctx.fillRect(Math.floor(x*cw),Math.floor(y*ch),Math.ceil(cw),Math.ceil(ch));
@@ -441,6 +446,8 @@ function addLine(text, who='you', opts={}){
   const content = el('div',{class:'content'});
   if(who==='you'){
     content.textContent = text;
+  } else if(opts.html){
+    content.innerHTML = text;
   } else {
     content.innerHTML = escapeHtml(text);
   }
@@ -593,6 +600,7 @@ function tryMoveCommand(t,gx,gy,isProgrammatic=false){
   renderTokens();
   renderReach();
   updateTurnBanner();
+  renderTokenList();
   if(!isProgrammatic) spawnFXAt(t.x,t.y);
 }
 
@@ -685,7 +693,11 @@ function centerTokens(){
   const npcs = sc.tokens.filter(t=>t.type!=='pc');
   pcs.forEach((t,i)=>{ t.x = Math.round(((i+1)/(pcs.length+1))*(GRID_W-1)); t.y = GRID_H - 1; });
   npcs.forEach((t,i)=>{ t.x = Math.round(((i+1)/(npcs.length+1))*(GRID_W-1)); t.y = 0; });
-  renderTokens(); renderReach(); spawnFXAt(Math.floor(GRID_W/2), Math.floor(GRID_H/2)); toast('Tokens centered');
+  renderTokens();
+  renderTokenList();
+  renderReach();
+  spawnFXAt(Math.floor(GRID_W/2), Math.floor(GRID_H/2));
+  toast('Tokens centered');
 }
 
 /* Scenes modal */
@@ -800,7 +812,7 @@ function dropHandout(idx){
   const html = `<div class="chat-handout"><strong>${escapeHtml(ho.title||'Handout')}</strong>`+
     `${ho.imageUrl?`<br><img src="${ho.imageUrl}" alt="${escapeHtml(ho.title||'handout')}">`:''}`+
     `<div class="small">${escapeHtml(ho.text||'')}</div></div>`;
-  addLine(html,'keeper',{speaker:'Keeper',role:'npc'});
+  addLine(html,'keeper',{speaker:'Keeper',role:'npc',html:true});
 }
 /* ---------- CLUES ---------- */
 function renderClues(){
