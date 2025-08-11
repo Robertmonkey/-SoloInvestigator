@@ -158,9 +158,9 @@ function applyEngine(eng){
       const text = s.text || '';
       const role = s.role || 'pc';
       if(s.to){
-        addWhisper(s.to, `${speaker}: ${escapeHtml(text)}`);
+        addWhisper(s.to, `${speaker}: ${text}`);
       }else{
-        addSay(speaker, escapeHtml(text), role);
+        addSay(speaker, text, role);
         if(state.settings.ttsOn) speak(stripTags(text), speaker, role);
       }
     });
