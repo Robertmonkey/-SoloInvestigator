@@ -464,7 +464,7 @@ function addLine(text, who='you', opts={}){
   } else if(opts.html){
     content.innerHTML = text;
   } else {
-    content.innerHTML = escapeHtml(text);
+    content.textContent = text;
   }
 
   if(who==='keeper'){
@@ -495,7 +495,7 @@ function addSay(speaker, text, role='pc'){
   av.appendChild(img);
   const whoEl=el('div',{class:'who'}, speaker);
   whoEl.style.color = role==='npc' ? '#e3b9ff' : '#b2ffda';
-  const content=el('div',{class:'content'}, text);
+  const content=el('div',{class:'content'}, escapeHtml(text));
   const controls=el('div',{class:'controls'});
   if(state.settings.ttsOn){
     controls.appendChild(el('button',{class:'ghost',title:'Replay voice',onclick:()=> speak(stripTags(text), speaker, role)},'▶'));
@@ -548,9 +548,13 @@ byId('chatInput').addEventListener('keydown',e=>{ if(e.key==='Enter') sendChat()
 byId('btnStopVoice').onclick=()=> stopVoice(true);
 byId('btnAskKeeper').onclick=()=> askKeeperFromInput();
 function askKeeperFromInput(){
-  const input=byId('chatInput'); const val=input.value.trim(); if(!val) return;
+  const input=byId('chatInput');
+  const val=input.value.trim();
+  if(!val) return;
   addLine(val,'you');
-  keeperReply(val);
+  if(state.settings.keeperOn){
+    keeperReply(val);
+  }
   input.value='';
 }
 function sendChat(){ const val=byId('chatInput').value.trim(); if(!val) return; byId('chatInput').value=''; addLine(val,'you');
@@ -1733,7 +1737,7 @@ function maybeSummarizeLocal(){
   const points=[];
   lines.forEach(l=>{
     const who = l.querySelector('.who')?.textContent || (l.classList.contains('you')?'You':l.classList.contains('keeper')?'Keeper':'');
-    const txt = stripTags((l.querySelector('.content')?.innerHTML||l.innerHTML||'')).trim();
+    const txt = (l.querySelector('.content')?.textContent || l.textContent || '').trim();
     if(!txt) return;
     if(points.length<10 && txt.length>6) points.push(`${who||'Narration'}: ${txt.slice(0,140)}`);
   });

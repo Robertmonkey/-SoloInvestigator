@@ -4,7 +4,7 @@ function buildAIPrompt(actor){
   const party=sc.tokens.filter(t=>t.type==='pc').map(t=>`${t.name} at (${t.x},${t.y})`).join('; ');
   const npcs=sc.tokens.filter(t=>t.type==='npc').map(t=>`${t.name} at (${t.x},${t.y})`).join(', ');
   const recentChat = Array.from(chatLog.querySelectorAll('.line')).slice(-5)
-    .map(l=> l.querySelector('.content')?.innerText || '')
+    .map(l=> l.querySelector('.content')?.textContent || '')
     .join('\n');
 
   const notableSkills = Object
