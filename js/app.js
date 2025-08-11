@@ -489,7 +489,7 @@ function addLine(text, who='you', opts={}){
   chatLog.appendChild(line); chatLog.scrollTop=chatLog.scrollHeight;
 }
 function addSay(speaker, text, role='pc'){
-  const line=el('div',{class:'line'});
+  const line=el('div',{class:'line', 'data-role':role});
   const av=el('div',{class:'avatar'});
   const img=el('img',{src: speakerAvatar(speaker), alt:speaker});
   av.appendChild(img);
@@ -536,10 +536,17 @@ function speakerAvatar(name){
   if(t?.portraitData) return t.portraitData;
   const np=(state.campaign?.npcPortraits||[]).find(p=> (p.name||p.role||'').toLowerCase()===key);
   if(np?.portraitData) return np.portraitData;
-  const cv=document.createElement('canvas'); cv.width=64; cv.height=64; const ctx=cv.getContext('2d'); ctx.fillStyle='#0e1524'; ctx.fillRect(0,0,64,64);
-  ctx.fillStyle='#9fb4ff'; ctx.font='bold 20px ui-monospace,monospace';
+  const cv=document.createElement('canvas');
+  cv.width=64; cv.height=64;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='#0e1524';
+  ctx.fillRect(0,0,64,64);
+  ctx.fillStyle='#9fb4ff';
+  ctx.font='bold 20px ui-monospace,monospace';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
   const inis=(name||'??').split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join('');
-  ctx.fillText(inis, 12, 38);
+  ctx.fillText(inis,32,32);
   return cv.toDataURL('image/png');
 }
 
@@ -938,7 +945,8 @@ function updateSlots(){
   }
 }
 function captureChat(){
-  const lines=[]; chatLog.querySelectorAll('.line').forEach(l=>{
+  const lines=[];
+  chatLog.querySelectorAll('.line').forEach(l=>{
     if(l.classList.contains('action')){ lines.push({type:'action',text:l.textContent}); return; }
     if(l.classList.contains('system')){ lines.push({type:'system',html:l.querySelector('.content')?.innerHTML||''}); return; }
     if(l.classList.contains('keeper')){
@@ -947,9 +955,15 @@ function captureChat(){
       lines.push({type:'keeper',html,speaker}); return;
     }
     if(l.classList.contains('you')){ lines.push({type:'you',text:l.querySelector('.content')?.textContent||''}); return; }
-    const whoEl=l.querySelector('.who');
-    const role=getComputedStyle(whoEl).color==='rgb(227, 185, 255)'?'npc':'pc';
-    lines.push({type:'say',speaker:whoEl?.textContent||'',html:l.querySelector('.content')?.innerHTML||'',role});
+    if(l.classList.contains('whisper')){
+      const target=(l.querySelector('.who')?.textContent||'').replace(/^Whisper to\s*/, '');
+      lines.push({type:'whisper',target,text:l.querySelector('.content')?.textContent||''});
+      return;
+    }
+    const role=l.dataset.role || 'pc';
+    const speaker=l.querySelector('.who')?.textContent||'';
+    const text=l.querySelector('.content')?.textContent||'';
+    lines.push({type:'say',speaker,text,role});
   });
   return lines;
 }
@@ -960,7 +974,8 @@ function restoreChat(lines){
     else if(l.type==='system') addSystemMessage(l.html);
     else if(l.type==='keeper') addLine(l.html,'keeper',{speaker:l.speaker,role:l.role||'npc'});
     else if(l.type==='you') addLine(l.text,'you');
-    else if(l.type==='say') addSay(l.speaker,l.html,l.role||'pc');
+    else if(l.type==='whisper') addWhisper(l.target,l.text);
+    else if(l.type==='say') addSay(l.speaker,l.text,l.role||'pc');
   });
 }
 function captureState(){
