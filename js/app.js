@@ -946,6 +946,30 @@ async function fetchKokoroTTSBlob(text, voiceId){
 function speakBrowser(text, speaker, role='pc'){ try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); const id=voiceIdFor(speaker, role); const v=state.browserVoices.find(v=> v.name===id) || state.browserVoices[0]; if(v) u.voice=v; window.speechSynthesis.speak(u); }catch{} }
 function stopVoice(clearQueue){ try{ if(currentAudio){ currentAudio.pause(); } if(currentUrl){ URL.revokeObjectURL(currentUrl); currentUrl=null; } currentAudio=null; window.speechSynthesis.cancel(); }catch{} if(clearQueue){ ttsQueue.length=0; ttsPlaying=false; } }
 
+function playBlobImmediate(blob){
+  stopVoice(false);
+  currentUrl = URL.createObjectURL(blob);
+  currentAudio = new Audio(currentUrl);
+  currentAudio.onended = () => {
+    URL.revokeObjectURL(currentUrl);
+    currentUrl = null;
+    currentAudio = null;
+    if(ttsPlaying) playNextTTS();
+  };
+  currentAudio.play().catch(()=>{ if(ttsPlaying) playNextTTS(); });
+}
+
+function enqueueTTS(blob){
+  ttsQueue.push(blob);
+  if(!ttsPlaying){ ttsPlaying = true; playNextTTS(); }
+}
+
+function playNextTTS(){
+  if(ttsQueue.length===0){ ttsPlaying=false; return; }
+  const b = ttsQueue.shift();
+  playBlobImmediate(b);
+}
+
 /* Browser voices list */
 function refreshBrowserVoices(){ state.browserVoices = window.speechSynthesis.getVoices()||[]; }
 if('speechSynthesis' in window){ window.speechSynthesis.onvoiceschanged = refreshBrowserVoices; refreshBrowserVoices(); }
