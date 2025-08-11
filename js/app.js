@@ -457,7 +457,7 @@ byId('cmdInsert').onclick=()=>{
   input.focus();
 };
 function addLine(text, who='you', opts={}){
-  const line = el('div',{class:`line ${who}`});
+  const line = el('div',{class:`line ${who}`,'data-role':opts.role || who});
   const content = el('div',{class:'content'});
   if(who==='you'){
     content.textContent = text;
@@ -482,7 +482,7 @@ function addLine(text, who='you', opts={}){
 
   const controls = el('div',{class:'controls'});
   if((who==='keeper' || opts.replayable) && state.settings.ttsOn){
-    const btn=el('button',{class:'ghost',title:'Replay voice',onclick:async()=>{ await speak(stripTags(text), opts.speaker||'Keeper', opts.role || (who==='keeper'?'npc':'pc')); }},'▶');
+    const btn=el('button',{class:'ghost',title:'Replay voice',onclick:async()=>{ await speak(stripTags(text), opts.speaker||'Keeper', opts.role || (who==='keeper'?'keeper':'pc')); }},'▶');
     controls.appendChild(btn);
   }
   if(controls.childNodes.length) line.appendChild(controls);
@@ -952,7 +952,8 @@ function captureChat(){
     if(l.classList.contains('keeper')){
       const html=l.querySelector('.content')?.innerHTML||'';
       const speaker=(l.querySelector('.who')?.textContent||'').replace(/^👁️\s*/, '');
-      lines.push({type:'keeper',html,speaker}); return;
+      const role=l.dataset.role || 'keeper';
+      lines.push({type:'keeper',html,speaker,role}); return;
     }
     if(l.classList.contains('you')){ lines.push({type:'you',text:l.querySelector('.content')?.textContent||''}); return; }
     if(l.classList.contains('whisper')){
@@ -972,7 +973,7 @@ function restoreChat(lines){
   (lines||[]).forEach(l=>{
     if(l.type==='action') addActionLine(l.text);
     else if(l.type==='system') addSystemMessage(l.html);
-    else if(l.type==='keeper') addLine(l.html,'keeper',{speaker:l.speaker,role:l.role||'npc'});
+    else if(l.type==='keeper') addLine(l.html,'keeper',{speaker:l.speaker,role:l.role||'keeper',html:true});
     else if(l.type==='you') addLine(l.text,'you');
     else if(l.type==='whisper') addWhisper(l.target,l.text);
     else if(l.type==='say') addSay(l.speaker,l.text,l.role||'pc');
@@ -1008,6 +1009,8 @@ function applyState(data){
   state.chat=data.chat||[];
   loadSettings(); renderAll();
   restoreChat(state.chat);
+  renderClues();
+  renderHandouts();
 }
 function saveToSlot(i){ const slots=loadSlots(); slots[i]=captureState(); saveSlots(slots); updateSlots(); toast('Saved.'); }
 function loadFromSlot(i){ const slots=loadSlots(); if(!slots[i]){ toast('Empty slot'); return; } applyState(slots[i]); toast('Loaded.'); }
