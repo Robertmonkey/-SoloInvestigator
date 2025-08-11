@@ -9,6 +9,21 @@ const KOKORO_REMOTE_MODEL = 'https://github.com/thewh1teagle/kokoro-onnx/release
 const KOKORO_REMOTE_VOICES = 'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin';
 const KOKORO_CONFIG_URL = 'https://raw.githubusercontent.com/thewh1teagle/kokoro-onnx/main/src/kokoro_onnx/config.json';
 
+// Voice metadata with friendly descriptions so players can map
+// personalities to appropriate voices.
+const KOKORO_VOICE_LIST = [
+  {id:'af_alloy',  name:'Alloy',  desc:'Warm American female narrator'},
+  {id:'af_bella',  name:'Bella',  desc:'Friendly American woman'},
+  {id:'af_coral',  name:'Coral',  desc:'Calm, even-tempered American woman'},
+  {id:'am_adam',   name:'Adam',   desc:'Neutral American male'},
+  {id:'am_blake',  name:'Blake',  desc:'Deep American male'},
+  {id:'am_river',  name:'River',  desc:'Relaxed American male'},
+  {id:'bf_emma',   name:'Emma',   desc:'Crisp British female'},
+  {id:'bm_george', name:'George', desc:'Resonant British male'},
+  {id:'cm_kiddo',  name:'Kiddo',  desc:'Youthful child voice'},
+  {id:'ff_sage',   name:'Sage',   desc:'Soft storyteller'}
+];
+
 window.KOKORO_VOICES = window.KOKORO_VOICES || [];
 let kokoroInit = null;
 
@@ -51,10 +66,14 @@ async function ensureKokoro(){
           voices[id]={data:parsed.data, shape:parsed.shape};
         });
 
-        window.KOKORO_VOICES = Object.keys(voices).map(id=>{
-          const pretty=id.replace(/^\w+_/,'').replace(/_/g,' ');
-          return {id,name:pretty.charAt(0).toUpperCase()+pretty.slice(1),desc:''};
-        });
+        const loadedIds = Object.keys(voices);
+        const known = KOKORO_VOICE_LIST.filter(v=> loadedIds.includes(v.id));
+        const extras = loadedIds.filter(id=> !KOKORO_VOICE_LIST.some(v=> v.id===id))
+          .map(id=>{
+            const pretty=id.replace(/^\w+_/,'').replace(/_/g,' ');
+            return {id, name:pretty.charAt(0).toUpperCase()+pretty.slice(1), desc:''};
+          });
+        window.KOKORO_VOICES = [...known, ...extras];
 
         return {session, voices, vocab:config.vocab, phonemize};
       }catch(err){
