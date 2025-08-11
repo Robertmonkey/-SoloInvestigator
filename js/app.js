@@ -719,6 +719,7 @@ function voiceControlsForName(actor){
     const idVal = (provSel.value==='browser' || provSel.value==='kokoro')? voiceSel.value : (provSel.value==='eleven'? voiceInp.value.trim(): '');
     state.settings.voiceMap[name] = {provider: provSel.value, id: idVal};
     saveSettings();
+    refreshKokoroButton();
   }
   provSel.onchange=()=>{ fillVoiceOptions(); refreshVis(); updateMap(); };
   voiceSel.onchange=updateMap;
@@ -1067,6 +1068,9 @@ function renderWizard(){
     const voiceSetup=el('div',{class:'card'},[
       el('h3',{},'Voice Setup (optional, per speaker)'),
       el('div',{class:'small'},'Pick Browser voices (free) or enter ElevenLabs IDs per character.'),
+      el('div',{class:'row',style:'margin-top:.35rem'},[
+        el('button',{id:'btnKokoroAssets',class:'ghost',onclick:downloadKokoroAssets},'Download Kokoro Voices (~120MB)')
+      ]),
       el('div',{id:'voiceSetupRows'})
     ]);
     body.appendChild(el('div',{class:'card'},[
@@ -1170,6 +1174,33 @@ function renderVoiceSetup(){
   actors.forEach(a=>{
     wrap.appendChild(voiceControlsForName(a));
   });
+  refreshKokoroButton();
+}
+
+async function downloadKokoroAssets(){
+  const btn = byId('btnKokoroAssets'); if(!btn) return;
+  btn.disabled = true; btn.textContent = 'Downloading...';
+  try{
+    const {session} = await ensureKokoro();
+    if(session){
+      btn.textContent = 'Kokoro Ready';
+      renderVoiceSetup();
+    }else{
+      btn.textContent = 'Download failed';
+      btn.disabled = false;
+    }
+  }catch(err){
+    console.warn('Kokoro download failed', err);
+    btn.textContent = 'Download failed';
+    btn.disabled = false;
+  }
+}
+
+function refreshKokoroButton(){
+  const btn = byId('btnKokoroAssets'); if(!btn) return;
+  const map = state.settings.voiceMap || {};
+  const any = Object.values(map).some(m=>m.provider==='kokoro');
+  btn.style.display = any ? 'inline-block' : 'none';
 }
 
 /* ---------- STORY ARC (AI) with variety & anti-repetition ---------- */
