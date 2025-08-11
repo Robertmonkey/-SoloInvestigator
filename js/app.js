@@ -245,8 +245,8 @@ function renderTokenList(){
 
 /* ---------- FOG ---------- */
 function pxToGrid(px,py){
-  const gx = Math.min(GRID_W-1, Math.floor((px/GRID_WPX())*GRID_W));
-  const gy = Math.min(GRID_H-1, Math.floor((py/GRID_HPX())*GRID_H));
+  const gx = Math.max(0, Math.min(GRID_W-1, Math.floor((px/GRID_WPX())*GRID_W)));
+  const gy = Math.max(0, Math.min(GRID_H-1, Math.floor((py/GRID_HPX())*GRID_H)));
   return [gx,gy];
 }
 function renderFog(){ const cv=fogCv, sc=currentScene(), ctx=cv.getContext('2d'); cv.width=GRID_WPX(); cv.height=GRID_HPX(); ctx.clearRect(0,0,cv.width,cv.height);
@@ -391,11 +391,13 @@ function startEncounter(){
 }
 
 function endEncounter(){
+  if(!state.encounter.on){ toast('No encounter in progress.'); return; }
   state.encounter.on=false;
   state.aiThinking=false;
-  renderReach();
-  updateTurnBanner();
-  renderInit();
+  state.encounter.movesLeft = 0;
+  state.encounter.actionsLeft = 0;
+  state.encounter.bonusLeft = 0;
+  clearInit();
   toast('Encounter ended');
 }
 
@@ -415,7 +417,7 @@ function getActiveToken(){ const activeEntry=state.initOrder[state.activeTurn]; 
 function resetTurnBudget(){
   const t=getActiveToken();
   if(!t) return;
-  const mov=t?.sheet?.speed || 8;
+  const mov = Number(t?.sheet?.speed ?? 8);
   state.encounter.movesLeft=Math.floor(mov/2);
   state.encounter.actionsLeft=1;
   state.encounter.bonusLeft=1;
@@ -437,9 +439,12 @@ function updateTurnBanner(){
 /* ---------- CHAT & AVATARS ---------- */
 const chatLog=byId('chatLog');
 byId('cmdInsert').onclick=()=>{
-  const v=byId('cmdPicker').value; if(!v) return;
+  const picker=byId('cmdPicker');
+  const v=picker.value; if(!v) return;
   const input=byId('chatInput'); if(input.value && !/^\s/.test(input.value)) input.value+=' ';
-  input.value += v; input.focus();
+  input.value += v;
+  picker.selectedIndex = 0;
+  input.focus();
 };
 function addLine(text, who='you', opts={}){
   const line = el('div',{class:`line ${who}`});
@@ -1596,7 +1601,15 @@ function initialSeed(){ if(currentScene().tokens.length===0){ addToken({name:'pc
 function renderInitButtons(){ byId('btnInitRoll').onclick=rollAllInit; byId('btnInitNext').onclick=advanceTurn; byId('btnInitClear').onclick=clearInit; }
 
 /* Keyboard tool binds */
-document.addEventListener('keydown', e=>{ if(e.key==='v'||e.key==='V') setTool('select'); if(e.key==='r'||e.key==='R') setTool('ruler'); if(e.key==='f'||e.key==='F') setTool('reveal'); if(e.key==='h'||e.key==='H') setTool('hide'); if(e.key==='u'||e.key==='U') fogUndo(); });
+document.addEventListener('keydown', e=>{
+  const tag = e.target.tagName;
+  if(tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+  if(e.key==='v'||e.key==='V') setTool('select');
+  if(e.key==='r'||e.key==='R') setTool('ruler');
+  if(e.key==='f'||e.key==='F') setTool('reveal');
+  if(e.key==='h'||e.key==='H') setTool('hide');
+  if(e.key==='u'||e.key==='U') fogUndo();
+});
 function setTool(t){ tool=t; byId('tool').value=t; toast('Tool: '+t); }
 byId('tool').addEventListener('change',e=> setTool(e.target.value));
 byId('brush').addEventListener('change',e=> brush=Number(e.target.value));
