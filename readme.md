@@ -117,7 +117,7 @@ See **`agents.md`** for full prompts and engine schema.
 - **Queue & Replay:** When TTS is on and queueing is enabled, lines won’t overlap. Each chat line has a ▶ replay button if a voice is available for that speaker.
 - **Per-Speaker Mapping:** Set provider and voice per speaker (Keeper + each PC/NPC) in **Party**.
 - **Cost Control:** Prefer **Browser** or **Kokoro** for routine chatter; reserve **ElevenLabs** for key moments. The app caches ElevenLabs audio locally to avoid re-charges.
- - **Kokoro Setup:** Use the wizard's "Download Kokoro Voices" button to fetch the open model (~120 MB) from a CORS-friendly mirror before assigning Kokoro voices. The button now reports any network errors so you know if the download fails.
+ - **Kokoro Setup:** Use the wizard's "Download Kokoro Voices" button to fetch the open model (~120 MB) from a CORS-friendly mirror before assigning Kokoro voices. The runtime is now loaded via CDN to avoid "ort is not defined" errors, and the loader skips tiny placeholder files so remote assets are used automatically.
 
 ---
 
