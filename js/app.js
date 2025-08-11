@@ -140,15 +140,15 @@ function makeFog(w,h,hidden){ const f=[]; for(let y=0;y<h;y++){const row=[]; for
 
 const state = {
   settings:{
-    openaiKey:'', openaiModel:'gpt-4o-mini', keeperOn:true,
+    openaiKey:'', openaiModel:'gpt-4o-mini', openaiTTSModel:'gpt-4o-mini-tts', openaiVoice:'alloy', keeperOn:true,
     useImages:false, imageModel:'dall-e-3',
     ttsOn:false, ttsQueue:true, ttsProviderDefault:'browser',
-    elevenKey:'', voiceId:'',
+    elevenKey:'', voiceId:'', elevenModel:'eleven_multilingual_v2',
     rulesPack:'',
     keeperTrigger:'auto',
     keeperStyle:'normal',
     keeperMax:450,
-    voiceMap:{} // { name: {provider:'browser'|'eleven'|'kokoro'|'none', id:'VoiceNameOrId'} }
+    voiceMap:{} // { name: {provider:'browser'|'eleven'|'openai'|'none', id:'VoiceNameOrId'} }
   },
   campaign:null,
   npcCatalog:[],
@@ -186,11 +186,14 @@ function loadSettings(){
   const raw=localStorage.getItem(LS_SETTINGS); if(raw){ try{ Object.assign(state.settings, JSON.parse(raw)); }catch{} }
   byId('openaiKey').value = state.settings.openaiKey;
   byId('openaiModel').value = state.settings.openaiModel;
+  byId('openaiTTSModel').value = state.settings.openaiTTSModel || 'gpt-4o-mini-tts';
+  byId('openaiVoice').value = state.settings.openaiVoice || 'alloy';
   byId('keeperOn').checked = state.settings.keeperOn;
   byId('useImages').checked = state.settings.useImages;
   byId('imageModel').value = state.settings.imageModel;
   byId('elevenKey').value = state.settings.elevenKey;
   byId('voiceId').value = state.settings.voiceId;
+  byId('elevenModel').value = state.settings.elevenModel || 'eleven_multilingual_v2';
   byId('ttsOn').checked = state.settings.ttsOn;
   byId('ttsQueue').checked = state.settings.ttsQueue;
   byId('ttsProviderDefault').value = state.settings.ttsProviderDefault || 'browser';
@@ -642,11 +645,14 @@ byId('btnSaveLoad').onclick=()=> { updateSlots(); show('#modalSave'); };
 byId('btnSaveSettings').onclick=()=>{
   state.settings.openaiKey=byId('openaiKey').value.trim();
   state.settings.openaiModel=byId('openaiModel').value;
+  state.settings.openaiTTSModel=byId('openaiTTSModel').value.trim();
+  state.settings.openaiVoice=byId('openaiVoice').value.trim();
   state.settings.keeperOn=byId('keeperOn').checked;
   state.settings.useImages=byId('useImages').checked;
   state.settings.imageModel=byId('imageModel').value;
   state.settings.elevenKey=byId('elevenKey').value.trim();
   state.settings.voiceId=byId('voiceId').value.trim();
+  state.settings.elevenModel=byId('elevenModel').value.trim();
   state.settings.ttsOn=byId('ttsOn').checked;
   state.settings.ttsQueue=byId('ttsQueue').checked;
   state.settings.ttsProviderDefault=byId('ttsProviderDefault').value;
@@ -720,9 +726,9 @@ function voiceControlsForName(actor){
   const wrap=el('div',{class:'row',style:'margin-top:.35rem;align-items:center;flex-wrap:wrap'});
   wrap.appendChild(el('div',{class:'small',style:'min-width:12rem'},label));
   wrap.appendChild(el('div',{class:'small'},'Voice:'));
-  const provSel=el('select',{}); ['browser','eleven','kokoro','none'].forEach(p=> provSel.appendChild(el('option',{value:p, selected:(state.settings.voiceMap?.[name]?.provider || state.settings.ttsProviderDefault || 'browser')===p}, p)));
-  const voiceSel=el('select',{}); // browser or kokoro voices
-  const voiceInp=el('input',{placeholder:'ElevenLabs Voice ID'}); // eleven
+  const provSel=el('select',{}); ['browser','eleven','openai','none'].forEach(p=> provSel.appendChild(el('option',{value:p, selected:(state.settings.voiceMap?.[name]?.provider || state.settings.ttsProviderDefault || 'browser')===p}, p)));
+  const voiceSel=el('select',{}); // browser voices
+  const voiceInp=el('input',{placeholder:'Voice ID or Name'}); // eleven/openai
   const role = actor.type || (name==='Keeper'?'npc':'pc');
   const testBtn=el('button',{class:'ghost',onclick:()=> speak(`It is I, ${name}.`, name, role)},'Test');
 
@@ -732,26 +738,22 @@ function voiceControlsForName(actor){
     voiceSel.innerHTML='';
     if(provSel.value==='browser'){
       (state.browserVoices||[]).forEach(v=> voiceSel.appendChild(el('option',{value:v.name, selected: v.name===chosenId}, v.name)));
-    }else if(provSel.value==='kokoro'){
-      (window.KOKORO_VOICES||[]).forEach(v=> voiceSel.appendChild(el('option',{value:v.id, selected:v.id===chosenId}, `${v.name} — ${v.desc}`)));
     }
   }
   fillVoiceOptions();
-
-  function refreshVis(){ voiceSel.style.display = (provSel.value==='browser' || provSel.value==='kokoro')?'inline-block':'none'; voiceInp.style.display = (provSel.value==='eleven')?'inline-block':'none'; }
+  function refreshVis(){ voiceSel.style.display = (provSel.value==='browser')?'inline-block':'none'; voiceInp.style.display = (provSel.value==='eleven' || provSel.value==='openai')?'inline-block':'none'; }
   function updateMap(){
-    const idVal = (provSel.value==='browser' || provSel.value==='kokoro')? voiceSel.value : (provSel.value==='eleven'? voiceInp.value.trim(): '');
+    const idVal = (provSel.value==='browser')? voiceSel.value : ((provSel.value==='eleven' || provSel.value==='openai')? voiceInp.value.trim(): '');
     state.settings.voiceMap[name] = {provider: provSel.value, id: idVal};
     saveSettings();
-    refreshKokoroButton();
   }
   provSel.onchange=()=>{ fillVoiceOptions(); refreshVis(); updateMap(); };
   voiceSel.onchange=updateMap;
   voiceInp.oninput=updateMap;
 
   // initialize inputs
-  if(chosenId && (provSel.value==='browser' || provSel.value==='kokoro')){ voiceSel.value=chosenId; }
-  if(state.settings.voiceMap?.[name]?.provider==='eleven'){ voiceInp.value=state.settings.voiceMap?.[name]?.id || ''; }
+  if(chosenId && (provSel.value==='browser')){ voiceSel.value=chosenId; }
+  if(state.settings.voiceMap?.[name]?.provider==='eleven' || state.settings.voiceMap?.[name]?.provider==='openai'){ voiceInp.value=state.settings.voiceMap?.[name]?.id || ''; }
   refreshVis();
 
   wrap.appendChild(provSel); wrap.appendChild(voiceSel); wrap.appendChild(voiceInp); wrap.appendChild(testBtn);
@@ -991,7 +993,7 @@ function voiceIdFor(speaker, role='pc'){
   const prov = providerFor(speaker, role);
   if(m?.id) return m.id;
   if(prov==='eleven') return state.settings.voiceId;
-  if(prov==='kokoro') return KOKORO_VOICES?.[0]?.id || '';
+  if(prov==='openai') return state.settings.openaiVoice;
   return '';
 }
 
@@ -999,7 +1001,7 @@ async function speak(text, speaker='Keeper', role='pc'){
   if(!state.settings.ttsOn || !text) return;
   const provider=providerFor(speaker, role);
   if(provider==='eleven' && state.settings.elevenKey){ const {blob}=await getOrCreateTTS(text, speaker, role); if(state.settings.ttsQueue) enqueueTTS(blob); else playBlobImmediate(blob); }
-  else if(provider==='kokoro'){ const {blob}=await getOrCreateKokoroTTS(text, speaker, role); if(state.settings.ttsQueue) enqueueTTS(blob); else playBlobImmediate(blob); }
+  else if(provider==='openai' && state.settings.openaiKey){ const {blob}=await getOrCreateOpenAITTS(text, speaker, role); if(state.settings.ttsQueue) enqueueTTS(blob); else playBlobImmediate(blob); }
   else if(provider==='browser'){ speakBrowser(text, speaker, role); }
 }
 async function getOrCreateTTS(text, speaker, role='pc'){
@@ -1007,13 +1009,32 @@ async function getOrCreateTTS(text, speaker, role='pc'){
   const hit=await idbGet('tts',key); if(hit){ return {blob:hit,key}; }
   const blob=await fetchTTSBlob(text, voiceIdFor(speaker, role)); await idbSet('tts',key,blob); return {blob,key};
 }
-async function getOrCreateKokoroTTS(text, speaker, role='pc'){
-  const key = await hashKey(`tts|kokoro|${voiceIdFor(speaker, role)}|${speaker}|${(text||'').trim()}`);
+async function getOrCreateOpenAITTS(text, speaker, role='pc'){
+  const key = await hashKey(`tts|openai|${voiceIdFor(speaker, role)}|${speaker}|${(text||'').trim()}`);
   const hit=await idbGet('tts',key); if(hit){ return {blob:hit,key}; }
-  const blob=await fetchKokoroTTSBlob(text, voiceIdFor(speaker, role)); await idbSet('tts',key,blob); return {blob,key};
+  const blob=await fetchOpenAITTSBlob(text, voiceIdFor(speaker, role)); await idbSet('tts',key,blob); return {blob,key};
 }
-async function fetchKokoroTTSBlob(text, voiceId){
-  try{ return await synthesizeKokoro(text, voiceId); }catch(e){ console.error(e); return new Blob(); }
+async function fetchTTSBlob(text, voiceId){
+  try{
+    const res=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','xi-api-key':state.settings.elevenKey},
+      body:JSON.stringify({model_id:state.settings.elevenModel||'eleven_multilingual_v2',text})
+    });
+    if(!res.ok) throw new Error('ElevenLabs TTS error');
+    return await res.blob();
+  }catch(e){ console.error(e); return new Blob(); }
+}
+async function fetchOpenAITTSBlob(text, voiceId){
+  try{
+    const res=await fetch('https://api.openai.com/v1/audio/speech',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${state.settings.openaiKey}`},
+      body:JSON.stringify({model:state.settings.openaiTTSModel||'gpt-4o-mini-tts',voice:voiceId||state.settings.openaiVoice||'alloy',input:text})
+    });
+    if(!res.ok) throw new Error('OpenAI TTS error');
+    return await res.blob();
+  }catch(e){ console.error(e); return new Blob(); }
 }
 /* Browser voices list */
 function refreshBrowserVoices(){ state.browserVoices = window.speechSynthesis.getVoices()||[]; }
@@ -1036,16 +1057,19 @@ function renderWizard(){
   if(wizard.step===0){
     body.appendChild(el('div',{class:'grid2'},[
       el('div',{class:'card'},[
-        el('h3',{},'1) Paste your keys (optional)'), el('div',{class:'small'},'OpenAI enables AI Keeper + images. ElevenLabs enables premium voices. Browser voices are free and default.'),
+        el('h3',{},'1) Paste your keys (optional)'), el('div',{class:'small'},'OpenAI enables AI Keeper, images, and voices. ElevenLabs also provides premium voices. Browser voices are free and default.'),
         el('div',{class:'hr'}), el('label',{},'OpenAI API Key'), el('input',{id:'w_openai',value:state.settings.openaiKey||'',placeholder:'sk-...'}),
         el('label',{},'ElevenLabs API Key'), el('input',{id:'w_eleven',value:state.settings.elevenKey||'',placeholder:'eleven-...'}),
         el('label',{},'ElevenLabs Default Voice ID'), el('input',{id:'w_voice',value:state.settings.voiceId||'',placeholder:'21m00Tcm4TlvDq8ikWAM'}),
+        el('label',{},'ElevenLabs TTS Model'), el('input',{id:'w_elevenModel',value:state.settings.elevenModel||'eleven_multilingual_v2',placeholder:'eleven_multilingual_v2'}),
+        el('label',{},'OpenAI TTS Model'), el('input',{id:'w_openaiTTSModel',value:state.settings.openaiTTSModel||'gpt-4o-mini-tts',placeholder:'gpt-4o-mini-tts'}),
+        el('label',{},'OpenAI Default Voice'), el('input',{id:'w_openaiVoice',value:state.settings.openaiVoice||'alloy',placeholder:'alloy'}),
         el('div',{class:'row'},[
           el('label',{},[el('input',{type:'checkbox',id:'w_useimg',checked:state.settings.useImages}), ' Enable Images']),
           el('label',{},'Image Model'),
           (function(){ const s=el('select',{id:'w_imgmodel'}); ['dall-e-3','gpt-image-1','placeholders'].forEach(m=> s.appendChild(el('option',{value:m, selected:state.settings.imageModel===m}, m))); return s; })(),
           el('label',{},'TTS Default'),
-          (function(){ const s=el('select',{id:'w_ttsdef'}); ['browser','eleven','kokoro','none'].forEach(m=> s.appendChild(el('option',{value:m, selected:(state.settings.ttsProviderDefault||'browser')===m}, m))); return s; })(),
+          (function(){ const s=el('select',{id:'w_ttsdef'}); ['browser','eleven','openai','none'].forEach(m=> s.appendChild(el('option',{value:m, selected:(state.settings.ttsProviderDefault||'browser')===m}, m))); return s; })(),
           el('label',{},[el('input',{type:'checkbox',id:'w_tts',checked:state.settings.ttsOn}), ' Enable Voices']),
           el('label',{},[el('input',{type:'checkbox',id:'w_queue',checked:true}), ' Queue voice'])
         ])
@@ -1091,10 +1115,7 @@ function renderWizard(){
     const list=el('div',{}, arc.pcOptions.map((opt,idx)=> invOption(opt,idx)));
     const voiceSetup=el('div',{class:'card'},[
       el('h3',{},'Voice Setup (optional, per speaker)'),
-      el('div',{class:'small'},'Pick Browser voices (free) or enter ElevenLabs IDs per character.'),
-      el('div',{class:'row',style:'margin-top:.35rem'},[
-        el('button',{id:'btnKokoroAssets',class:'ghost',onclick:downloadKokoroAssets},'Download Kokoro Voices (~120MB)')
-      ]),
+      el('div',{class:'small'},'Pick Browser voices (free) or enter ElevenLabs/OpenAI voices per character.'),
       el('div',{id:'voiceSetupRows'})
     ]);
     body.appendChild(el('div',{class:'card'},[
@@ -1133,6 +1154,9 @@ async function wizardNext(){
     state.settings.openaiKey = byId('w_openai').value.trim();
     state.settings.elevenKey = byId('w_eleven').value.trim();
     state.settings.voiceId   = byId('w_voice').value.trim();
+    state.settings.elevenModel = byId('w_elevenModel').value.trim();
+    state.settings.openaiTTSModel = byId('w_openaiTTSModel').value.trim();
+    state.settings.openaiVoice = byId('w_openaiVoice').value.trim();
     state.settings.useImages = byId('w_useimg').checked;
     state.settings.imageModel= (byId('w_imgmodel').value||'dall-e-3');
     state.settings.ttsProviderDefault = byId('w_ttsdef').value;
@@ -1198,31 +1222,6 @@ function renderVoiceSetup(){
   actors.forEach(a=>{
     wrap.appendChild(voiceControlsForName(a));
   });
-  refreshKokoroButton();
-}
-
-async function downloadKokoroAssets(){
-  const btn = byId('btnKokoroAssets'); if(!btn) return;
-  btn.disabled = true; btn.textContent = 'Downloading...';
-  try{
-    const {session} = await ensureKokoro();
-    if(!session) throw new Error('Session unavailable');
-    btn.textContent = 'Kokoro Ready';
-    renderVoiceSetup();
-    toast('Kokoro voices downloaded');
-  }catch(err){
-    console.warn('Kokoro download failed', err);
-    toast('Kokoro download failed: ' + err.message);
-    btn.textContent = 'Download failed';
-    btn.disabled = false;
-  }
-}
-
-function refreshKokoroButton(){
-  const btn = byId('btnKokoroAssets'); if(!btn) return;
-  const map = state.settings.voiceMap || {};
-  const any = Object.values(map).some(m=>m.provider==='kokoro');
-  btn.style.display = any ? 'inline-block' : 'none';
 }
 
 /* ---------- STORY ARC (AI) with variety & anti-repetition ---------- */
