@@ -910,19 +910,66 @@ function voiceIdFor(speaker, role='pc'){
   return m?.id || (providerFor(speaker, role)==='eleven'? state.settings.voiceId : '');
 }
 
+async function fetchTTSBlob(text, voiceId){
+  const key = state.settings.elevenKey;
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+  const res = await fetch(url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','xi-api-key':key},
+    body: JSON.stringify({text})
+  });
+  if(!res.ok) throw new Error('TTS request failed');
+  return await res.blob();
+}
+
 async function speak(text, speaker='Keeper', role='pc'){
   if(!state.settings.ttsOn || !text) return;
   const provider=providerFor(speaker, role);
-  if(provider==='eleven' && state.settings.elevenKey){ const {blob}=await getOrCreateTTS(text, speaker, role); if(state.settings.ttsQueue) enqueueTTS(blob); else playBlobImmediate(blob); }
-  else if(provider==='browser'){ speakBrowser(text, speaker, role); }
+  if(provider==='eleven' && state.settings.elevenKey){
+    try{
+      const {blob}=await getOrCreateTTS(text, speaker, role);
+      if(state.settings.ttsQueue) enqueueTTS(blob); else playBlobImmediate(blob);
+    }catch(err){
+      console.error('TTS failed', err);
+      speakBrowser(text, speaker, role);
+    }
+  } else if(provider==='browser'){
+    speakBrowser(text, speaker, role);
+  }
 }
 async function getOrCreateTTS(text, speaker, role='pc'){
   const key = await hashKey(`tts|eleven|${voiceIdFor(speaker, role)}|${speaker}|${(text||'').trim()}`);
   const hit=await idbGet('tts',key); if(hit){ return {blob:hit,key}; }
   const blob=await fetchTTSBlob(text, voiceIdFor(speaker, role)); await idbSet('tts',key,blob); return {blob,key};
 }
+function enqueueTTS(blob){
+  ttsQueue.push(blob);
+  if(!ttsPlaying){
+    ttsPlaying=true;
+    playBlobImmediate(ttsQueue.shift());
+  }
+}
+function playBlobImmediate(blob){
+  stopVoice();
+  currentUrl = URL.createObjectURL(blob);
+  currentAudio = new Audio(currentUrl);
+  currentAudio.onended = ()=>{
+    stopVoice();
+    if(ttsQueue.length>0) playBlobImmediate(ttsQueue.shift());
+  };
+  currentAudio.play().catch(()=>{});
+}
 function speakBrowser(text, speaker, role='pc'){ try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); const id=voiceIdFor(speaker, role); const v=state.browserVoices.find(v=> v.name===id) || state.browserVoices[0]; if(v) u.voice=v; window.speechSynthesis.speak(u); }catch{} }
-function stopVoice(clearQueue){ try{ if(currentAudio){ currentAudio.pause(); } if(currentUrl){ URL.revokeObjectURL(currentUrl); currentUrl=null; } currentAudio=null; window.speechSynthesis.cancel(); }catch{} if(clearQueue){ ttsQueue.length=0; ttsPlaying=false; } }
+function stopVoice(clearQueue){
+  try{
+    if(currentAudio){ currentAudio.pause(); }
+    if(currentUrl){ URL.revokeObjectURL(currentUrl); currentUrl=null; }
+    currentAudio=null;
+    window.speechSynthesis.cancel();
+  }catch{}
+  if(clearQueue) ttsQueue.length=0;
+  ttsPlaying=false;
+}
 
 /* Browser voices list */
 function refreshBrowserVoices(){ state.browserVoices = window.speechSynthesis.getVoices()||[]; }
