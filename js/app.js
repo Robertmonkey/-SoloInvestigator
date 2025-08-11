@@ -124,7 +124,7 @@ const state = {
     keeperTrigger:'auto',
     keeperStyle:'normal',
     keeperMax:450,
-    voiceMap:{} // { name: {provider:'browser'|'eleven'|'none', id:'VoiceNameOrId'} }
+    voiceMap:{} // { name: {provider:'browser'|'eleven'|'kokoro'|'none', id:'VoiceNameOrId'} }
   },
   campaign:null,
   npcCatalog:[],
@@ -696,27 +696,36 @@ function voiceControlsForName(actor){
   const wrap=el('div',{class:'row',style:'margin-top:.35rem;align-items:center;flex-wrap:wrap'});
   wrap.appendChild(el('div',{class:'small',style:'min-width:12rem'},label));
   wrap.appendChild(el('div',{class:'small'},'Voice:'));
-  const provSel=el('select',{}); ['browser','eleven','none'].forEach(p=> provSel.appendChild(el('option',{value:p, selected:(state.settings.voiceMap?.[name]?.provider || state.settings.ttsProviderDefault || 'browser')===p}, p)));
-  const voiceSel=el('select',{}); // browser voices
+  const provSel=el('select',{}); ['browser','eleven','kokoro','none'].forEach(p=> provSel.appendChild(el('option',{value:p, selected:(state.settings.voiceMap?.[name]?.provider || state.settings.ttsProviderDefault || 'browser')===p}, p)));
+  const voiceSel=el('select',{}); // browser or kokoro voices
   const voiceInp=el('input',{placeholder:'ElevenLabs Voice ID'}); // eleven
   const role = actor.type || (name==='Keeper'?'npc':'pc');
   const testBtn=el('button',{class:'ghost',onclick:()=> speak(`It is I, ${name}.`, name, role)},'Test');
 
   // fill browser voices
   const chosenId = state.settings.voiceMap?.[name]?.id || '';
-  (state.browserVoices||[]).forEach(v=> voiceSel.appendChild(el('option',{value:v.name, selected: v.name===chosenId}, v.name)));
+  function fillVoiceOptions(){
+    voiceSel.innerHTML='';
+    if(provSel.value==='browser'){
+      (state.browserVoices||[]).forEach(v=> voiceSel.appendChild(el('option',{value:v.name, selected: v.name===chosenId}, v.name)));
+    }else if(provSel.value==='kokoro'){
+      (window.KOKORO_VOICES||[]).forEach(v=> voiceSel.appendChild(el('option',{value:v.id, selected:v.id===chosenId}, `${v.name} — ${v.desc}`)));
+    }
+  }
+  fillVoiceOptions();
 
-  function refreshVis(){ voiceSel.style.display = (provSel.value==='browser')?'inline-block':'none'; voiceInp.style.display = (provSel.value==='eleven')?'inline-block':'none'; }
+  function refreshVis(){ voiceSel.style.display = (provSel.value==='browser' || provSel.value==='kokoro')?'inline-block':'none'; voiceInp.style.display = (provSel.value==='eleven')?'inline-block':'none'; }
   function updateMap(){
-    state.settings.voiceMap[name] = {provider: provSel.value, id: (provSel.value==='browser')? voiceSel.value : (provSel.value==='eleven'? voiceInp.value.trim(): '')};
+    const idVal = (provSel.value==='browser' || provSel.value==='kokoro')? voiceSel.value : (provSel.value==='eleven'? voiceInp.value.trim(): '');
+    state.settings.voiceMap[name] = {provider: provSel.value, id: idVal};
     saveSettings();
   }
-  provSel.onchange=()=>{ refreshVis(); updateMap(); };
+  provSel.onchange=()=>{ fillVoiceOptions(); refreshVis(); updateMap(); };
   voiceSel.onchange=updateMap;
   voiceInp.oninput=updateMap;
 
   // initialize inputs
-  if(chosenId && provSel.value==='browser'){ voiceSel.value=chosenId; }
+  if(chosenId && (provSel.value==='browser' || provSel.value==='kokoro')){ voiceSel.value=chosenId; }
   if(state.settings.voiceMap?.[name]?.provider==='eleven'){ voiceInp.value=state.settings.voiceMap?.[name]?.id || ''; }
   refreshVis();
 
@@ -907,19 +916,32 @@ function providerFor(speaker, role='pc'){
 }
 function voiceIdFor(speaker, role='pc'){
   const m = state.settings.voiceMap?.[speaker] || (role==='npc' ? state.settings.voiceMap?.npc : null);
-  return m?.id || (providerFor(speaker, role)==='eleven'? state.settings.voiceId : '');
+  const prov = providerFor(speaker, role);
+  if(m?.id) return m.id;
+  if(prov==='eleven') return state.settings.voiceId;
+  if(prov==='kokoro') return KOKORO_VOICES?.[0]?.id || '';
+  return '';
 }
 
 async function speak(text, speaker='Keeper', role='pc'){
   if(!state.settings.ttsOn || !text) return;
   const provider=providerFor(speaker, role);
   if(provider==='eleven' && state.settings.elevenKey){ const {blob}=await getOrCreateTTS(text, speaker, role); if(state.settings.ttsQueue) enqueueTTS(blob); else playBlobImmediate(blob); }
+  else if(provider==='kokoro'){ const {blob}=await getOrCreateKokoroTTS(text, speaker, role); if(state.settings.ttsQueue) enqueueTTS(blob); else playBlobImmediate(blob); }
   else if(provider==='browser'){ speakBrowser(text, speaker, role); }
 }
 async function getOrCreateTTS(text, speaker, role='pc'){
   const key = await hashKey(`tts|eleven|${voiceIdFor(speaker, role)}|${speaker}|${(text||'').trim()}`);
   const hit=await idbGet('tts',key); if(hit){ return {blob:hit,key}; }
   const blob=await fetchTTSBlob(text, voiceIdFor(speaker, role)); await idbSet('tts',key,blob); return {blob,key};
+}
+async function getOrCreateKokoroTTS(text, speaker, role='pc'){
+  const key = await hashKey(`tts|kokoro|${voiceIdFor(speaker, role)}|${speaker}|${(text||'').trim()}`);
+  const hit=await idbGet('tts',key); if(hit){ return {blob:hit,key}; }
+  const blob=await fetchKokoroTTSBlob(text, voiceIdFor(speaker, role)); await idbSet('tts',key,blob); return {blob,key};
+}
+async function fetchKokoroTTSBlob(text, voiceId){
+  try{ return await synthesizeKokoro(text, voiceId); }catch(e){ console.error(e); return new Blob(); }
 }
 function speakBrowser(text, speaker, role='pc'){ try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); const id=voiceIdFor(speaker, role); const v=state.browserVoices.find(v=> v.name===id) || state.browserVoices[0]; if(v) u.voice=v; window.speechSynthesis.speak(u); }catch{} }
 function stopVoice(clearQueue){ try{ if(currentAudio){ currentAudio.pause(); } if(currentUrl){ URL.revokeObjectURL(currentUrl); currentUrl=null; } currentAudio=null; window.speechSynthesis.cancel(); }catch{} if(clearQueue){ ttsQueue.length=0; ttsPlaying=false; } }
@@ -954,7 +976,7 @@ function renderWizard(){
           el('label',{},'Image Model'),
           (function(){ const s=el('select',{id:'w_imgmodel'}); ['dall-e-3','gpt-image-1','placeholders'].forEach(m=> s.appendChild(el('option',{value:m, selected:state.settings.imageModel===m}, m))); return s; })(),
           el('label',{},'TTS Default'),
-          (function(){ const s=el('select',{id:'w_ttsdef'}); ['browser','eleven','none'].forEach(m=> s.appendChild(el('option',{value:m, selected:(state.settings.ttsProviderDefault||'browser')===m}, m))); return s; })(),
+          (function(){ const s=el('select',{id:'w_ttsdef'}); ['browser','eleven','kokoro','none'].forEach(m=> s.appendChild(el('option',{value:m, selected:(state.settings.ttsProviderDefault||'browser')===m}, m))); return s; })(),
           el('label',{},[el('input',{type:'checkbox',id:'w_tts',checked:state.settings.ttsOn}), ' Enable Voices']),
           el('label',{},[el('input',{type:'checkbox',id:'w_queue',checked:true}), ' Queue voice'])
         ])
