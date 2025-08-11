@@ -5,8 +5,12 @@
 
 const KOKORO_LOCAL_MODEL = 'kokoro/kokoro-v1.0.onnx';
 const KOKORO_LOCAL_VOICES = 'kokoro/voices-v1.0.bin';
-const KOKORO_REMOTE_MODEL = 'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx';
-const KOKORO_REMOTE_VOICES = 'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin';
+// Use CORS-friendly mirrors so browsers can fetch the model assets when they
+// aren't bundled locally. GitHub release assets block cross-origin requests,
+// which resulted in the silent beep fallback. These mirrors are hosted on
+// Hugging Face and allow `Access-Control-Allow-Origin: *`.
+const KOKORO_REMOTE_MODEL = 'https://huggingface.co/thewh1teagle/kokoro-onnx/resolve/main/kokoro-v1.0.onnx?download=1';
+const KOKORO_REMOTE_VOICES = 'https://huggingface.co/datasets/thewh1teagle/kokoro-voices-v1.0/resolve/main/voices-v1.0.bin?download=1';
 const KOKORO_CONFIG_URL = 'https://raw.githubusercontent.com/thewh1teagle/kokoro-onnx/main/src/kokoro_onnx/config.json';
 
 // Voice metadata with friendly descriptions so players can map
