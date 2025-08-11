@@ -49,9 +49,13 @@ async function ensureKokoro(){
         const providers=[]; if(navigator && navigator.gpu) providers.push('webgpu'); providers.push('wasm');
 
         async function fetchMaybe(localUrl, remoteUrl){
-          const r = await fetch(localUrl).catch(()=>null);
-          if(r && r.ok) return r.arrayBuffer();
-          return fetch(remoteUrl).then(res=>res.arrayBuffer());
+          try{
+            const r = await fetch(localUrl);
+            if(r.ok) return r.arrayBuffer();
+          }catch(e){/* ignore */}
+          const res = await fetch(remoteUrl);
+          if(!res.ok) throw new Error(`HTTP ${res.status} for ${remoteUrl}`);
+          return res.arrayBuffer();
         }
 
         const [modelBuf, voicesBuf] = await Promise.all([
@@ -82,7 +86,7 @@ async function ensureKokoro(){
         return {session, voices, vocab:config.vocab, phonemize};
       }catch(err){
         console.warn('Kokoro init failed', err);
-        return {session:null};
+        throw err;
       }
     })();
   }
@@ -147,4 +151,4 @@ function floatToWav(float32Array, sampleRate){
 }
 
 // kick off loading so voice options appear early
-ensureKokoro();
+ensureKokoro().catch(err=>console.warn('Kokoro prefetch failed', err));
