@@ -86,7 +86,7 @@
     color:#cfe1ff;font-size:.75rem}
 
   /* Chat (fixed height + scrollbar) */
-  #chat{display:flex;flex-direction:column;flex:1;min-height:0}
+  #chat{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
   #chatLog{
     flex:1; /* fill remaining space */
     overflow-y:auto;
