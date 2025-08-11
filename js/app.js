@@ -1182,15 +1182,13 @@ async function downloadKokoroAssets(){
   btn.disabled = true; btn.textContent = 'Downloading...';
   try{
     const {session} = await ensureKokoro();
-    if(session){
-      btn.textContent = 'Kokoro Ready';
-      renderVoiceSetup();
-    }else{
-      btn.textContent = 'Download failed';
-      btn.disabled = false;
-    }
+    if(!session) throw new Error('Session unavailable');
+    btn.textContent = 'Kokoro Ready';
+    renderVoiceSetup();
+    toast('Kokoro voices downloaded');
   }catch(err){
     console.warn('Kokoro download failed', err);
+    toast('Kokoro download failed: ' + err.message);
     btn.textContent = 'Download failed';
     btn.disabled = false;
   }
