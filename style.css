@@ -157,6 +157,8 @@
   /* Save slots */
   .slots{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
   .slots .slot{display:flex;gap:.5rem;align-items:center;justify-content:space-between;border:1px dashed #2b3650;border-radius:10px;padding:.4rem .6rem;background:#0c121c}
+  .slots .slot.used{border-style:solid}
+  .slots .slot .row button[disabled]{opacity:.4;cursor:not-allowed}
   .slots .meta{display:flex;flex-direction:column}
   .slots .ts{font-size:.75rem;color:#8ea0bf}
 

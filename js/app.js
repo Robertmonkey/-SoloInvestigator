@@ -892,12 +892,47 @@ byId('btnAddClue').onclick=()=>{
 };
 
 /* ---------- SAVE/LOAD (assets included) ---------- */
-function updateSlots(){ const wrap=byId('slots'); wrap.innerHTML=''; const slots=loadSlots(); for(let i=0;i<6;i++){ const slot=slots[i]||null; const row=el('div',{class:'slot'},[
-    el('div',{class:'meta'},[ el('div',{}, `Slot ${i+1}: ${slot? (slot.meta?.name||'Campaign'): '— empty —'}`), el('div',{class:'ts'}, slot? new Date(slot.meta?.ts||Date.now()).toLocaleString(): '') ]),
-    el('div',{class:'row'},[ el('button',{class:'ghost',onclick:()=> saveToSlot(i)},'Save'), el('button',{class:'warn',onclick:()=> loadFromSlot(i)},'Load'), el('button',{class:'danger',onclick:()=> clearSlot(i)},'Clear') ])
-  ]); wrap.appendChild(row);} }
-function saveSlots(slots){ localStorage.setItem(LS_SLOTS, JSON.stringify(slots)); }
-function loadSlots(){ const raw=localStorage.getItem(LS_SLOTS); return raw? JSON.parse(raw):[]; }
+function loadSlots(){
+  const raw = localStorage.getItem(LS_SLOTS);
+  if(!raw) return Array(6).fill(null);
+  try{
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)? parsed: Array(6).fill(null);
+  }catch(e){
+    console.warn('Could not parse save slots', e);
+    return Array(6).fill(null);
+  }
+}
+function saveSlots(slots){
+  try{
+    localStorage.setItem(LS_SLOTS, JSON.stringify(slots));
+  }catch(e){
+    console.error('Save failed', e);
+    toast('Save failed: '+(e.name==='QuotaExceededError'?'storage full':'see console'));
+  }
+}
+function updateSlots(){
+  const wrap = byId('slots');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  const slots = loadSlots();
+  for(let i=0;i<6;i++){
+    const slot = slots[i]||null;
+    const used = !!slot;
+    const row = el('div',{class:'slot'+(used?' used':'')},[
+      el('div',{class:'meta'},[
+        el('div',{}, `Slot ${i+1}: ${used? (slot.meta?.name||'Campaign'): '\u2014 empty \u2014'}`),
+        el('div',{class:'ts'}, used? new Date(slot.meta?.ts||Date.now()).toLocaleString(): '')
+      ]),
+      el('div',{class:'row'},[
+        el('button',{class:'ghost',onclick:()=> saveToSlot(i)},'Save'),
+        el('button',{class:'warn',onclick:()=> loadFromSlot(i),disabled:!used},'Load'),
+        el('button',{class:'danger',onclick:()=> clearSlot(i),disabled:!used},'Clear')
+      ])
+    ]);
+    wrap.appendChild(row);
+  }
+}
 function captureChat(){
   const lines=[]; chatLog.querySelectorAll('.line').forEach(l=>{
     if(l.classList.contains('action')){ lines.push({type:'action',text:l.textContent}); return; }
@@ -927,16 +962,16 @@ function restoreChat(lines){
 function captureState(){
   return {
     meta:{ts:Date.now(), name: currentScene().name},
-    settings: state.settings,
+    settings: deepClone(state.settings),
     sceneIndex: state.sceneIndex,
-    scenes: state.scenes,
-    campaign: state.campaign,
+    scenes: deepClone(state.scenes),
+    campaign: deepClone(state.campaign),
     youPCId: state.youPCId,
-    npcCatalog: state.npcCatalog,
+    npcCatalog: deepClone(state.npcCatalog),
     chat: captureChat(),
-    initOrder: state.initOrder,
+    initOrder: deepClone(state.initOrder),
     activeTurn: state.activeTurn,
-    encounter: state.encounter,
+    encounter: deepClone(state.encounter),
     memory: state.memory
   };
 }
@@ -959,7 +994,24 @@ function saveToSlot(i){ const slots=loadSlots(); slots[i]=captureState(); saveSl
 function loadFromSlot(i){ const slots=loadSlots(); if(!slots[i]){ toast('Empty slot'); return; } applyState(slots[i]); toast('Loaded.'); }
 function clearSlot(i){ const slots=loadSlots(); slots[i]=null; saveSlots(slots); updateSlots(); }
 byId('btnExport').onclick=()=>{ const blob=new Blob([JSON.stringify(captureState(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='solo-investigator-save.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 2000); };
+byId('btnExportSlots').onclick=()=>{ const blob=new Blob([JSON.stringify(loadSlots(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='solo-investigator-slots.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 2000); };
 byId('btnImport').onclick=()=>{ try{ const data=JSON.parse(byId('importText').value.trim()); applyState(data); toast('Imported.'); }catch{ toast('Bad JSON'); } };
+byId('importFile').addEventListener('change', async e=>{ const f=e.target.files[0]; if(!f) return; try{ const txt=await f.text(); const data=JSON.parse(txt); applyState(data); toast('Imported.'); }catch{ toast('Bad JSON'); } finally{ e.target.value=''; } });
+byId('importSlotsFile').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const txt=await f.text();
+    const data=JSON.parse(txt);
+    if(Array.isArray(data)){
+      const arr=Array(6).fill(null);
+      data.slice(0,6).forEach((s,idx)=> arr[idx]=s);
+      saveSlots(arr);
+      updateSlots();
+      toast('Slots imported.');
+    } else toast('Bad slots file');
+  }catch{ toast('Bad slots file'); }
+  finally{ e.target.value=''; }
+});
 
 /* ---------- IMAGES (Data URLs; cached) ---------- */
 async function openaiImage(prompt, size='1024x1024'){
