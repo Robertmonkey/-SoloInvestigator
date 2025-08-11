@@ -175,7 +175,16 @@ function el(tag,attrs={},children=[]){ const e=document.createElement(tag);
   return e;
 }
 function toast(msg){ const t=byId('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
-function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeHtml(s){
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return (s || '').replace(/[&<>"']/g, c => map[c]);
+}
 function stripTags(s){ const d=document.createElement('div'); d.innerHTML=s||''; return d.textContent||d.innerText||''; }
 function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
 function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
@@ -230,7 +239,7 @@ function renderTokens(){
 function renderTokenList(){
   const list=byId('tokenList'); list.innerHTML='';
   currentScene().tokens.forEach(t=>{
-    const label = `${escapeHtml(t.type.toUpperCase())} • ${escapeHtml(t.name||'Unnamed')} @ ${t.x},${t.y}`;
+    const label = `${escapeHtml((t.type||'').toUpperCase())} • ${escapeHtml(t.name||'Unnamed')} @ ${t.x},${t.y}`;
     const row=el('div',{class:'row',style:'justify-content:space-between;margin:.25rem 0;align-items:center;'},
       [el('div',{html:label}),
        el('div',{class:'row'},[
@@ -515,8 +524,8 @@ function addSystemMessage(text){
 
 function addWhisper(target, text){
   const line=el('div',{class:'line whisper'},[
-    el('div',{class:'who'}, `Whisper to ${target}`),
-    el('div',{class:'content'}, text)
+    el('div',{class:'who'}, `Whisper to ${escapeHtml(target)}`),
+    el('div',{class:'content'}, escapeHtml(text))
   ]);
   chatLog.appendChild(line);
   chatLog.scrollTop=chatLog.scrollHeight;
@@ -940,7 +949,7 @@ function applyState(data){
   state.npcCatalog=data.npcCatalog||[];
   state.initOrder=data.initOrder||[];
   state.activeTurn=data.activeTurn||0;
-  state.encounter=data.encounter||{on:false,movesLeft:0,actionsLeft:0};
+  state.encounter=data.encounter||{on:false,movesLeft:0,actionsLeft:0,bonusLeft:0};
   state.memory=data.memory||'';
   state.chat=data.chat||[];
   loadSettings(); renderAll();
