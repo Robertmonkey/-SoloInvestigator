@@ -13,16 +13,16 @@ const GRID_W = 12, GRID_H = 8;
 
 /* Ten core investigators (as before) */
 const INVESTIGATORS = [
-  { archetype:"Journalist",   name:"Eleanor Shaw",             sex:"F", age:31, prompt:"1920s journalist portrait, trench coat, press badge, film-noir lighting", backstory:"Reporter chasing labor abuses to redeem a career-stalling misquote.", traits:"Observant, stubborn, empathetic." },
-  { archetype:"Doctor",       name:"Thomas Greer, MD",         sex:"M", age:40, prompt:"1920s physician portrait, wireframe glasses, soft rim light", backstory:"War medic haunted by triage choices; volunteers at a charity clinic.", traits:"Calm, clinical, moral." },
-  { archetype:"Professor",    name:"Miriam Kline",             sex:"F", age:37, prompt:"1920s academic portrait, tweed, library bokeh", backstory:"Folklore professor cataloging 'drowned saints' myths.", traits:"Curious, cautious, enthralled." },
-  { archetype:"Detective",    name:"Silas Hart",               sex:"M", age:33, prompt:"1920s sleuth portrait, fedora, cigarette smoke", backstory:"Laid‑off Pinkerton with a code; hired off‑books to find the missing.", traits:"Dry wit, methodical, suspicious." },
-  { archetype:"Occultist",    name:"Opal Reyes",               sex:"F", age:26, prompt:"1920s medium portrait, candlelight, ectoplasmic haze", backstory:"Spiritualist who lost a sibling to the unknown; drawn to thin places.", traits:"Intense, intuitive, brittle." },
-  { archetype:"Photographer", name:"Beatrice “Bea” Hollis",     sex:"F", age:28, prompt:"1920s field photographer, Graflex camera, raincoat", backstory:"Stringer who captured something impossible on a glass plate.", traits:"Composed, daring, curious." },
-  { archetype:"Sailor",       name:"Franklin “Finn” MacReady", sex:"M", age:35, prompt:"1920s sailor portrait, peacoat, stormy backdrop", backstory:"Knows hidden inlets; talks in his sleep—answers back, too.", traits:"Superstitious, brave, practical." },
-  { archetype:"Psychiatrist", name:"Dr. Anjali Rao",            sex:"F", age:34, prompt:"1920s psychiatrist, tidy bob, notebook", backstory:"Researching mass suggestion; her mentor vanished here.", traits:"Analytical, patient, fearless." },
-  { archetype:"Ex‑Priest",    name:"Father Declan Byrne",      sex:"M", age:45, prompt:"1920s clerical portrait, worn collar, hard eyes", backstory:"Left the cloth after a catastrophe; now studies apocrypha.", traits:"Grim, protective, resolute." },
-  { archetype:"Radio Operator",name:"Dorothy “Dot” Pennington", sex:"F", age:24, prompt:"1920s radio operator, headphones, desk lamp glow", backstory:"Intercepted a coded transmission about 'the Chapel Below'.", traits:"Wry, quick, technical." }
+  { archetype:"Journalist",   name:"Eleanor Shaw",             sex:"F", age:31, prompt:"1920s journalist portrait, trench coat, press badge, film-noir lighting", backstory:"Reporter chasing labor abuses to redeem a career-stalling misquote.", traits:"Observant, stubborn, empathetic.", img:"assets/investigators/journalist_eleanor_shaw.png" },
+  { archetype:"Doctor",       name:"Thomas Greer, MD",         sex:"M", age:40, prompt:"1920s physician portrait, wireframe glasses, soft rim light", backstory:"War medic haunted by triage choices; volunteers at a charity clinic.", traits:"Calm, clinical, moral.", img:"assets/investigators/doctor_thomas_greer.png" },
+  { archetype:"Professor",    name:"Miriam Kline",             sex:"F", age:37, prompt:"1920s academic portrait, tweed, library bokeh", backstory:"Folklore professor cataloging 'drowned saints' myths.", traits:"Curious, cautious, enthralled.", img:"assets/investigators/professor_miriam_kline.png" },
+  { archetype:"Detective",    name:"Silas Hart",               sex:"M", age:33, prompt:"1920s sleuth portrait, fedora, cigarette smoke", backstory:"Laid‑off Pinkerton with a code; hired off‑books to find the missing.", traits:"Dry wit, methodical, suspicious.", img:"assets/investigators/detective_silas_hart.png" },
+  { archetype:"Occultist",    name:"Opal Reyes",               sex:"F", age:26, prompt:"1920s medium portrait, candlelight, ectoplasmic haze", backstory:"Spiritualist who lost a sibling to the unknown; drawn to thin places.", traits:"Intense, intuitive, brittle.", img:"assets/investigators/occultist_opal_reyes.png" },
+  { archetype:"Photographer", name:"Beatrice “Bea” Hollis",     sex:"F", age:28, prompt:"1920s field photographer, Graflex camera, raincoat", backstory:"Stringer who captured something impossible on a glass plate.", traits:"Composed, daring, curious.", img:"assets/investigators/photographer_beatrice_hollis.png" },
+  { archetype:"Sailor",       name:"Franklin “Finn” MacReady", sex:"M", age:35, prompt:"1920s sailor portrait, peacoat, stormy backdrop", backstory:"Knows hidden inlets; talks in his sleep—answers back, too.", traits:"Superstitious, brave, practical.", img:"assets/investigators/sailor_finn_macready.png" },
+  { archetype:"Psychiatrist", name:"Dr. Anjali Rao",            sex:"F", age:34, prompt:"1920s psychiatrist, tidy bob, notebook", backstory:"Researching mass suggestion; her mentor vanished here.", traits:"Analytical, patient, fearless.", img:"assets/investigators/psychiatrist_anjali_rao.png" },
+  { archetype:"Ex‑Priest",    name:"Father Declan Byrne",      sex:"M", age:45, prompt:"1920s clerical portrait, worn collar, hard eyes", backstory:"Left the cloth after a catastrophe; now studies apocrypha.", traits:"Grim, protective, resolute.", img:"assets/investigators/ex_priest_declan_byrne.png" },
+  { archetype:"Radio Operator",name:"Dorothy “Dot” Pennington", sex:"F", age:24, prompt:"1920s radio operator, headphones, desk lamp glow", backstory:"Intercepted a coded transmission about 'the Chapel Below'.", traits:"Wry, quick, technical.", img:"assets/investigators/radio_operator_dorothy_pennington.png" }
 ];
 
 /* Demo arcs (varied) */
@@ -37,13 +37,19 @@ const DEMO_ARCS = [
       {name:"Act II — The Deed Box",beats:["A sealed donor box smells like ozone.","A marginalia cipher points to an off‑limits sub‑basement."]},
       {name:"Act III — The Reading",beats:["An index card tray forms a sigil.","Stop a reading that writes itself into the audience."]}
     ],
-    imagePrompts:[
-      "Dusty archive stacks at night, beams of light, painterly, cinematic",
-      "Sub-basement with pipes and index card cabinets, moody chiaroscuro",
-      "Reading room with scattered papers and an ozone glow, 1920s"
+    backgrounds:[
+      "assets/backgrounds/dust_on_the_stacks_act1.png",
+      "assets/backgrounds/dust_on_the_stacks_act2.png",
+      "assets/backgrounds/dust_on_the_stacks_act3.png"
     ],
+    handouts:[{title:"Dust on the Stacks Handout", text:"", imageUrl:"assets/handouts/dust_handout.png"}],
     pcOptions: INVESTIGATORS,
-    npcs:["Head Librarian with ink-stained fingers","Night Watchman who forgets his own name","Graduate Assistant with shaking hands","Archivist with a bandaged ear"]
+    npcs:[
+      {name:"Head Librarian with ink-stained fingers", img:"assets/npcs/dust_head_librarian.png"},
+      {name:"Night Watchman who forgets his own name", img:"assets/npcs/dust_night_watchman.png"},
+      {name:"Graduate Assistant with shaking hands", img:"assets/npcs/dust_graduate_assistant.png"},
+      {name:"Archivist with a bandaged ear", img:"assets/npcs/dust_archivist.png"}
+    ]
   },
   {
     title:"Salt Less Taken",
@@ -55,13 +61,19 @@ const DEMO_ARCS = [
       {name:"Act II — Collapse of Names",beats:["Census records swap surnames overnight.","A surveyor’s map shows a tunnel that doesn’t exist—yet."]},
       {name:"Act III — The Hollow Men",beats:["Miners accuse each other of being 'wrong copies'.","A cavern roof pulses like a lung."]}
     ],
-    imagePrompts:[
-      "1920s mountain mine adit, lantern light, dust motes, painterly",
-      "Town census office with scattered ledgers, twilight through window",
-      "Large cavern with timber supports, unsettling organic textures"
+    backgrounds:[
+      "assets/backgrounds/salt_less_taken_act1.png",
+      "assets/backgrounds/salt_less_taken_act2.png",
+      "assets/backgrounds/salt_less_taken_act3.png"
     ],
+    handouts:[{title:"Salt Less Taken Handout", text:"", imageUrl:"assets/handouts/salt_handout.png"}],
     pcOptions: INVESTIGATORS,
-    npcs:["Foreman with a crushed hat","Nurse running a tiny clinic","Geology professor on sabbatical","Local preacher who refuses to ring the bell"]
+    npcs:[
+      {name:"Foreman with a crushed hat", img:"assets/npcs/salt_foreman.png"},
+      {name:"Nurse running a tiny clinic", img:"assets/npcs/salt_nurse.png"},
+      {name:"Geology professor on sabbatical", img:"assets/npcs/salt_geology_professor.png"},
+      {name:"Local preacher who refuses to ring the bell", img:"assets/npcs/salt_preacher.png"}
+    ]
   },
   {
     title:"Mirrors for a Carnival",
@@ -73,13 +85,19 @@ const DEMO_ARCS = [
       {name:"Act II — The Owner’s Ledger",beats:["Payments to names nobody recognizes.","A cracked mirror whispers in daylight."]},
       {name:"Act III — The Hall of Others",beats:["Reflections lag by minutes.","Something steps out of the wrong pane."]}
     ],
-    imagePrompts:[
-      "1920s carnival midway at dusk, string lights, painterly",
-      "Old ledger and ticket stubs on a wooden desk, moody",
-      "Mirror maze interior with warped reflections, eerie"
+    backgrounds:[
+      "assets/backgrounds/mirrors_for_a_carnival_act1.png",
+      "assets/backgrounds/mirrors_for_a_carnival_act2.png",
+      "assets/backgrounds/mirrors_for_a_carnival_act3.png"
     ],
+    handouts:[{title:"Mirrors for a Carnival Handout", text:"", imageUrl:"assets/handouts/mirrors_handout.png"}],
     pcOptions: INVESTIGATORS,
-    npcs:["Ringmaster with a velvet voice","Fortune-teller who looks past you","Mechanic with mercury stains","Deputy uneasy around mirrors"]
+    npcs:[
+      {name:"Ringmaster with a velvet voice", img:"assets/npcs/mirrors_ringmaster.png"},
+      {name:"Fortune-teller who looks past you", img:"assets/npcs/mirrors_fortune_teller.png"},
+      {name:"Mechanic with mercury stains", img:"assets/npcs/mirrors_mechanic.png"},
+      {name:"Deputy uneasy around mirrors", img:"assets/npcs/mirrors_deputy.png"}
+    ]
   },
   {
     title:"White Silence",
@@ -91,13 +109,19 @@ const DEMO_ARCS = [
       {name:"Act II — The Memory Snow",beats:["Footprints persist despite wind—until they start walking again.","A missing researcher returns with blank eyes."]},
       {name:"Act III — Below the Drift",beats:["An ice cave hums in a human cadence.","Shut down the transmitter no one brought."]}
     ],
-    imagePrompts:[
-      "1920s arctic camp, radio mast in snow, painterly",
-      "Ice cave with blue light and rope, cinematic",
-      "Snowfield with repeating footprints, eerie minimal"
+    backgrounds:[
+      "assets/backgrounds/white_silence_act1.png",
+      "assets/backgrounds/white_silence_act2.png",
+      "assets/backgrounds/white_silence_act3.png"
     ],
+    handouts:[{title:"White Silence Handout", text:"", imageUrl:"assets/handouts/white_handout.png"}],
     pcOptions: INVESTIGATORS,
-    npcs:["Radio tech with frostbitten ears","Pilot grounded by weather","Meteorologist who refuses to sleep","Surgeon counting backwards in Russian"]
+    npcs:[
+      {name:"Radio tech with frostbitten ears", img:"assets/npcs/white_radio_tech.png"},
+      {name:"Pilot grounded by weather", img:"assets/npcs/white_sven.png"},
+      {name:"Meteorologist who refuses to sleep", img:"assets/npcs/white_glaciologist.png"},
+      {name:"Surgeon counting backwards in Russian", img:"assets/npcs/white_surgeon.png"}
+    ]
   }
 ];
 
@@ -1282,14 +1306,21 @@ async function wizardAutoBuildEverything(){
     state.scenes=[]; arc.acts.forEach(a=> state.scenes.push(newScene(a.name))); state.sceneIndex=0;
     // 1: Backgrounds
     progressSet(1);
-    for(let i=0;i<state.scenes.length;i++){ const prompt=(arc.imagePrompts&&arc.imagePrompts[i])||arc.imagePrompts?.[0]||`${arc.setting} — ${arc.acts[i].name}`; try{ const dataUrl=await openaiImage(prompt,'1024x1024'); state.scenes[i].bg=dataUrl; }catch{} }
+    for(let i=0;i<state.scenes.length;i++){
+      if(arc.backgrounds && arc.backgrounds[i]){
+        state.scenes[i].bg = arc.backgrounds[i];
+      }else{
+        const prompt=(arc.imagePrompts&&arc.imagePrompts[i])||arc.imagePrompts?.[0]||`${arc.setting} — ${arc.acts[i].name}`;
+        try{ const dataUrl=await openaiImage(prompt,'1024x1024'); state.scenes[i].bg=dataUrl; }catch{}
+      }
+    }
     renderBackground();
     // 2: PCs
     progressSet(2);
     const opts = arc.pcOptions || INVESTIGATORS;
     const picks=[wizard.youIndex, ...wizard.companions].map(i=> opts[i]);
     currentScene().tokens.length=0;
-    picks.forEach((p,i)=> addToken({name:p.name, type:'pc', x:i, y:GRID_H-1, persona:`${p.archetype}. Backstory: ${p.backstory}. Traits: ${p.traits}.`, speed:4}));
+    picks.forEach((p,i)=> addToken({name:p.name, type:'pc', x:i, y:GRID_H-1, persona:`${p.archetype}. Backstory: ${p.backstory}. Traits: ${p.traits}.`, speed:4, portraitData:p.img}));
     const youName=opts[wizard.youIndex].name;
     const youToken=currentScene().tokens.find(t=>t.name===youName && t.type==='pc');
     if(youToken){
@@ -1302,13 +1333,17 @@ async function wizardAutoBuildEverything(){
     }
     // 3: NPCs
     progressSet(3);
-    (arc.npcs||[]).slice(0,4).forEach((n,i)=> addToken({name:n, type:'npc', x:GRID_W-1-i, y:0, persona:"NPC with local knowledge"}));
+    (arc.npcs||[]).slice(0,4).forEach((n,i)=>{
+      const name = typeof n === 'string' ? n : n.name;
+      const img = typeof n === 'object' ? n.img : undefined;
+      addToken({name, type:'npc', x:GRID_W-1-i, y:0, persona:"NPC with local knowledge", portraitData:img});
+    });
     // 4: Portraits PCs
     progressSet(4);
-    for(const t of currentScene().tokens.filter(t=>t.type==='pc')) await genPortraitFor(t);
+    for(const t of currentScene().tokens.filter(t=>t.type==='pc' && !t.portraitData)) await genPortraitFor(t);
     // 5: Portraits NPCs
     progressSet(5);
-    for(const t of currentScene().tokens.filter(t=>t.type==='npc')) await genPortraitFor(t);
+    for(const t of currentScene().tokens.filter(t=>t.type==='npc' && !t.portraitData)) await genPortraitFor(t);
     // 6: Handouts
     progressSet(6);
     await generateHandoutsAuto(arc);
@@ -1355,6 +1390,12 @@ Prompts should describe a 1920s portrait in cinematic, painterly style. Return O
 
 /* ---------- HANDOUTS ---------- */
 async function generateHandoutsAuto(arc=state.campaign){
+  if(arc && arc.handouts){
+    state.campaign = state.campaign || {};
+    state.campaign.handouts = arc.handouts;
+    renderHandouts();
+    return;
+  }
   let handouts=[];
   if(state.settings.openaiKey){
     try{
