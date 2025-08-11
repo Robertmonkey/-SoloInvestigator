@@ -333,12 +333,17 @@
     <div class="grid2">
       <div class="col">
         <label>Export (download JSON file)</label>
-        <button id="btnExport" class="ghost">Export Now</button>
+        <button id="btnExport" class="ghost">Export Current</button>
+        <button id="btnExportSlots" class="ghost" style="margin-top:.5rem">Export Slots</button>
       </div>
       <div class="col">
         <label>Import (paste JSON)</label>
         <textarea id="importText" rows="6" placeholder="{...}"></textarea>
-        <div class="row right"><button id="btnImport" class="primary">Import</button></div>
+        <div class="row right"><button id="btnImport" class="primary">Import Text</button></div>
+        <label style="margin-top:.5rem">Import from File</label>
+        <input id="importFile" type="file" accept="application/json"/>
+        <label style="margin-top:.5rem">Import Slots File</label>
+        <input id="importSlotsFile" type="file" accept="application/json"/>
       </div>
     </div>
   </div>
