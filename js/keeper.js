@@ -3,7 +3,9 @@ function buildAIPrompt(actor){
   const sc=currentScene();
   const party=sc.tokens.filter(t=>t.type==='pc').map(t=>`${t.name} at (${t.x},${t.y})`).join('; ');
   const npcs=sc.tokens.filter(t=>t.type==='npc').map(t=>`${t.name} at (${t.x},${t.y})`).join(', ');
-  const recentChat = Array.from(chatLog.querySelectorAll('.line')).slice(-5).map(l=>l.innerText).join('\n');
+  const recentChat = Array.from(chatLog.querySelectorAll('.line')).slice(-5)
+    .map(l=> l.querySelector('.content')?.innerText || '')
+    .join('\n');
 
   const notableSkills = Object
     .entries(actor.sheet?.skills || {})
@@ -13,7 +15,7 @@ function buildAIPrompt(actor){
 
   const persona = `You are ${actor.name}, a ${actor.sheet?.archetype || 'character'}.
 Backstory: ${actor.persona || actor.sheet?.persona || 'Unknown'}
-Traits: ${actor.sheet?.traits || 'As defined by archetype.'}
+Traits: ${actor.traits || actor.sheet?.traits || 'As defined by archetype.'}
 Bonds: ${(actor.sheet?.bonds||[]).join(', ') || 'none'}
 You remember past events and companions.
 Your current health is ${actor.sheet?.hp ?? '??'} HP and ${actor.sheet?.sanity ?? '??'} Sanity.
