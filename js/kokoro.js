@@ -4,6 +4,14 @@
 // global functions to list voices and synthesize speech.
 
 (function() {
+  // Ensure that the global voice array is defined to avoid reference errors.
+  // app.js references KOKORO_VOICES directly (not via window), so assign it
+  // on the global object as well as on window.
+  const existingVoices = (typeof globalThis !== 'undefined' && globalThis.KOKORO_VOICES) || [];
+  window.KOKORO_VOICES = existingVoices;
+  if (typeof globalThis !== 'undefined') {
+    globalThis.KOKORO_VOICES = window.KOKORO_VOICES;
+  }
   // Namespace for shared state.
   const state = {
     kokoroTTS: null,
@@ -20,8 +28,9 @@
     }
     state.loadPromise = (async () => {
       try {
-        // Dynamically import the kokoro-js library from jsDelivr CDN.
-        const { KokoroTTS } = await import('https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/dist/kokoro.esm.js');
+        // Dynamically import the kokoro-js library from esm.sh. esm.sh bundles
+        // the package for browser usage and includes all dependencies.
+        const { KokoroTTS } = await import('https://esm.sh/kokoro-js@1.2.1?bundle');
         // Load the pre-trained Kokoro model. Use quantized weights for better performance.
         const dtype = 'q8';
         const device = navigator.gpu ? 'webgpu' : 'wasm';
@@ -128,4 +137,6 @@
 
   // Expose global functions expected by app.js.
   window.synthesizeKokoro = synthesizeKokoro;
+  // Expose ensureKokoro so that app.js can trigger a manual download
+  window.ensureKokoro = ensureKokoro;
 })();
