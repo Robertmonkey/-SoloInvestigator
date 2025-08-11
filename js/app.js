@@ -320,7 +320,7 @@ function endMeasure(){ if(measureEl){ measureEl.remove(); measureEl=null; } }
 function gridDistance(a,b){ const [ax,ay]=pxToGrid(a[0],a[1]), [bx,by]=pxToGrid(b[0],b[1]); return Math.max(Math.abs(ax-bx),Math.abs(ay-by)); }
 
 /* ---------- TOKENS ---------- */
-function addToken(t){ const sc=currentScene(); t.id=t.id||('t_'+Math.random().toString(36).slice(2,8)); t.x=clamp(t.x ?? 1,0,GRID_W-1); t.y=clamp(t.y ?? 1,0,GRID_H-1); t.type=t.type||'pc'; t.speed=t.speed ?? 4; t.sheet = t.sheet||defaultSheet(t); sc.tokens.push(t); renderTokens(); renderTokenList(); }
+function addToken(t){ const sc=currentScene(); t.id=t.id||('t_'+Math.random().toString(36).slice(2,8)); t.x=clamp(t.x ?? 1,0,GRID_W-1); t.y=clamp(t.y ?? 1,0,GRID_H-1); t.type=t.type||'pc'; t.speed=t.speed ?? 4; t.sheet = t.sheet||defaultSheet(t); sc.tokens.push(t); applyDefaultVoices(); renderTokens(); renderTokenList(); }
 function removeToken(id){ const sc=currentScene(); sc.tokens=sc.tokens.filter(x=>x.id!==id); renderTokens(); renderTokenList(); renderReach(); }
 function editTokenPrompt(t){ const name=prompt('Name:', t.name||''); if(name===null) return; const type=prompt('Type (pc|npc):', t.type||'pc'); if(type===null) return; t.name=name.trim(); t.type=(type==='npc')?'npc':'pc'; renderTokens(); renderTokenList(); }
 
@@ -678,6 +678,7 @@ byId('btnSaveSettings').onclick=()=>{
   state.settings.keeperTrigger=byId('keeperTrigger').value;
   state.settings.keeperStyle=byId('keeperStyle').value;
   state.settings.keeperMax=Number(byId('keeperMax').value)||450;
+  applyDefaultVoices();
   saveSettings(); hide('#modalSettings');
 };
 
@@ -780,7 +781,7 @@ function voiceControlsForName(actor){
     if(provSel.value==='none'){
       delete state.settings.voiceMap[name];
     }else{
-      state.settings.voiceMap[name] = {provider: provSel.value, id: idVal};
+      state.settings.voiceMap[name] = {provider: provSel.value, id: idVal, auto:false};
     }
     saveSettings();
   }
@@ -814,7 +815,10 @@ function npcEditorRow(t){ const row=el('div',{class:'row',style:'align-items:cen
   ctrls.appendChild(el('button',{class:'ghost',onclick:()=> openSheet(t)},'Open Sheet'));
   ctrls.appendChild(el('button',{class:'ghost',onclick:()=>{ const n=prompt('Rename',t.name||''); if(n!==null){ t.name=n; renderTokens(); renderNPCs(); }}},'Rename'));
   ctrls.appendChild(el('button',{class:'danger',onclick:()=>{ removeToken(t.id); renderNPCs(); }},'Remove'));
-  row.appendChild(ctrls); return row; }
+  row.appendChild(ctrls);
+  row.appendChild(voiceControlsForName(t));
+  return row;
+}
 byId('btnGenNPCs').onclick=()=>{ const arche=['Dockhand','Fishmonger','Librarian','Professor','Journalist','Doctor','Officer','Priest','Innkeeper','Smuggler']; for(let i=0;i<4;i++) addToken({name: arche[Math.floor(Math.random()*arche.length)]+' '+(i+1), type:'npc', x:GRID_W-1-i, y:0}); renderNPCs(); };
 byId('btnAddNPC').onclick=()=>{ addToken({name:prompt('Name?','Mysterious NPC')||'Mysterious NPC', type:'npc', x:GRID_W-1, y:0}); renderNPCs(); };
 
@@ -1040,6 +1044,53 @@ function voiceIdFor(speaker, role='pc'){
   return '';
 }
 
+function defaultVoiceFor(actor, provider){
+  const sex = actor.sex || 'N';
+  const age = actor.age || 30;
+  provider = provider || state.settings.ttsProviderDefault || 'browser';
+  if(provider==='browser') return defaultBrowserVoice(sex, age);
+  if(provider==='eleven') return defaultElevenVoice(sex, age);
+  if(provider==='openai') return defaultOpenAIVoice(sex, age);
+  return '';
+}
+
+function defaultBrowserVoice(sex, age){
+  const voices = (state.browserVoices||[]).filter(v=> v.name.includes('Microsoft') && v.name.includes('Natural'));
+  if(sex==='M'){
+    const mvo = voices.find(v=> /Guy|Eric|Brandon|Christopher|Tony/i.test(v.name));
+    if(mvo) return mvo.name;
+  }else if(sex==='F'){
+    const fvo = voices.find(v=> /Aria|Jenny|Sara|Samantha|Michelle/i.test(v.name));
+    if(fvo) return fvo.name;
+  }
+  return (voices[0] || state.browserVoices[0] || {}).name || '';
+}
+
+function defaultElevenVoice(sex){
+  if(sex==='M') return 'pNInz6obpgRQ2K0mzwHj'; // "Josh" male
+  if(sex==='F') return '21m00Tcm4TlvDq8ikWAM'; // "Rachel" female
+  return '21m00Tcm4TlvDq8ikWAM';
+}
+
+function defaultOpenAIVoice(sex){
+  if(sex==='M') return 'verse';
+  if(sex==='F') return 'lily';
+  return 'alloy';
+}
+
+function applyDefaultVoices(){
+  const provider = state.settings.ttsProviderDefault || 'browser';
+  state.settings.voiceMap = state.settings.voiceMap || {};
+  currentScene().tokens.forEach(t=>{
+    const m = state.settings.voiceMap[t.name];
+    if(!m || m.auto){
+      const id = defaultVoiceFor(t, provider);
+      state.settings.voiceMap[t.name] = {provider, id, auto:true};
+    }
+  });
+  saveSettings();
+}
+
 async function speak(text, speaker='Keeper', role='pc'){
   if(!state.settings.ttsOn || !text) return;
   const provider=providerFor(speaker, role);
@@ -1080,7 +1131,10 @@ async function fetchOpenAITTSBlob(text, voiceId){
   }catch(e){ console.error(e); return new Blob(); }
 }
 /* Browser voices list */
-function refreshBrowserVoices(){ state.browserVoices = window.speechSynthesis.getVoices()||[]; }
+function refreshBrowserVoices(){
+  state.browserVoices = window.speechSynthesis.getVoices()||[];
+  applyDefaultVoices();
+}
 if('speechSynthesis' in window){ window.speechSynthesis.onvoiceschanged = refreshBrowserVoices; refreshBrowserVoices(); }
 
 /* IndexedDB (images as DataURL strings; tts as Blobs) */
