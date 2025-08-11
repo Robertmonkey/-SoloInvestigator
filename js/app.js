@@ -988,7 +988,10 @@ function renderWizard(){
       ]),
       el('div',{id:'arcStatus',class:'note',style:'margin-top:.5rem'}, wizard.arc? `Loaded: ${wizard.arc.title}` : 'No arc generated yet.')
     ]);
-    const prev = el('div',{class:'card'},[ el('h3',{},'Arc preview'), el('div',{id:'arcPreview',class:'small'}, wizard.arc? arcHtml(wizard.arc): 'Generate or select an arc to preview.') ]);
+    const prev = el('div',{class:'card'},[
+      el('h3',{},'Arc preview'),
+      el('div',{id:'arcPreview',class:'small',html: wizard.arc? arcHtml(wizard.arc): 'Generate or select an arc to preview.'})
+    ]);
     body.appendChild(el('div',{class:'grid2'},[varietyUI, arcUI])); body.appendChild(prev);
     byId('btnWizardBack').disabled=false;
   }
@@ -1061,9 +1064,12 @@ function arcHtml(arc){ return `<b>${escapeHtml(arc.title)}</b><br>${escapeHtml(a
 function invOption(opt, idx){
   const wrap=el('div',{class:'card',id:`inv_${idx}`,style:'margin:.4rem 0'});
   if(wizard.youIndex===idx) wrap.classList.add('meSel'); if(wizard.companions.includes(idx)) wrap.classList.add('compSel');
-  const sex = opt.sex==='M'?'Male': (opt.sex==='F'?'Female':(opt.sex||''));
-  const meta = `${sex}, ${opt.age}`;
-  wrap.appendChild(el('div',{html:`<b>${escapeHtml(opt.name)}</b> (${escapeHtml(meta)}) — ${escapeHtml(opt.archetype)}<br><span class="small">${escapeHtml(opt.backstory)} <i>(${escapeHtml(opt.traits)})</i></span>`}));
+  const sex = opt.sex==='M'? 'Male' : opt.sex==='F'? 'Female' : (opt.sex||'');
+  const metaParts = [];
+  if(sex) metaParts.push(sex);
+  if(opt.age) metaParts.push(String(opt.age));
+  const meta = metaParts.length ? ` (${escapeHtml(metaParts.join(', '))})` : '';
+  wrap.appendChild(el('div',{html:`<b>${escapeHtml(opt.name)}</b>${meta} — ${escapeHtml(opt.archetype)}<br><span class="small">${escapeHtml(opt.backstory)} <i>(${escapeHtml(opt.traits)})</i></span>`}));
   const row=el('div',{class:'row',style:'margin-top:.25rem'});
   row.appendChild(el('button',{class:'ghost',onclick:()=> rollStats(idx)},'Roll Stats'));
   row.appendChild(el('button',{class:'primary',onclick:()=> chooseMe(idx)}, wizard.youIndex===idx?'Chosen (Me)':'Choose Me'));
@@ -1129,7 +1135,7 @@ async function genStoryArcAI(retryOnSimilar=false){
 { "title": string, "logline": string, "tone": string, "setting": string,
   "acts": [{ "name": string, "beats": string[] } ... exactly 3],
   "imagePrompts": string[] (3 painterly prompts),
-  "pcOptions": [{ "archetype": string, "name": string, "backstory": string, "traits": string, "prompt": string } ... 10],
+  "pcOptions": [{ "archetype": string, "name": string, "sex": "M"|"F", "age": number, "backstory": string, "traits": string, "prompt": string } ... 10],
   "npcs": string[] (>=6 varied roles)
 }
 Constraints:
