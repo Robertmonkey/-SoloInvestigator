@@ -141,8 +141,10 @@ Rules notes: """${state.settings.rulesPack||''}"""
 }
 function parseEngine(text){
   // Accept optional whitespace/attributes inside the engine tag so we don't leak
-  // raw <engine> blocks into chat when the model adds spacing.
-  const m = text.match(/<engine[^>]*>([\s\S]+?)<\/engine\s*>/i);
+  // raw <engine> blocks into chat when the model adds spacing. Some models
+  // occasionally omit a closing </engine> tag; handle that by capturing until
+  // the closing tag <em>or</em> end of string.
+  const m = text.match(/<engine[^>]*>([\s\S]*?)(?:<\/engine\s*>|$)/i);
   if(!m) return null;
   try{
     return JSON.parse(m[1]);
@@ -202,7 +204,7 @@ async function keeperReply(userText){
       const data=await res.json(); text=data.choices?.[0]?.message?.content || '…';
     }else{ text=demoKeeper(userText); }
     const narr = text
-      .replace(/<engine[^>]*>[\s\S]*?<\/engine\s*>/gi, '')
+      .replace(/<engine[^>]*>[\s\S]*?(?:<\/engine\s*>|$)/gi, '')
       .replace(/<\/engine>/gi, '')
       .trim();
     if(narr) addLine(narr,'keeper',{speaker:'Keeper', role:'npc'});
@@ -213,7 +215,7 @@ async function keeperReply(userText){
     addSystemMessage("The air stills… (AI call failed; offline demo).");
     const demo=demoKeeper(userText);
     const narr = demo
-      .replace(/<engine[^>]*>[\s\S]*?<\/engine\s*>/gi, '')
+      .replace(/<engine[^>]*>[\s\S]*?(?:<\/engine\s*>|$)/gi, '')
       .replace(/<\/engine>/gi, '')
       .trim();
     if(narr) addLine(narr, 'keeper', { speaker: 'Keeper', role: 'npc' });
