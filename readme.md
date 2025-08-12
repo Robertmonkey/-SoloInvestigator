@@ -16,10 +16,10 @@ A modular, client-only tabletop experience inspired by investigative horror RPGs
 - **Handouts in Chat:** Keeper can drop handouts directly into chat and update party inventory and stats automatically.
 - **System Messages:** Generic engine notices (start prompts, dice rolls, invalid moves) appear as ⚙️ lines, separate from the Keeper.
 - **Tactical Board:** Grid, fog of war (reveal/hide/undo), ruler, pings, tokens w/ portraits, active-turn highlight, movement budgets.
-- **Voices:** Queue-based TTS with **Browser voices (free)**, **ElevenLabs** (premium), or **OpenAI TTS**. Per-speaker voice selection + local caching for replays.
+- **Voices:** Queue-based TTS with **Browser voices (free)**, **ElevenLabs** (premium), or **OpenAI TTS**. Per-speaker voice selection, global volume control, and local caching for replays.
 - **Asset-Full Saves:** Export/import includes scenes, portraits, and handouts as data URLs—no re-generation needed when you reload.
 - **Cost Controls:** Local asset cache, Keeper auto-trigger (switch to manual anytime), quick command picker, offline placeholders if you disable images.
-- **Quality of Life:** Light/dark theme toggle, keyboard shortcuts for core panels, in-app help overlay, chat clear button, and resettable settings.
+- **Quality of Life:** Light/dark theme toggle, optional chat timestamps and auto-scroll, copy chat log button, grid toggle and keyboard shortcuts for core panels, in-app help overlay, chat clear button, and resettable settings.
 
 ---
 

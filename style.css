@@ -113,6 +113,7 @@
   #chatLog .who{opacity:.85;font-weight:600}
   #chatLog .content{flex:1}
   #chatLog .controls{display:flex;gap:.25rem}
+  #chatLog .timestamp{color:var(--muted);font-size:.75rem;margin-left:.5rem;white-space:nowrap}
   #chatLog .keeper .who{color:#bcd1ff}
   #chatLog .you .who{color:#d5f7e7}
   .avatar{width:28px;height:28px;border-radius:50%;overflow:hidden;border:1px solid #223049;flex:none}
