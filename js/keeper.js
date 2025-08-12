@@ -186,10 +186,34 @@ function applyEngine(eng){
     });
   }
   if(eng.rollRequests){
+    const summaries=[];
     eng.rollRequests.forEach(r=>{
-      const modStr = r.mod ? (r.mod >= 0 ? `+${r.mod}` : `${r.mod}`) : '';
-      doRoll(`1d100${modStr}`, {who:'keeper', note:`${r.character||'PC'}${r.skill?` (${r.skill})`:''}`});
+      const charName = r.character || 'PC';
+      const skillName = r.skill || '';
+      const token=currentScene().tokens.find(t=> t.name===charName || t.id===charName);
+      let result;
+      if(token){
+        ensureSheet(token);
+        const entry=Object.entries(token.sheet.skills||{}).find(([k])=>k.toLowerCase()===(skillName||'').toLowerCase());
+        if(entry){
+          const base=clamp(Number(entry[1]) + (r.mod||0),1,99);
+          result=rollPercentile(skillName, base);
+          addSystemMessage(`${escapeHtml(token.name)}: ${result.text}`, {html:true});
+          if(token.id===state.youPCId){
+            state.lastRoll={who:token.id,skill:skillName,roll:result.roll,val:result.val,tier:result.tier};
+          }
+          summaries.push(`${token.name} ${skillName}: ${result.tier}`);
+        }
+      }
+      if(!result){
+        const modStr = r.mod ? (r.mod >= 0 ? `+${r.mod}` : `${r.mod}`) : '';
+        const roll=doRoll(`1d100${modStr}`, {who:'keeper', note:`${charName}${skillName?` (${skillName})`:''}`});
+        if(roll) summaries.push(`${charName}${skillName?` (${skillName})`:''}: ${roll.sum}`);
+      }
     });
+    if(summaries.length && state.settings.keeperOn){
+      keeperReply(`Roll results: ${summaries.join('; ')}`);
+    }
   }
   if(eng.handouts){ eng.handouts.forEach(h=>{ if(typeof h==='number') dropHandout(h); else if(h && h.title){ state.campaign=state.campaign||{}; state.campaign.handouts=state.campaign.handouts||[]; state.campaign.handouts.push(h); renderHandouts(); dropHandout(state.campaign.handouts.length-1); } }); }
   if(eng.items){

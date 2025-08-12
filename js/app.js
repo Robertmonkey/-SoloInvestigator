@@ -1941,10 +1941,11 @@ byId('tool').addEventListener('change',e=> setTool(e.target.value));
 byId('brush').addEventListener('change',e=> brush=Number(e.target.value));
 
 /* Begin play banner */
-function greetAndStart(){
+async function greetAndStart(){
   addSystemMessage(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`, {html:true});
   addSystemMessage(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action and <b>1</b> bonus action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot</i> or <i>/check Listen</i>. Refresh Luck with <i>/luck</i> (once per game) and spend it after a failed roll with <i>/spendluck 5</i>.`, {html:true});
-  keeperReply('Give a brief introduction describing the characters and the scene so the player knows the setup.');
+  await keeperReply('Give a brief introduction describing the characters and the scene so the player knows the setup.');
+  startEncounter();
 }
 
 /* Boot */
