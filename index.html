@@ -340,23 +340,30 @@
 <div class="modal" id="modalSave">
   <div class="scrim" data-close="#modalSave"></div>
   <div class="sheet">
-    <h2>Save / Load</h2>
+    <h2>Save &amp; Load</h2>
+    <p class="small thin">Store up to six campaigns locally. Export or import JSON to transfer games.</p>
     <div class="slots" id="slots"></div>
     <div class="hr"></div>
     <div class="grid2">
-      <div class="col">
-        <label>Export (download JSON file)</label>
-        <button id="btnExport" class="ghost">Export Current</button>
-        <button id="btnExportSlots" class="ghost" style="margin-top:.5rem">Export Slots</button>
+      <div class="card">
+        <h3>Export</h3>
+        <p class="small">Download saves as JSON files.</p>
+        <div class="col">
+          <button id="btnExport" class="ghost">💾 Export Current</button>
+          <button id="btnExportSlots" class="ghost">📦 Export All Slots</button>
+        </div>
       </div>
-      <div class="col">
-        <label>Import (paste JSON)</label>
-        <textarea id="importText" rows="6" placeholder="{...}"></textarea>
-        <div class="row right"><button id="btnImport" class="primary">Import Text</button></div>
-        <label style="margin-top:.5rem">Import from File</label>
-        <input id="importFile" type="file" accept="application/json"/>
-        <label style="margin-top:.5rem">Import Slots File</label>
-        <input id="importSlotsFile" type="file" accept="application/json"/>
+      <div class="card">
+        <h3>Import</h3>
+        <p class="small">Paste JSON or upload a file.</p>
+        <div class="col">
+          <textarea id="importText" rows="6" placeholder="{...}"></textarea>
+          <div class="row right"><button id="btnImport" class="primary">Import Text</button></div>
+          <label>Import from File</label>
+          <input id="importFile" type="file" accept="application/json"/>
+          <label>Import Slots File</label>
+          <input id="importSlotsFile" type="file" accept="application/json"/>
+        </div>
       </div>
     </div>
   </div>

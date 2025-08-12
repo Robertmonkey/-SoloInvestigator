@@ -168,11 +168,15 @@
   .stepItem.cur .dot{background:#7aa2ff;border-color:#4869a7}
 
   /* Save slots */
-  .slots{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
-  .slots .slot{display:flex;gap:.5rem;align-items:center;justify-content:space-between;border:1px dashed #2b3650;border-radius:10px;padding:.4rem .6rem;background:#0c121c}
+  .slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem}
+  .slots .slot{display:flex;flex-direction:column;gap:.5rem;border:1px dashed #2b3650;border-radius:10px;padding:.6rem;background:#0c121c}
   .slots .slot.used{border-style:solid}
-  .slots .slot .row button[disabled]{opacity:.4;cursor:not-allowed}
-  .slots .meta{display:flex;flex-direction:column}
+  .slots .meta{display:flex;flex-direction:column;gap:.15rem}
+  .slots .meta .slotname{font-size:.75rem;color:var(--muted)}
+  .slots .meta .title{font-weight:600}
+  .slots .slot .buttons{display:flex;gap:.5rem}
+  .slots .slot .buttons button{flex:1}
+  .slots .slot .buttons button[disabled]{opacity:.4;cursor:not-allowed}
   .slots .ts{font-size:.75rem;color:#8ea0bf}
 
   /* Toast */
