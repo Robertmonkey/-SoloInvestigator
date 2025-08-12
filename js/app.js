@@ -195,9 +195,11 @@ function escapeHtml(s){
 }
 function stripTags(s){ const d=document.createElement('div'); d.innerHTML=s||''; return d.textContent||d.innerText||''; }
 function clamp(v,a,b){
-  const num = Number(v);
-  if(!Number.isFinite(num)) return a;
-  return Math.max(a, Math.min(b, num));
+  let min=a, max=b;
+  if(min>max) [min,max] = [max,min];
+  const num=Number(v);
+  if(!Number.isFinite(num)) return min;
+  return Math.max(min, Math.min(max, num));
 }
 function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
 
@@ -277,7 +279,7 @@ function renderFog(){ const cv=fogCv, sc=currentScene(), ctx=cv.getContext('2d')
   const cw=cv.width/GRID_W, ch=cv.height/GRID_H; ctx.fillStyle='rgba(4,6,10,.82)';
   for(let y=0;y<GRID_H;y++) for(let x=0;x<GRID_W;x++) if(sc.fog[y][x]) ctx.fillRect(Math.floor(x*cw),Math.floor(y*ch),Math.ceil(cw),Math.ceil(ch));
 }
-function fogStroke(gx,gy,hide){ const sc=currentScene(), before=deepClone(sc.fog), r=Number(byId('brush').value||2);
+function fogStroke(gx,gy,hide){ const sc=currentScene(), before=deepClone(sc.fog), r=Number(byId('brush').value ?? 2);
   for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){ const ix=gx+x,iy=gy+y; if(ix<0||iy<0||ix>=GRID_W||iy>=GRID_H) continue; sc.fog[iy][ix]=!!hide; }
   sc.fogUndo.push(before); if(sc.fogUndo.length>50) sc.fogUndo.shift(); renderFog();
 }
@@ -339,8 +341,20 @@ mapEl.addEventListener('pointerup', ()=>{
 window.addEventListener('resize', ()=>{ renderFog(); renderReach(); });
 
 function tokenAt(gx,gy){ return currentScene().tokens.find(t=>t.x===gx && t.y===gy); }
-function startMeasure(start){ if(measureEl) measureEl.remove(); measureEl=el('div',{class:'measure'}); measureEl.appendChild(el('div',{class:'label'})); mapEl.appendChild(measureEl); updateMeasure(start,start); }
-function updateMeasure(a,b){ if(!measureEl) return; const dx=b[0]-a[0], dy=b[1]-a[1], dist=Math.hypot(dx,dy), ang=Math.atan2(dy,dx)*180/Math.PI; Object.assign(measureEl.style,{left:`${a[0]}px`,top:`${a[1]}px`,width:`${dist}px`,transform:`rotate(${ang}deg)`}); measureEl.querySelector('.label').textContent=`${gridDistance(a,b)} u`; }
+function startMeasure(start){
+  if(measureEl) measureEl.remove();
+  measureEl=el('div',{class:'measure'});
+  measureEl.appendChild(el('div',{class:'label'}));
+  mapEl.appendChild(measureEl);
+  updateMeasure(start,start);
+}
+function updateMeasure(a,b){
+  if(!measureEl) return;
+  const dx=b[0]-a[0], dy=b[1]-a[1], dist=Math.hypot(dx,dy), ang=Math.atan2(dy,dx)*180/Math.PI;
+  Object.assign(measureEl.style,{left:`${a[0]}px`,top:`${a[1]}px`,width:`${dist}px`,transform:`rotate(${ang}deg)`});
+  const label = measureEl.querySelector('.label');
+  if(label) label.textContent=`${gridDistance(a,b)} u`;
+}
 function endMeasure(){ if(measureEl){ measureEl.remove(); measureEl=null; } }
 function gridDistance(a,b){ const [ax,ay]=pxToGrid(a[0],a[1]), [bx,by]=pxToGrid(b[0],b[1]); return Math.max(Math.abs(ax-bx),Math.abs(ay-by)); }
 

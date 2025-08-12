@@ -7,6 +7,7 @@ function buildAIPrompt(actor){
   const npcStr = npcs || 'none';
   const recentChat = Array.from(chatLog.querySelectorAll('.line')).slice(-5)
     .map(l=> l.querySelector('.content')?.textContent || '')
+    .filter(Boolean)
     .join('\n');
 
   const notableSkills = Object
@@ -98,7 +99,7 @@ async function applyEngineResponse(eng, actor){
       await new Promise(r=>setTimeout(r,700));
     }
   }
-  if(eng.say){
+  if(typeof eng.say === 'string'){
     addSay(actor.name, eng.say, actor.type);
     if(state.settings.ttsOn) speak(stripTags(eng.say), actor.name, actor.type);
   }
@@ -187,7 +188,22 @@ function applyEngine(eng){
     });
   }
   if(eng.handouts){ eng.handouts.forEach(h=>{ if(typeof h==='number') dropHandout(h); else if(h && h.title){ state.campaign=state.campaign||{}; state.campaign.handouts=state.campaign.handouts||[]; state.campaign.handouts.push(h); renderHandouts(); dropHandout(state.campaign.handouts.length-1); } }); }
-  if(eng.items){ eng.items.forEach(it=>{ const t=currentScene().tokens.find(x=>x.id===it.tokenId); if(!t) return; ensureSheet(t); t.sheet.inventory=t.sheet.inventory||[]; const existing=t.sheet.inventory.find(x=>x.name===it.name); if(existing){ existing.qty=(existing.qty||0)+(it.qty||1); } else { t.sheet.inventory.push({name:it.name, qty:it.qty||1, weight:it.weight||0}); } }); }
+  if(eng.items){
+    eng.items.forEach(it=>{
+      const t=currentScene().tokens.find(x=>x.id===it.tokenId);
+      if(!t) return;
+      ensureSheet(t);
+      t.sheet.inventory=t.sheet.inventory||[];
+      const existing=t.sheet.inventory.find(x=>x.name===it.name);
+      const qty = it.qty ?? 1;
+      const weight = it.weight ?? 0;
+      if(existing){
+        existing.qty=(existing.qty ?? 0)+qty;
+      } else {
+        t.sheet.inventory.push({name:it.name, qty, weight});
+      }
+    });
+  }
   if(eng.stats){ eng.stats.forEach(st=>{ const t=currentScene().tokens.find(x=>x.id===st.tokenId); if(!t) return; ensureSheet(t); for(const k in st){ if(k!=='tokenId'){ t.sheet[k]=(t.sheet[k]||0)+(st[k]||0); } } checkSanityThresholds(t); }); }
   if(eng.clues){ eng.clues.forEach(c=>{ state.campaign=state.campaign||{}; state.campaign.clues=state.campaign.clues||[]; state.campaign.clues.push(c); addSystemMessage(`<b>Clue:</b> ${escapeHtml(c.title||'')} — ${escapeHtml(c.text||'')}`, {html:true}); }); renderClues(); }
   renderTokenList(); if(sheetTarget) fillSheet(sheetTarget);
