@@ -149,6 +149,10 @@ const state = {
     keeperStyle:'normal',
     keeperMax:450,
     theme:'dark',
+    showTimestamps:false,
+    autoScroll:true,
+    voiceVolume:1,
+    showGrid:true,
     voiceMap:{} // { name: {provider:'browser'|'eleven'|'openai'|'none', id:'VoiceNameOrId'} }
   },
   campaign:null,
@@ -187,6 +191,8 @@ function el(tag,attrs={},children=[]){
 }
 function toast(msg){ const t=byId('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
 function applyTheme(){ document.body.classList.toggle('light', state.settings.theme==='light'); }
+function applyGridVisibility(){ byId('grid').style.display = state.settings.showGrid ? '' : 'none'; }
+function toggleGrid(){ state.settings.showGrid=!state.settings.showGrid; applyGridVisibility(); saveSettings(false); }
 function escapeHtml(s){
   const map = {
     '&': '&amp;',
@@ -206,6 +212,7 @@ function clamp(v,a,b){
   return Math.max(min, Math.min(max, num));
 }
 function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
+function timestampEl(){ if(!state.settings.showTimestamps) return null; const t=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); return el('span',{class:'timestamp'}, t); }
 
 /* ---------- PERSISTENCE ---------- */
 function saveSettings(showToast=true){
@@ -232,7 +239,11 @@ function loadSettings(){
   byId('keeperStyle').value = state.settings.keeperStyle || 'normal';
   byId('keeperMax').value = state.settings.keeperMax || 450;
   byId('theme').value = state.settings.theme || 'dark';
+  byId('showTimestamps').checked = state.settings.showTimestamps || false;
+  byId('autoScroll').checked = state.settings.autoScroll !== false;
+  byId('voiceVolume').value = state.settings.voiceVolume ?? 1;
   applyTheme();
+  applyGridVisibility();
 }
 
 function resetSettings(){
@@ -529,8 +540,10 @@ function addLine(text, who='you', opts={}){
     const btn=el('button',{class:'ghost',title:'Replay voice',onclick:async()=>{ await speak(stripTags(text), opts.speaker||'Keeper', opts.role || (who==='keeper'?'keeper':'pc')); }},'▶');
     controls.appendChild(btn);
   }
+  const time = timestampEl(); if(time) line.appendChild(time);
   if(controls.childNodes.length) line.appendChild(controls);
-  chatLog.appendChild(line); chatLog.scrollTop=chatLog.scrollHeight;
+  chatLog.appendChild(line);
+  if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
 }
 function addSay(speaker, text, role='pc'){
   const line=el('div',{class:'line', 'data-role':role});
@@ -547,24 +560,28 @@ function addSay(speaker, text, role='pc'){
   line.appendChild(av);
   line.appendChild(whoEl);
   line.appendChild(content);
+  const time = timestampEl(); if(time) line.appendChild(time);
   if(controls.childNodes.length) line.appendChild(controls);
-  chatLog.appendChild(line); chatLog.scrollTop=chatLog.scrollHeight;
+  chatLog.appendChild(line);
+  if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
 }
 
 function addActionLine(text){
-  const line=el('div',{class:'line action'}, text);
+  const line=el('div',{class:'line action'});
+  line.textContent=text;
+  const time=timestampEl(); if(time) line.appendChild(time);
   chatLog.appendChild(line);
-  chatLog.scrollTop=chatLog.scrollHeight;
+  if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
 }
 
 function addSystemMessage(text, {html=false}={}){
   const content = html ? text : escapeHtml(text);
-  const line=el('div',{class:'line system'}, [
-    el('div',{class:'who'}, '⚠️ System'),
-    el('div',{class:'content', html:content})
-  ]);
+  const line=el('div',{class:'line system'});
+  line.appendChild(el('div',{class:'who'}, '⚙️ System'));
+  line.appendChild(el('div',{class:'content', html:content}));
+  const time=timestampEl(); if(time) line.appendChild(time);
   chatLog.appendChild(line);
-  chatLog.scrollTop=chatLog.scrollHeight;
+  if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
 }
 
 function addWhisper(target, text){
@@ -572,8 +589,9 @@ function addWhisper(target, text){
     el('div',{class:'who'}, `Whisper to ${escapeHtml(target)}`),
     el('div',{class:'content'}, escapeHtml(text))
   ]);
+  const time=timestampEl(); if(time) line.appendChild(time);
   chatLog.appendChild(line);
-  chatLog.scrollTop=chatLog.scrollHeight;
+  if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
 }
 function speakerAvatar(name){
   const key=(name||'').trim().toLowerCase();
@@ -599,6 +617,7 @@ byId('chatSend').onclick=sendChat;
 byId('chatInput').addEventListener('keydown',e=>{ if(e.key==='Enter') sendChat(); });
 byId('btnStopVoice').onclick=()=> stopVoice(true);
 byId('btnAskKeeper').onclick=()=> askKeeperFromInput();
+byId('btnCopyChat').onclick=()=>{ const text=[...chatLog.querySelectorAll('.line')].map(l=>l.innerText.trim()).join('\n'); navigator.clipboard.writeText(text).then(()=>toast('Chat copied')); };
 byId('btnClearChat').onclick=()=>{ if(confirm('Clear chat log?')){ chatLog.innerHTML=''; state.chat=[]; }};
 function askKeeperFromInput(){
   const input=byId('chatInput');
@@ -766,6 +785,9 @@ byId('btnSaveSettings').onclick=()=>{
   state.settings.keeperStyle=byId('keeperStyle').value;
   state.settings.keeperMax=Number(byId('keeperMax').value)||450;
   state.settings.theme=byId('theme').value;
+  state.settings.showTimestamps=byId('showTimestamps').checked;
+  state.settings.autoScroll=byId('autoScroll').checked;
+  state.settings.voiceVolume=Number(byId('voiceVolume').value);
   applyTheme();
   applyDefaultVoices();
   saveSettings(); hide('#modalSettings');
@@ -775,6 +797,7 @@ byId('btnResetSettings').onclick=resetSettings;
 byId('btnRevealAll').onclick=()=> fogAll(false);
 byId('btnHideAll').onclick=()=> fogAll(true);
 byId('btnUndo').onclick=fogUndo;
+byId('btnToggleGrid').onclick=toggleGrid;
 byId('btnParticles').onclick=()=> spawnFXAt(Math.floor(GRID_W/2),Math.floor(GRID_H/2));
 byId('btnGenBG').onclick=genBGQuick;
 byId('btnOmen').onclick=()=>{
@@ -1156,6 +1179,7 @@ function playBlobImmediate(blob){
   stopVoice(false);
   currentUrl = URL.createObjectURL(blob);
   currentAudio = new Audio(currentUrl);
+  currentAudio.volume = state.settings.voiceVolume ?? 1;
   currentAudio.onended = () => {
     URL.revokeObjectURL(currentUrl);
     currentUrl = null;
@@ -1193,6 +1217,7 @@ function speakBrowser(text, speaker, role='pc'){
     const id=voiceIdFor(speaker, role);
     const v=state.browserVoices.find(v=> v.name===id) || state.browserVoices[0];
     if(v) u.voice=v;
+    u.volume=state.settings.voiceVolume ?? 1;
     window.speechSynthesis.speak(u);
   }catch{}
 }
@@ -1881,6 +1906,7 @@ document.addEventListener('keydown', e=>{
   if(e.key==='f'||e.key==='F') setTool('reveal');
   if(e.key==='h'||e.key==='H') setTool('hide');
   if(e.key==='u'||e.key==='U') fogUndo();
+  if(e.key==='g'||e.key==='G') toggleGrid();
   if(e.key==='s'||e.key==='S') show('#modalSettings');
   if(e.key==='p'||e.key==='P') { renderParty(); show('#modalParty'); }
   if(e.key==='l'||e.key==='L') { updateSlots(); show('#modalSave'); }

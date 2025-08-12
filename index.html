@@ -46,6 +46,7 @@
           <button class="primary" id="chatSend">Send</button>
           <button class="ghost" id="btnAskKeeper" title="Ask Keeper without sending more tokens by default">Ask Keeper</button>
           <button class="ghost" id="btnStopVoice" title="Stop voices & clear queue">Stop Voice</button>
+          <button class="ghost" id="btnCopyChat" title="Copy chat log to clipboard">Copy Chat</button>
           <button class="ghost" id="btnClearChat" title="Clear chat log">Clear Chat</button>
         </div>
         <div class="note small">Keeper replies only when you click <b>Ask Keeper</b> or use <b>/keeper …</b> (change in Settings → Trigger). Browser voices are free; ElevenLabs and OpenAI are cached to save tokens.</div>
@@ -76,6 +77,7 @@
         </select>
       </div>
       <button id="btnUndo" class="ghost">Undo Fog (U)</button>
+      <button id="btnToggleGrid" class="ghost">Toggle Grid (G)</button>
       <span class="pill">Grid: 12 × 8</span>
     </div>
   </section>
@@ -166,6 +168,8 @@
           <option value="dark" selected>Dark</option>
           <option value="light">Light</option>
         </select>
+        <label><input type="checkbox" id="showTimestamps"/> Show chat timestamps</label>
+        <label><input type="checkbox" id="autoScroll" checked/> Auto-scroll chat</label>
       </div>
       <div class="col">
         <label>TTS Provider (default)</label>
@@ -187,6 +191,8 @@
         <input id="openaiVoice" placeholder="alloy" />
         <label><input type="checkbox" id="ttsOn" /> Enable Voices</label>
         <label><input type="checkbox" id="ttsQueue" checked /> Queue voice (no overlaps)</label>
+        <label>Voice Volume</label>
+        <input id="voiceVolume" type="range" min="0" max="1" step="0.1" value="1" />
       </div>
     </div>
     <div class="hr"></div>
