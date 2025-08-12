@@ -933,9 +933,11 @@ function loadSlots(){
 function saveSlots(slots){
   try{
     localStorage.setItem(LS_SLOTS, JSON.stringify(slots));
+    return true;
   }catch(e){
     console.error('Save failed', e);
     toast('Save failed: '+(e.name==='QuotaExceededError'?'storage full':'see console'));
+    return false;
   }
 }
 function updateSlots(){
@@ -1028,7 +1030,13 @@ function applyState(data){
   renderClues();
   renderHandouts();
 }
-function saveToSlot(i){ const slots=loadSlots(); slots[i]=captureState(); saveSlots(slots); updateSlots(); toast('Saved.'); }
+function saveToSlot(i){
+  const slots = loadSlots();
+  slots[i] = captureState();
+  const ok = saveSlots(slots);
+  updateSlots();
+  if(ok) toast('Saved.');
+}
 function loadFromSlot(i){ const slots=loadSlots(); if(!slots[i]){ toast('Empty slot'); return; } applyState(slots[i]); toast('Loaded.'); }
 function clearSlot(i){ const slots=loadSlots(); slots[i]=null; saveSlots(slots); updateSlots(); }
 byId('btnExport').onclick=()=>{ const blob=new Blob([JSON.stringify(captureState(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='solo-investigator-save.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 2000); };
