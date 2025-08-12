@@ -1264,28 +1264,47 @@ function renderWizard(){
   if(wizard.step===0){
     body.appendChild(el('div',{class:'grid2'},[
       el('div',{class:'card'},[
-        el('h3',{},'1) Paste your keys (optional)'), el('div',{class:'small'},'OpenAI enables AI Keeper, images, and voices. ElevenLabs also provides premium voices. Browser voices are free and default.'),
-        el('div',{class:'hr'}), el('label',{},'OpenAI API Key'), el('input',{id:'w_openai',value:state.settings.openaiKey||'',placeholder:'sk-...'}),
-        el('label',{},'ElevenLabs API Key'), el('input',{id:'w_eleven',value:state.settings.elevenKey||'',placeholder:'eleven-...'}),
-        el('label',{},'ElevenLabs Default Voice ID'), el('input',{id:'w_voice',value:state.settings.voiceId||'',placeholder:'21m00Tcm4TlvDq8ikWAM'}),
-        el('label',{},'ElevenLabs TTS Model'), el('input',{id:'w_elevenModel',value:state.settings.elevenModel||'eleven_multilingual_v2',placeholder:'eleven_multilingual_v2'}),
-        el('label',{},'OpenAI TTS Model'), el('input',{id:'w_openaiTTSModel',value:state.settings.openaiTTSModel||'gpt-4o-mini-tts',placeholder:'gpt-4o-mini-tts'}),
-        el('label',{},'OpenAI Default Voice'), el('input',{id:'w_openaiVoice',value:state.settings.openaiVoice||'alloy',placeholder:'alloy'}),
-        el('div',{class:'row'},[
-          el('label',{},[el('input',{type:'checkbox',id:'w_useimg',checked:state.settings.useImages}), ' Enable Images']),
-          el('label',{},'Image Model'),
-          (function(){ const s=el('select',{id:'w_imgmodel'}); ['dall-e-3','gpt-image-1','placeholders'].forEach(m=> s.appendChild(el('option',{value:m, selected:state.settings.imageModel===m}, m))); return s; })(),
-          el('label',{},'TTS Default'),
-          (function(){ const s=el('select',{id:'w_ttsdef'}); ['browser','eleven','openai','none'].forEach(m=> s.appendChild(el('option',{value:m, selected:(state.settings.ttsProviderDefault||'browser')===m}, m))); return s; })(),
-          el('label',{},[el('input',{type:'checkbox',id:'w_tts',checked:state.settings.ttsOn}), ' Enable Voices']),
-          el('label',{},[el('input',{type:'checkbox',id:'w_queue',checked:true}), ' Queue voice'])
-        ])
+        el('h3',{},'1) Paste your keys (optional)'),
+        el('div',{class:'small'},'OpenAI enables AI Keeper, images, and voices. ElevenLabs also provides premium voices. Browser voices are free and default.'),
+        el('div',{class:'hr'}),
+        el('label',{},'OpenAI API Key'),
+        el('input',{id:'w_openai',value:state.settings.openaiKey||'',placeholder:'sk-...'}),
+        el('label',{},'ElevenLabs API Key'),
+        el('input',{id:'w_eleven',value:state.settings.elevenKey||'',placeholder:'eleven-...'}),
+        el('label',{},'ElevenLabs Default Voice ID'),
+        el('input',{id:'w_voice',value:state.settings.voiceId||'',placeholder:'21m00Tcm4TlvDq8ikWAM'}),
+        el('label',{},'ElevenLabs TTS Model'),
+        (function(){ const s=el('select',{id:'w_elevenModelSel'}); ['eleven_multilingual_v2','eleven_monolingual_v1','eleven_turbo_v2','custom'].forEach(m=> s.appendChild(el('option',{value:m}, m))); return s; })(),
+        el('input',{id:'w_elevenModelCustom',placeholder:'eleven model',style:'display:none'}),
+        el('label',{},'OpenAI TTS Model'),
+        (function(){ const s=el('select',{id:'w_openaiTTSModelSel'}); ['gpt-4o-mini-tts','gpt-4.1-tts','gpt-4o-realtime-preview','custom'].forEach(m=> s.appendChild(el('option',{value:m}, m))); return s; })(),
+        el('input',{id:'w_openaiTTSModelCustom',placeholder:'openai tts model',style:'display:none'}),
+        el('label',{},'OpenAI Default Voice'),
+        (function(){ const s=el('select',{id:'w_openaiVoiceSel'}); ['alloy','verse','luna','ray','chalk','custom'].forEach(m=> s.appendChild(el('option',{value:m}, m))); return s; })(),
+        el('input',{id:'w_openaiVoiceCustom',placeholder:'voice',style:'display:none'}),
+        el('label',{},[el('input',{type:'checkbox',id:'w_useimg',checked:state.settings.useImages}), ' Enable Images']),
+        el('label',{},'Image Model'),
+        (function(){ const s=el('select',{id:'w_imgmodel'}); ['dall-e-3','gpt-image-1','placeholders'].forEach(m=> s.appendChild(el('option',{value:m, selected:state.settings.imageModel===m}, m))); return s; })(),
+        el('label',{},[el('input',{type:'checkbox',id:'w_tts',checked:state.settings.ttsOn}), ' Enable Voices']),
+        el('label',{},'TTS Default'),
+        (function(){ const s=el('select',{id:'w_ttsdef'}); ['browser','eleven','openai','none'].forEach(m=> s.appendChild(el('option',{value:m, selected:(state.settings.ttsProviderDefault||'browser')===m}, m))); return s; })(),
+        el('label',{},[el('input',{type:'checkbox',id:'w_queue',checked:state.settings.ttsQueue}), ' Queue voice'])
       ]),
       el('div',{class:'card'},[
-        el('h3',{},'What you’ll learn'), el('div',{class:'small'},
-         'Movement, measuring, fog, basic checks, initiative and turns. The Keeper nudges you. Companions speak in-character with their own voices.')
+        el('h3',{},'What you’ll learn'),
+        el('ul',{class:'small'},[
+          el('li',{},'Move tokens and measure distances'),
+          el('li',{},'Reveal fog of war'),
+          el('li',{},'Make basic percentile checks'),
+          el('li',{},'Use initiative and turn order'),
+          el('li',{},'Hear companions speak in character')
+        ])
       ])
     ]));
+    const bindCustom=(selId,customId,cur,opts)=>{ const sel=byId(selId), input=byId(customId); if(opts.includes(cur)){ sel.value=cur; } else if(cur){ sel.value='custom'; input.style.display='block'; input.value=cur; } sel.onchange=()=>{ input.style.display=sel.value==='custom'?'block':'none'; if(sel.value!=='custom') input.value=''; }; sel.onchange(); };
+    bindCustom('w_elevenModelSel','w_elevenModelCustom',state.settings.elevenModel,['eleven_multilingual_v2','eleven_monolingual_v1','eleven_turbo_v2']);
+    bindCustom('w_openaiTTSModelSel','w_openaiTTSModelCustom',state.settings.openaiTTSModel,['gpt-4o-mini-tts','gpt-4.1-tts','gpt-4o-realtime-preview']);
+    bindCustom('w_openaiVoiceSel','w_openaiVoiceCustom',state.settings.openaiVoice,['alloy','verse','luna','ray','chalk']);
     byId('btnWizardBack').disabled=true;
   }
   if(wizard.step===1){
@@ -1361,9 +1380,12 @@ async function wizardNext(){
     state.settings.openaiKey = byId('w_openai').value.trim();
     state.settings.elevenKey = byId('w_eleven').value.trim();
     state.settings.voiceId   = byId('w_voice').value.trim();
-    state.settings.elevenModel = byId('w_elevenModel').value.trim();
-    state.settings.openaiTTSModel = byId('w_openaiTTSModel').value.trim();
-    state.settings.openaiVoice = byId('w_openaiVoice').value.trim();
+    const emSel=byId('w_elevenModelSel');
+    state.settings.elevenModel = emSel.value==='custom'? byId('w_elevenModelCustom').value.trim(): emSel.value;
+    const oaTtsSel=byId('w_openaiTTSModelSel');
+    state.settings.openaiTTSModel = oaTtsSel.value==='custom'? byId('w_openaiTTSModelCustom').value.trim(): oaTtsSel.value;
+    const oaVoiceSel=byId('w_openaiVoiceSel');
+    state.settings.openaiVoice = oaVoiceSel.value==='custom'? byId('w_openaiVoiceCustom').value.trim(): oaVoiceSel.value;
     state.settings.useImages = byId('w_useimg').checked;
     state.settings.imageModel= (byId('w_imgmodel').value||'dall-e-3');
     state.settings.ttsProviderDefault = byId('w_ttsdef').value;
