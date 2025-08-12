@@ -204,6 +204,17 @@ function escapeHtml(s){
   return (s || '').replace(/[&<>"']/g, c => map[c]);
 }
 function stripTags(s){ const d=document.createElement('div'); d.innerHTML=s||''; return d.textContent||d.innerText||''; }
+function sanitizeHtml(html){
+  const t=document.createElement('template');
+  t.innerHTML=html||'';
+  t.content.querySelectorAll('script,style,iframe,object').forEach(el=>el.remove());
+  t.content.querySelectorAll('*').forEach(el=>{
+    [...el.attributes].forEach(a=>{
+      if(/^on/i.test(a.name) || /javascript:/i.test(a.value)) el.removeAttribute(a.name);
+    });
+  });
+  return t.innerHTML;
+}
 function clamp(v,a,b){
   let min=a, max=b;
   if(min>max) [min,max] = [max,min];
@@ -505,8 +516,13 @@ function updateTurnBanner(){
 const chatLog=byId('chatLog');
 byId('cmdInsert').onclick=()=>{
   const picker=byId('cmdPicker');
-  const v=picker.value; if(!v) return;
-  const input=byId('chatInput'); if(input.value && !/^\s/.test(input.value)) input.value+=' ';
+  const input=byId('chatInput');
+  const v=picker.value;
+  if(!v){
+    input.focus();
+    return;
+  }
+  if(input.value && !/^\s/.test(input.value)) input.value+=' ';
   input.value += v;
   picker.selectedIndex = 0;
   input.focus();
@@ -517,7 +533,7 @@ function addLine(text, who='you', opts={}){
   if(who==='you'){
     content.textContent = text;
   } else if(opts.html){
-    content.innerHTML = text;
+    content.innerHTML = sanitizeHtml(text);
   } else {
     content.textContent = text;
   }
@@ -575,7 +591,7 @@ function addActionLine(text){
 }
 
 function addSystemMessage(text, {html=false}={}){
-  const content = html ? text : escapeHtml(text);
+  const content = html ? sanitizeHtml(text) : escapeHtml(text);
   const line=el('div',{class:'line system'});
   line.appendChild(el('div',{class:'who'}, '⚙️ System'));
   line.appendChild(el('div',{class:'content', html:content}));
@@ -657,7 +673,14 @@ function runSlash(val){
   }
 
   const kv=val.match(/^\/keeper\s+(.+)/i);
-  if(kv){ keeperReply(kv[1]); return; }
+  if(kv){
+    if(state.settings.keeperOn){
+      keeperReply(kv[1]);
+    }else{
+      addSystemMessage('Keeper is disabled.');
+    }
+    return;
+  }
 
   const m=val.match(/^\/roll\s+(.+)$/i); if(m){ doRoll(m[1], {who:'you'}); return; }
   if(/^\/luck$/i.test(val)){

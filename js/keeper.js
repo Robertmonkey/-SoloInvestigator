@@ -24,7 +24,8 @@ You remember past events and companions.
 Your current health is ${actor.sheet?.hp ?? '??'} HP and ${actor.sheet?.sanity ?? '??'} Sanity.
 Your skills of note are: ${notableSkills || 'none'}.`;
 
-  const instructions = `It's your turn in an encounter. You have ${state.encounter.movesLeft} movement tiles, 1 action, and 1 bonus action.
+  const moves = Math.max(0, Number(state.encounter?.movesLeft) || 0);
+  const instructions = `It's your turn in an encounter. You have ${moves} movement tiles, 1 action, and 1 bonus action.
 The scene is: ${sc.name}.
 Your allies are: ${partyStr}. NPCs present: ${npcStr}.
 Story so far: ${state.memory || '(just beginning)'}
@@ -152,7 +153,10 @@ function parseEngine(text){
   const m = text.match(/<engine[^>]*>([\s\S]*?)(?:<\/engine\s*>|$)/i);
   if(!m) return null;
   try{
-    return JSON.parse(m[1]);
+    const raw = m[1].trim();
+    const dec=document.createElement('textarea');
+    dec.innerHTML=raw;
+    return JSON.parse(dec.value);
   }catch(err){
     console.error('Bad engine JSON', err);
     return null;
@@ -249,5 +253,6 @@ async function keeperReply(userText){
     if(narr) addLine(narr, 'keeper', { speaker: 'Keeper', role: 'npc' });
     const eng = parseEngine(demo);
     if(eng) applyEngine(eng);
+    maybeSummarizeLocal();
   }
 }
