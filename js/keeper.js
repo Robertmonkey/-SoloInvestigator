@@ -211,7 +211,7 @@ function applyEngine(eng){
 function demoKeeper(userText){
   const tips=[
    "You can move up to 4 tiles on your turn. Try <i>/endturn</i> when done.",
-   "Try a careful search. Use <i>/roll 1d100</i> or <i>/check Spot 60</i> or <i>/check Listen 55</i>.",
+   "Try a careful search. Use <i>/roll 1d100</i> or <i>/check Spot</i> or <i>/check Listen</i>.",
    "Consider talking to an NPC; short questions reveal clues."
   ];
   return `A faint draft lifts the dust. ${tips[Math.floor(Math.random()*tips.length)]}
