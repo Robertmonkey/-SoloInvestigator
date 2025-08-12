@@ -80,13 +80,13 @@ async function executeAITurn(actor){
 }
 
 async function applyEngineResponse(eng, actor){
-  if(eng.perform){
+  if(eng.perform && state.encounter.actionsLeft>0){
     addActionLine(`* ${actor.name} ${eng.perform} *`);
     state.encounter.actionsLeft = Math.max(0, state.encounter.actionsLeft - 1);
     updateTurnBanner();
     await new Promise(r=>setTimeout(r,700));
   }
-  if(eng.bonus){
+  if(eng.bonus && state.encounter.bonusLeft>0){
     addActionLine(`* ${actor.name} ${eng.bonus} (bonus) *`);
     state.encounter.bonusLeft = Math.max(0, state.encounter.bonusLeft - 1);
     updateTurnBanner();
