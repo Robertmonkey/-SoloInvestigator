@@ -82,12 +82,12 @@ readme.md    - documentation
    - Use **Start Encounter** to enter turn mode.
    - Companions/NPCs act **automatically** on their turns. You can speak or move your PC on your turn.
    - Use slash commands in chat:
-   - `/roll 1d100` or `/roll 3d6+2`
-    - `/check Spot 60` or `/check Listen 55`
-    - `/luck` to refresh your Luck once per game
-    - `/spendluck 5` to turn a failed roll into a success (spending 5 Luck)
-    - `/keeper What do we notice?`
-    - `/endturn`
+     - `/roll 1d100` or `/roll 3d6+2`
+     - `/check Spot` or `/check Listen`
+     - `/luck` to refresh your Luck once per game
+     - `/spendluck 5` to turn a failed roll into a success (spending 5 Luck)
+     - `/keeper What do we notice?`
+     - `/endturn`
    - Use **fog tools**, **ruler**, and **pings** for tactics.
 
 ---

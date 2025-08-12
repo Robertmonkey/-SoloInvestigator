@@ -602,8 +602,24 @@ function sendChat(){ const val=byId('chatInput').value.trim(); if(!val) return; 
 
 /* ---------- SLASH ---------- */
 function runSlash(val){
-  const ck=val.match(/^\/check\s+([A-Za-z][A-Za-z0-9 _-]*)\s+(\d{1,3})$/i);
-  if(ck){ const skill=ck[1].trim(); const base=clamp(Number(ck[2]),1,99); const r = rollPercentile(skill, base); addSystemMessage(r.text, {html:true}); const you=currentScene().tokens.find(t=> t.id===state.youPCId); if(you) state.lastRoll={who:you.id,skill,roll:r.roll,val:base,tier:r.tier}; return; }
+  const ck=val.match(/^\/check\s+([A-Za-z][A-Za-z0-9 _-]*)(?:\s+(\d{1,3}))?$/i);
+  if(ck){
+    const skill=ck[1].trim();
+    const you=currentScene().tokens.find(t=> t.id===state.youPCId);
+    let base;
+    if(ck[2]){
+      base=clamp(Number(ck[2]),1,99);
+    }else if(you){
+      ensureSheet(you);
+      const entry=Object.entries(you.sheet.skills||{}).find(([k])=>k.toLowerCase()===skill.toLowerCase());
+      if(entry) base=clamp(Number(entry[1]),1,99);
+    }
+    if(base==null){ addSystemMessage(`No skill value found for ${skill}.`); return; }
+    const r = rollPercentile(skill, base);
+    addSystemMessage(r.text, {html:true});
+    if(you) state.lastRoll={who:you.id,skill,roll:r.roll,val:base,tier:r.tier};
+    return;
+  }
 
   const kv=val.match(/^\/keeper\s+(.+)/i);
   if(kv){ keeperReply(kv[1]); return; }
@@ -632,7 +648,7 @@ function runSlash(val){
   const mv=val.match(/^\/move\s+(.+)\s+to\s+(\d+)\s*,\s*(\d+)$/i);
   if(mv){ const nameOrId=mv[1].trim(); const t=currentScene().tokens.find(x=> x.id===nameOrId || (x.name||'').toLowerCase()===nameOrId.toLowerCase()); if(!t){ addSystemMessage("No such token."); return; } tryMoveCommand(t, Number(mv[2]), Number(mv[3])); return; }
   if(/^\/endturn/i.test(val)){ endTurn(); return; }
-  if(/^\/help/i.test(val)){ addSystemMessage("Commands: /roll NdM±K, /check Skill 60, /luck, /spendluck N, /keeper question, /move [name] to x,y, /endturn."); return; }
+  if(/^\/help/i.test(val)){ addSystemMessage("Commands: /roll NdM±K, /check Skill (or /check Skill 60), /luck, /spendluck N, /keeper question, /move [name] to x,y, /endturn."); return; }
   addSystemMessage("Unknown command. Try /help.");
 }
 function tryMoveCommand(t,gx,gy,isProgrammatic=false){
@@ -1385,7 +1401,7 @@ function renderWizard(){
       ]),
       el('div',{class:'card'},[
         el('h3',{},'Tips'),
-        el('div',{class:'small'},'Encounter mode: Start Encounter → move up to 4 tiles → one action → /endturn. Use /check Skill 60 for generic checks.')
+        el('div',{class:'small'},'Encounter mode: Start Encounter → move up to 4 tiles → one action → /endturn. Use /check Skill for generic checks.')
       ])
     ]));
   }
@@ -1854,7 +1870,7 @@ byId('brush').addEventListener('change',e=> brush=Number(e.target.value));
 /* Begin play banner */
 function greetAndStart(){
   addSystemMessage(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`, {html:true});
-  addSystemMessage(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action and <b>1</b> bonus action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i> or <i>/check Listen 55</i>. Refresh Luck with <i>/luck</i> (once per game) and spend it after a failed roll with <i>/spendluck 5</i>.`, {html:true});
+  addSystemMessage(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action and <b>1</b> bonus action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot</i> or <i>/check Listen</i>. Refresh Luck with <i>/luck</i> (once per game) and spend it after a failed roll with <i>/spendluck 5</i>.`, {html:true});
 }
 
 /* Boot */
