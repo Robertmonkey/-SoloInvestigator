@@ -3,6 +3,8 @@ function buildAIPrompt(actor){
   const sc=currentScene();
   const party=sc.tokens.filter(t=>t.type==='pc').map(t=>`${t.name} at (${t.x},${t.y})`).join('; ');
   const npcs=sc.tokens.filter(t=>t.type==='npc').map(t=>`${t.name} at (${t.x},${t.y})`).join(', ');
+  const partyStr = party || 'none';
+  const npcStr = npcs || 'none';
   const recentChat = Array.from(chatLog.querySelectorAll('.line')).slice(-5)
     .map(l=> l.querySelector('.content')?.textContent || '')
     .join('\n');
@@ -23,7 +25,7 @@ Your skills of note are: ${notableSkills || 'none'}.`;
 
   const instructions = `It's your turn in an encounter. You have ${state.encounter.movesLeft} movement tiles, 1 action, and 1 bonus action.
 The scene is: ${sc.name}.
-Your allies are: ${party}. NPCs present: ${npcs}.
+Your allies are: ${partyStr}. NPCs present: ${npcStr}.
 Story so far: ${state.memory || '(just beginning)'}
 Recent events:\n${recentChat}\n
 Speak as if you are a player guiding ${actor.name}; use 1920s-appropriate language rich in sensory detail and refer to allies by name when it makes sense.
@@ -89,10 +91,12 @@ async function applyEngineResponse(eng, actor){
     updateTurnBanner();
     await new Promise(r=>setTimeout(r,700));
   }
-  if(eng.move && eng.move.to){
-    const [gx,gy]=eng.move.to;
-    tryMoveCommand(actor, gx, gy, true);
-    await new Promise(r=>setTimeout(r,700));
+  if(eng.move && Array.isArray(eng.move.to)){
+    const [gx,gy] = eng.move.to.map(Number);
+    if(Number.isFinite(gx) && Number.isFinite(gy)){
+      tryMoveCommand(actor, gx, gy, true);
+      await new Promise(r=>setTimeout(r,700));
+    }
   }
   if(eng.say){
     addSay(actor.name, eng.say, actor.type);
@@ -167,7 +171,15 @@ function applyEngine(eng){
       }
     });
   }
-  if(eng.moves){ eng.moves.forEach(m=>{ const t=currentScene().tokens.find(x=>x.id===m.tokenId); if(t){ tryMoveCommand(t, m.to?.[0], m.to?.[1], true); } }); }
+  if(eng.moves){
+    eng.moves.forEach(m=>{
+      const t=currentScene().tokens.find(x=>x.id===m.tokenId);
+      if(!t || !Array.isArray(m.to)) return;
+      const [mx,my] = m.to.map(Number);
+      if(!Number.isFinite(mx) || !Number.isFinite(my)) return;
+      tryMoveCommand(t, mx, my, true);
+    });
+  }
   if(eng.rollRequests){
     eng.rollRequests.forEach(r=>{
       const modStr = r.mod ? (r.mod >= 0 ? `+${r.mod}` : `${r.mod}`) : '';
@@ -177,7 +189,7 @@ function applyEngine(eng){
   if(eng.handouts){ eng.handouts.forEach(h=>{ if(typeof h==='number') dropHandout(h); else if(h && h.title){ state.campaign=state.campaign||{}; state.campaign.handouts=state.campaign.handouts||[]; state.campaign.handouts.push(h); renderHandouts(); dropHandout(state.campaign.handouts.length-1); } }); }
   if(eng.items){ eng.items.forEach(it=>{ const t=currentScene().tokens.find(x=>x.id===it.tokenId); if(!t) return; ensureSheet(t); t.sheet.inventory=t.sheet.inventory||[]; const existing=t.sheet.inventory.find(x=>x.name===it.name); if(existing){ existing.qty=(existing.qty||0)+(it.qty||1); } else { t.sheet.inventory.push({name:it.name, qty:it.qty||1, weight:it.weight||0}); } }); }
   if(eng.stats){ eng.stats.forEach(st=>{ const t=currentScene().tokens.find(x=>x.id===st.tokenId); if(!t) return; ensureSheet(t); for(const k in st){ if(k!=='tokenId'){ t.sheet[k]=(t.sheet[k]||0)+(st[k]||0); } } checkSanityThresholds(t); }); }
-  if(eng.clues){ eng.clues.forEach(c=>{ state.campaign=state.campaign||{}; state.campaign.clues=state.campaign.clues||[]; state.campaign.clues.push(c); addSystemMessage(`<b>Clue:</b> ${escapeHtml(c.title||'')} — ${escapeHtml(c.text||'')}`); }); renderClues(); }
+  if(eng.clues){ eng.clues.forEach(c=>{ state.campaign=state.campaign||{}; state.campaign.clues=state.campaign.clues||[]; state.campaign.clues.push(c); addSystemMessage(`<b>Clue:</b> ${escapeHtml(c.title||'')} — ${escapeHtml(c.text||'')}`, {html:true}); }); renderClues(); }
   renderTokenList(); if(sheetTarget) fillSheet(sheetTarget);
 }
 function demoKeeper(userText){
