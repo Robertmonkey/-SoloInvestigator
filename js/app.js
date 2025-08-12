@@ -331,8 +331,8 @@ function renderReach(){
 function chebyshev(ax,ay,bx,by){ return Math.max(Math.abs(ax-bx),Math.abs(ay-by)); }
 function canMoveTo(t,gx,gy,orig){
   if(!state.encounter.on) return {ok:true,to:{x:clamp(gx,0,GRID_W-1),y:clamp(gy,0,GRID_H-1)}};
-  // During an encounter, only the player's token can be dragged. AI moves are programmatic.
-  if(t.id !== state.youPCId) return {ok:false,to:{x:t.x,y:t.y}};
+  // During an encounter, only the active player's token can be dragged. AI moves are programmatic.
+  if(t.id !== state.youPCId || !isActiveToken(t)) return {ok:false,to:{x:t.x,y:t.y}};
   const d=chebyshev(orig.x,orig.y,gx,gy); if(d>state.encounter.movesLeft) return {ok:false,to:{x:t.x,y:t.y}};
   return {ok:true,to:{x:clamp(gx,0,GRID_W-1),y:clamp(gy,0,GRID_H-1)}};
 }
@@ -700,14 +700,14 @@ function tryMoveCommand(t,gx,gy,isProgrammatic=false){
     const moved=chebyshev(orig.x,orig.y,t.x,t.y);
     state.encounter.movesLeft=Math.max(0,state.encounter.movesLeft-moved);
   }else if(state.encounter.on && isProgrammatic){
-    const dist=chebyshev(orig.x,orig.y,gx,gy);
+    const target={x:clamp(gx,0,GRID_W-1), y:clamp(gy,0,GRID_H-1)};
+    const dist=chebyshev(orig.x,orig.y,target.x,target.y);
     if(dist>state.encounter.movesLeft){
-      addActionLine(`* ${t.name} tries to move to ${gx},${gy} but lacks the movement. *`);
+      addActionLine(`* ${t.name} tries to move to ${target.x},${target.y} but lacks the movement. *`);
       return;
     }
-    t.x=clamp(gx,0,GRID_W-1); t.y=clamp(gy,0,GRID_H-1);
-    const moved=chebyshev(orig.x,orig.y,t.x,t.y);
-    state.encounter.movesLeft=Math.max(0,state.encounter.movesLeft-moved);
+    t.x=target.x; t.y=target.y;
+    state.encounter.movesLeft=Math.max(0,state.encounter.movesLeft-dist);
     addActionLine(`* ${t.name} moves to ${t.x},${t.y}. *`);
   }else{
     t.x=clamp(gx,0,GRID_W-1); t.y=clamp(gy,0,GRID_H-1);
@@ -845,7 +845,7 @@ function pcEditorRow(t){
   const ctrls=el('div',{class:'row',style:'margin-top:.35rem'});
   ctrls.appendChild(el('button',{class:'ghost',onclick:async()=>{ await genPortraitFor(t); renderParty(); }},'Portrait'));
   ctrls.appendChild(el('button',{class:'ghost',onclick:()=> openSheet(t)},'Open Sheet'));
-  ctrls.appendChild(el('button',{class:'ghost',onclick:()=>{ const n=prompt('Rename',t.name||''); if(n!==null){ t.name=n; renderTokens(); renderParty(); }}},'Rename'));
+  ctrls.appendChild(el('button',{class:'ghost',onclick:()=>{ const n=prompt('Rename',t.name||''); if(n!==null){ const old=t.name; t.name=n; if(state.settings.voiceMap?.[old]){ state.settings.voiceMap[n]=state.settings.voiceMap[old]; delete state.settings.voiceMap[old]; saveSettings(false); } renderTokens(); renderParty(); }}},'Rename'));
   ctrls.appendChild(el('button',{class:'danger',onclick:()=>{ removeToken(t.id); renderParty(); }},'Remove'));
   row.appendChild(ctrls);
 
@@ -931,7 +931,7 @@ function npcEditorRow(t){ const row=el('div',{class:'row',style:'align-items:cen
   row.appendChild(el('div',{}, `${t.name||'Unnamed'} @ ${t.x},${t.y}`)); const ctrls=el('div',{class:'row'});
   ctrls.appendChild(el('button',{class:'ghost',onclick:async()=>{ await genPortraitFor(t); renderNPCs(); }},'Portrait'));
   ctrls.appendChild(el('button',{class:'ghost',onclick:()=> openSheet(t)},'Open Sheet'));
-  ctrls.appendChild(el('button',{class:'ghost',onclick:()=>{ const n=prompt('Rename',t.name||''); if(n!==null){ t.name=n; renderTokens(); renderNPCs(); }}},'Rename'));
+  ctrls.appendChild(el('button',{class:'ghost',onclick:()=>{ const n=prompt('Rename',t.name||''); if(n!==null){ const old=t.name; t.name=n; if(state.settings.voiceMap?.[old]){ state.settings.voiceMap[n]=state.settings.voiceMap[old]; delete state.settings.voiceMap[old]; saveSettings(false); } renderTokens(); renderNPCs(); }}},'Rename'));
   ctrls.appendChild(el('button',{class:'danger',onclick:()=>{ removeToken(t.id); renderNPCs(); }},'Remove'));
   row.appendChild(ctrls);
   row.appendChild(voiceControlsForName(t));
