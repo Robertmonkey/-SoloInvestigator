@@ -148,6 +148,7 @@ const state = {
     keeperTrigger:'auto',
     keeperStyle:'normal',
     keeperMax:450,
+    theme:'dark',
     voiceMap:{} // { name: {provider:'browser'|'eleven'|'openai'|'none', id:'VoiceNameOrId'} }
   },
   campaign:null,
@@ -164,6 +165,8 @@ const state = {
   aiThinking:false, // prevent concurrent AI calls
   lastRoll:null
 };
+
+const DEFAULT_SETTINGS = JSON.parse(JSON.stringify(state.settings));
 function currentScene(){ return state.scenes[state.sceneIndex]; }
 
 /* ---------- UI HELPERS ---------- */
@@ -183,6 +186,7 @@ function el(tag,attrs={},children=[]){
   return e;
 }
 function toast(msg){ const t=byId('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+function applyTheme(){ document.body.classList.toggle('light', state.settings.theme==='light'); }
 function escapeHtml(s){
   const map = {
     '&': '&amp;',
@@ -227,6 +231,17 @@ function loadSettings(){
   byId('keeperTrigger').value = state.settings.keeperTrigger || 'auto';
   byId('keeperStyle').value = state.settings.keeperStyle || 'normal';
   byId('keeperMax').value = state.settings.keeperMax || 450;
+  byId('theme').value = state.settings.theme || 'dark';
+  applyTheme();
+}
+
+function resetSettings(){
+  if(!confirm('Reset settings to defaults?')) return;
+  state.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  saveSettings(false);
+  loadSettings();
+  renderAll();
+  toast('Settings reset');
 }
 
 /* ---------- MAP RENDER ---------- */
@@ -584,6 +599,7 @@ byId('chatSend').onclick=sendChat;
 byId('chatInput').addEventListener('keydown',e=>{ if(e.key==='Enter') sendChat(); });
 byId('btnStopVoice').onclick=()=> stopVoice(true);
 byId('btnAskKeeper').onclick=()=> askKeeperFromInput();
+byId('btnClearChat').onclick=()=>{ if(confirm('Clear chat log?')){ chatLog.innerHTML=''; state.chat=[]; }};
 function askKeeperFromInput(){
   const input=byId('chatInput');
   const val=input.value.trim();
@@ -648,7 +664,7 @@ function runSlash(val){
   const mv=val.match(/^\/move\s+(.+)\s+to\s+(\d+)\s*,\s*(\d+)$/i);
   if(mv){ const nameOrId=mv[1].trim(); const t=currentScene().tokens.find(x=> x.id===nameOrId || (x.name||'').toLowerCase()===nameOrId.toLowerCase()); if(!t){ addSystemMessage("No such token."); return; } tryMoveCommand(t, Number(mv[2]), Number(mv[3])); return; }
   if(/^\/endturn/i.test(val)){ endTurn(); return; }
-  if(/^\/help/i.test(val)){ addSystemMessage("Commands: /roll NdM±K, /check Skill (or /check Skill 60), /luck, /spendluck N, /keeper question, /move [name] to x,y, /endturn."); return; }
+  if(/^\/help/i.test(val)){ show('#modalHelp'); return; }
   addSystemMessage("Unknown command. Try /help.");
 }
 function tryMoveCommand(t,gx,gy,isProgrammatic=false){
@@ -749,9 +765,12 @@ byId('btnSaveSettings').onclick=()=>{
   state.settings.keeperTrigger=byId('keeperTrigger').value;
   state.settings.keeperStyle=byId('keeperStyle').value;
   state.settings.keeperMax=Number(byId('keeperMax').value)||450;
+  state.settings.theme=byId('theme').value;
+  applyTheme();
   applyDefaultVoices();
   saveSettings(); hide('#modalSettings');
 };
+byId('btnResetSettings').onclick=resetSettings;
 
 byId('btnRevealAll').onclick=()=> fogAll(false);
 byId('btnHideAll').onclick=()=> fogAll(true);
@@ -1862,6 +1881,10 @@ document.addEventListener('keydown', e=>{
   if(e.key==='f'||e.key==='F') setTool('reveal');
   if(e.key==='h'||e.key==='H') setTool('hide');
   if(e.key==='u'||e.key==='U') fogUndo();
+  if(e.key==='s'||e.key==='S') show('#modalSettings');
+  if(e.key==='p'||e.key==='P') { renderParty(); show('#modalParty'); }
+  if(e.key==='l'||e.key==='L') { updateSlots(); show('#modalSave'); }
+  if(e.key==='?') show('#modalHelp');
 });
 function setTool(t){ tool=t; byId('tool').value=t; toast('Tool: '+t); }
 byId('tool').addEventListener('change',e=> setTool(e.target.value));

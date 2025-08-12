@@ -19,6 +19,7 @@ A modular, client-only tabletop experience inspired by investigative horror RPGs
 - **Voices:** Queue-based TTS with **Browser voices (free)**, **ElevenLabs** (premium), or **OpenAI TTS**. Per-speaker voice selection + local caching for replays.
 - **Asset-Full Saves:** Export/import includes scenes, portraits, and handouts as data URLs—no re-generation needed when you reload.
 - **Cost Controls:** Local asset cache, Keeper auto-trigger (switch to manual anytime), quick command picker, offline placeholders if you disable images.
+- **Quality of Life:** Light/dark theme toggle, keyboard shortcuts for core panels, in-app help overlay, chat clear button, and resettable settings.
 
 ---
 

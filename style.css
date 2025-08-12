@@ -4,6 +4,12 @@
     --grid:#1c2230; --grid-2:#151a25; --glow:0 0 20px rgba(122,162,255,.25);
     --pc:#2e6a53; --npc:#5a365a; --keeper:#1f2a44;
   }
+  body.light{
+    --bg:#f0f2f5; --panel:#ffffff; --panel-2:#f5f5f5; --ink:#1a1a1a; --muted:#555;
+    --brand:#0050d0; --accent:#0a8e6a; --danger:#c0392b; --warn:#b8860b; --ok:#2e8b57;
+    --grid:#d0d7e5; --grid-2:#c2c9d6; --glow:0 0 20px rgba(0,80,208,.25);
+    --pc:#8fbc8f; --npc:#d8bfd8; --keeper:#b0c4de;
+  }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
@@ -15,6 +21,12 @@
     display:flex;
     flex-direction:column;
     height:100vh;
+  }
+  body.light{
+    background:radial-gradient(1200px 700px at 70% -10%,#eaeff8 0,#dfe4ee 55%,#cfd4e3 100%);
+  }
+  body.light button,body.light select,body.light input,body.light textarea{
+    border-color:#bcc5d6;
   }
   a{color:var(--brand)}
   button,select,input,textarea{

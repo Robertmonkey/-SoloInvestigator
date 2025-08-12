@@ -18,7 +18,7 @@
     <button id="btnHandouts">Handouts</button>
     <button id="btnClues">Clues</button>
     <button id="btnSaveLoad">Save/Load</button>
-    <span class="pill">Shortcuts: <span class="kbd">V</span> select · <span class="kbd">R</span> ruler · <span class="kbd">F</span> reveal · <span class="kbd">H</span> hide · <span class="kbd">U</span> undo</span>
+    <span class="pill">Shortcuts: <span class="kbd">V</span> select · <span class="kbd">R</span> ruler · <span class="kbd">F</span> reveal · <span class="kbd">H</span> hide · <span class="kbd">U</span> undo · <span class="kbd">S</span> settings · <span class="kbd">P</span> party · <span class="kbd">L</span> save/load · <span class="kbd">?</span> help</span>
   </nav>
 </header>
 
@@ -46,6 +46,7 @@
           <button class="primary" id="chatSend">Send</button>
           <button class="ghost" id="btnAskKeeper" title="Ask Keeper without sending more tokens by default">Ask Keeper</button>
           <button class="ghost" id="btnStopVoice" title="Stop voices & clear queue">Stop Voice</button>
+          <button class="ghost" id="btnClearChat" title="Clear chat log">Clear Chat</button>
         </div>
         <div class="note small">Keeper replies only when you click <b>Ask Keeper</b> or use <b>/keeper …</b> (change in Settings → Trigger). Browser voices are free; ElevenLabs and OpenAI are cached to save tokens.</div>
       </div>
@@ -160,6 +161,11 @@
         </select>
         <label>Keeper Max Tokens</label>
         <input id="keeperMax" type="number" min="128" max="2000" value="450"/>
+        <label>Theme</label>
+        <select id="theme">
+          <option value="dark" selected>Dark</option>
+          <option value="light">Light</option>
+        </select>
       </div>
       <div class="col">
         <label>TTS Provider (default)</label>
@@ -190,6 +196,7 @@
     </div>
     <div class="hr"></div>
     <div class="row right">
+      <button class="ghost" id="btnResetSettings">Reset</button>
       <button class="ghost" data-close="#modalSettings">Close</button>
       <button class="primary" id="btnSaveSettings">Save</button>
     </div>
@@ -346,6 +353,21 @@
         <input id="importSlotsFile" type="file" accept="application/json"/>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- HELP -->
+<div class="modal" id="modalHelp">
+  <div class="scrim" data-close="#modalHelp"></div>
+  <div class="sheet">
+    <h2>Help & Shortcuts</h2>
+    <div class="small">
+      <p><span class="kbd">V</span> select · <span class="kbd">R</span> ruler · <span class="kbd">F</span> reveal · <span class="kbd">H</span> hide · <span class="kbd">U</span> undo</p>
+      <p><span class="kbd">S</span> settings · <span class="kbd">P</span> party · <span class="kbd">L</span> save/load · <span class="kbd">?</span> help</p>
+      <p>Chat commands: /roll NdM±K · /check Skill · /luck · /spendluck N · /keeper question · /endturn</p>
+    </div>
+    <div class="hr"></div>
+    <div class="row right"><button class="ghost" data-close="#modalHelp">Close</button></div>
   </div>
 </div>
 
