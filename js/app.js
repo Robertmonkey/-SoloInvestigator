@@ -1031,13 +1031,14 @@ function updateSlots(){
     const used = !!slot;
     const row = el('div',{class:'slot'+(used?' used':'')},[
       el('div',{class:'meta'},[
-        el('div',{}, `Slot ${i+1}: ${used? (slot.meta?.name||'Campaign'): '\u2014 empty \u2014'}`),
+        el('div',{class:'slotname'},`Slot ${i+1}`),
+        el('div',{class:'title'}, used? (slot.meta?.name||'Campaign') : 'Empty'),
         el('div',{class:'ts'}, used? new Date(slot.meta?.ts||Date.now()).toLocaleString(): '')
       ]),
-      el('div',{class:'row'},[
-        el('button',{class:'ghost',onclick:()=> saveToSlot(i)},'Save'),
-        el('button',{class:'warn',onclick:()=> loadFromSlot(i),disabled:!used},'Load'),
-        el('button',{class:'danger',onclick:()=> clearSlot(i),disabled:!used},'Clear')
+      el('div',{class:'row buttons'},[
+        el('button',{class:'ghost',onclick:()=> saveToSlot(i)},'\uD83D\uDCBE Save'),
+        el('button',{class:'warn',onclick:()=> loadFromSlot(i),disabled:!used},'\uD83D\uDCC2 Load'),
+        el('button',{class:'danger',onclick:()=> clearSlot(i),disabled:!used},'\uD83D\uDDD1\uFE0F Clear')
       ])
     ]);
     wrap.appendChild(row);
