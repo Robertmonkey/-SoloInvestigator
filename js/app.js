@@ -194,7 +194,11 @@ function escapeHtml(s){
   return (s || '').replace(/[&<>"']/g, c => map[c]);
 }
 function stripTags(s){ const d=document.createElement('div'); d.innerHTML=s||''; return d.textContent||d.innerText||''; }
-function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
+function clamp(v,a,b){
+  const num = Number(v);
+  if(!Number.isFinite(num)) return a;
+  return Math.max(a, Math.min(b, num));
+}
 function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
 
 /* ---------- PERSISTENCE ---------- */
@@ -524,10 +528,11 @@ function addActionLine(text){
   chatLog.scrollTop=chatLog.scrollHeight;
 }
 
-function addSystemMessage(text){
+function addSystemMessage(text, {html=false}={}){
+  const content = html ? text : escapeHtml(text);
   const line=el('div',{class:'line system'}, [
     el('div',{class:'who'}, '⚠️ System'),
-    el('div',{class:'content', html:text})
+    el('div',{class:'content', html:content})
   ]);
   chatLog.appendChild(line);
   chatLog.scrollTop=chatLog.scrollHeight;
@@ -584,7 +589,7 @@ function sendChat(){ const val=byId('chatInput').value.trim(); if(!val) return; 
 /* ---------- SLASH ---------- */
 function runSlash(val){
   const ck=val.match(/^\/check\s+([A-Za-z][A-Za-z0-9 _-]*)\s+(\d{1,3})$/i);
-  if(ck){ const skill=ck[1].trim(); const base=clamp(Number(ck[2]),1,99); const r = rollPercentile(skill, base); addSystemMessage(r.text); const you=currentScene().tokens.find(t=> t.id===state.youPCId); if(you) state.lastRoll={who:you.id,skill,roll:r.roll,val:base,tier:r.tier}; return; }
+  if(ck){ const skill=ck[1].trim(); const base=clamp(Number(ck[2]),1,99); const r = rollPercentile(skill, base); addSystemMessage(r.text, {html:true}); const you=currentScene().tokens.find(t=> t.id===state.youPCId); if(you) state.lastRoll={who:you.id,skill,roll:r.roll,val:base,tier:r.tier}; return; }
 
   const kv=val.match(/^\/keeper\s+(.+)/i);
   if(kv){ keeperReply(kv[1]); return; }
@@ -617,6 +622,10 @@ function runSlash(val){
   addSystemMessage("Unknown command. Try /help.");
 }
 function tryMoveCommand(t,gx,gy,isProgrammatic=false){
+  if(!Number.isFinite(gx) || !Number.isFinite(gy)){
+    addSystemMessage('Invalid move coordinates.');
+    return;
+  }
   const orig={x:t.x,y:t.y};
 
   if(state.encounter.on && !isProgrammatic){
@@ -904,7 +913,7 @@ function renderClues(){
 function dropClue(idx){
   const c=state.campaign?.clues?.[idx];
   if(!c) return;
-  addSystemMessage(`<b>Clue:</b> ${escapeHtml(c.title||'')} — ${escapeHtml(c.text||'')}`);
+  addSystemMessage(`<b>Clue:</b> ${escapeHtml(c.title||'')} — ${escapeHtml(c.text||'')}`, {html:true});
 }
 byId('btnGenHandouts').onclick=()=> generateHandoutsAuto();
 byId('btnAddClue').onclick=()=>{
@@ -990,7 +999,7 @@ function restoreChat(lines){
   chatLog.innerHTML='';
   (lines||[]).forEach(l=>{
     if(l.type==='action') addActionLine(l.text);
-    else if(l.type==='system') addSystemMessage(l.html);
+    else if(l.type==='system') addSystemMessage(l.html, {html:true});
     else if(l.type==='keeper') addLine(l.html,'keeper',{speaker:l.speaker,role:l.role||'keeper',html:true});
     else if(l.type==='you') addLine(l.text,'you');
     else if(l.type==='whisper') addWhisper(l.target,l.text);
@@ -1729,7 +1738,7 @@ function fillSheet(t){
   const sk=byId('csSkills'); sk.innerHTML=''; Object.entries(t.sheet.skills||{}).forEach(([k,v])=>{
     const row=el('div',{class:'row'},[
       el('div',{class:'small'},`${k} ${v}`),
-      el('button',{class:'ghost',onclick:()=>{ const r=rollPercentile(k, v); addSystemMessage(`${t.name}: ${r.text}`); if(state.youPCId===t.id) state.lastRoll={who:t.id,skill:k,roll:r.roll,val:r.val,tier:r.tier}; }},'Roll'),
+      el('button',{class:'ghost',onclick:()=>{ const r=rollPercentile(k, v); addSystemMessage(`${escapeHtml(t.name)}: ${r.text}`, {html:true}); if(state.youPCId===t.id) state.lastRoll={who:t.id,skill:k,roll:r.roll,val:r.val,tier:r.tier}; }},'Roll'),
       el('button',{class:'ghost',onclick:()=>{ const nv=Number(prompt('New value', String(v))); if(!isNaN(nv)){ t.sheet.skills[k]=clamp(nv,1,99); fillSheet(t); }}},'Edit'),
       el('button',{class:'danger',onclick:()=>{ delete t.sheet.skills[k]; fillSheet(t); }},'Delete')
     ]);
@@ -1762,7 +1771,7 @@ byId('btnAddItem').onclick=()=>{
 byId('btnRollLuck').onclick=()=>{
   if(!sheetTarget) return;
   const r=rollPercentile('Luck', sheetTarget.sheet.luck||0);
-  addSystemMessage(`${sheetTarget.name}: ${r.text}`);
+  addSystemMessage(`${escapeHtml(sheetTarget.name)}: ${r.text}`, {html:true});
 };
 byId('btnSheetSave').onclick=()=>{
   if(!sheetTarget) return;
@@ -1830,8 +1839,8 @@ byId('brush').addEventListener('change',e=> brush=Number(e.target.value));
 
 /* Begin play banner */
 function greetAndStart(){
-  addSystemMessage(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`);
-  addSystemMessage(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action and <b>1</b> bonus action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i> or <i>/check Listen 55</i>. Refresh Luck with <i>/luck</i> (once per game) and spend it after a failed roll with <i>/spendluck 5</i>.`);
+  addSystemMessage(`<b>${escapeHtml(state.campaign?.title||'Welcome')}</b><br>${escapeHtml(state.campaign?.logline||'Learn the basics with the Keeper’s help.')}`, {html:true});
+  addSystemMessage(`Use <i>Start Encounter</i> for guided turns. On your turn: move up to <b>4</b> tiles, take <b>1</b> action and <b>1</b> bonus action, then type <i>/endturn</i>. For skill checks, try <i>/check Spot 60</i> or <i>/check Listen 55</i>. Refresh Luck with <i>/luck</i> (once per game) and spend it after a failed roll with <i>/spendluck 5</i>.`, {html:true});
 }
 
 /* Boot */
