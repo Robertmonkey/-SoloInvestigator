@@ -1294,6 +1294,8 @@ function captureState(){
 }
 function applyState(data){
   Object.assign(state.settings, data.settings||{});
+  // Persist any settings from the loaded state so voice and other prefs survive reloads
+  saveSettings(false);
   state.sceneIndex=data.sceneIndex||0;
   state.scenes=data.scenes||[newScene('Recovered')];
   state.campaign=data.campaign||null;
