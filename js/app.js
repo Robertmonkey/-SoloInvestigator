@@ -5,10 +5,12 @@
    ========================================================= */
 
 /* ---------- CONSTANTS ---------- */
-const LS_SETTINGS = 'si_settings_v8';
-const LS_SLOTS    = 'si_slots_v6';
-const LS_WIZARD   = 'si_wizard_done_v6';
-const LS_ARC_FP   = 'si_recent_arc_fps_v2';
+const LS_SETTINGS   = 'si_settings_v8';
+const LS_SLOTS      = 'si_slots_v6';
+const LS_WIZARD     = 'si_wizard_done_v6';
+const LS_ARC_FP     = 'si_recent_arc_fps_v2';
+const LS_OPENAI_KEY = 'si_key_openai';
+const LS_ELEVEN_KEY = 'si_key_eleven';
 const GRID_W = 12, GRID_H = 8;
 
 /* Ten core investigators (as before) */
@@ -275,17 +277,25 @@ function sanitizeSettings(s){
   if(!['auto','manual'].includes(s.keeperTrigger)) s.keeperTrigger='auto';
   if(!['browser','eleven','openai','none'].includes(s.ttsProviderDefault)) s.ttsProviderDefault='browser';
 }
+function saveKeys(){
+  try{
+    localStorage.setItem(LS_OPENAI_KEY, state.settings.openaiKey || '');
+    localStorage.setItem(LS_ELEVEN_KEY, state.settings.elevenKey || '');
+  }catch(e){ console.warn('Key save failed', e); }
+}
 function saveSettings(showToast=true){
   sanitizeSettings(state.settings);
+  saveKeys();
+  const {openaiKey, elevenKey, ...rest} = state.settings;
   try{
-    localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings));
+    localStorage.setItem(LS_SETTINGS, JSON.stringify(rest));
     if(showToast) toast('Settings saved');
   }catch(e){
     console.warn('Settings save failed', e);
     if(e.name==='QuotaExceededError'){
       try{
         localStorage.removeItem(LS_SLOTS);
-        localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings));
+        localStorage.setItem(LS_SETTINGS, JSON.stringify(rest));
         toast('Old saves cleared; settings saved');
       }catch(e2){
         console.error('Settings still not saved', e2);
@@ -298,7 +308,10 @@ function saveSettings(showToast=true){
 }
 function loadSettings(){
   const raw=localStorage.getItem(LS_SETTINGS); if(raw){ try{ Object.assign(state.settings, JSON.parse(raw)); }catch{} }
+  const oa=localStorage.getItem(LS_OPENAI_KEY); if(oa!==null) state.settings.openaiKey=oa;
+  const el=localStorage.getItem(LS_ELEVEN_KEY); if(el!==null) state.settings.elevenKey=el;
   sanitizeSettings(state.settings);
+  saveKeys();
   byId('openaiKey').value = state.settings.openaiKey;
   byId('openaiModel').value = state.settings.openaiModel;
   byId('openaiTTSModel').value = state.settings.openaiTTSModel || 'gpt-4o-mini-tts';
@@ -326,7 +339,11 @@ function loadSettings(){
 
 function resetSettings(){
   if(!confirm('Reset settings to defaults?')) return;
+  const ok = state.settings.openaiKey;
+  const ek = state.settings.elevenKey;
   state.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  state.settings.openaiKey = ok;
+  state.settings.elevenKey = ek;
   saveSettings(false);
   loadSettings();
   renderAll();
