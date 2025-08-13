@@ -281,7 +281,10 @@ async function keeperReply(userText){
       .replace(/<engine[^>]*>[\s\S]*?(?:<\/engine\s*>|$)/gi, '')
       .replace(/<\/engine>/gi, '')
       .trim();
-    if(narr) addLine(narr,'keeper',{speaker:'Keeper', role:'npc'});
+    if(narr){
+      addLine(narr,'keeper',{speaker:'Keeper', role:'npc'});
+      maybeSetSceneBackground(narr);
+    }
     const eng=parseEngine(text); if(eng) applyEngine(eng);
     if(state.settings.ttsOn && narr) speak(stripTags(narr),'Keeper','npc');
     maybeSummarizeLocal(); // keep memory fresh without extra tokens
@@ -292,7 +295,10 @@ async function keeperReply(userText){
       .replace(/<engine[^>]*>[\s\S]*?(?:<\/engine\s*>|$)/gi, '')
       .replace(/<\/engine>/gi, '')
       .trim();
-    if(narr) addLine(narr, 'keeper', { speaker: 'Keeper', role: 'npc' });
+    if(narr){
+      addLine(narr, 'keeper', { speaker: 'Keeper', role: 'npc' });
+      maybeSetSceneBackground(narr);
+    }
     const eng = parseEngine(demo);
     if(eng) applyEngine(eng);
     maybeSummarizeLocal();
