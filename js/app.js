@@ -223,7 +223,11 @@ function clamp(v,a,b){
   return Math.max(min, Math.min(max, num));
 }
 function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
-function timestampEl(){ if(!state.settings.showTimestamps) return null; const t=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); return el('span',{class:'timestamp'}, t); }
+function timestampEl(ts=null){
+  if(!state.settings.showTimestamps) return null;
+  const t = ts || new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  return el('span',{class:'timestamp'}, t);
+}
 
 /* ---------- PERSISTENCE ---------- */
 function saveSettings(showToast=true){
@@ -572,12 +576,12 @@ function addLine(text, who='you', opts={}){
     const btn=el('button',{class:'ghost',title:'Replay voice',onclick:async()=>{ await speak(stripTags(text), opts.speaker||'Keeper', opts.role || (who==='keeper'?'keeper':'pc')); }},'▶');
     controls.appendChild(btn);
   }
-  const time = timestampEl(); if(time) line.appendChild(time);
+  const time = timestampEl(opts.ts); if(time) line.appendChild(time);
   if(controls.childNodes.length) line.appendChild(controls);
   chatLog.appendChild(line);
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
 }
-function addSay(speaker, text, role='pc'){
+function addSay(speaker, text, role='pc', opts={}){
   const line=el('div',{class:'line', 'data-role':role});
   const av=el('div',{class:'avatar'});
   const img=el('img',{src: speakerAvatar(speaker), alt:speaker});
@@ -592,36 +596,36 @@ function addSay(speaker, text, role='pc'){
   line.appendChild(av);
   line.appendChild(whoEl);
   line.appendChild(content);
-  const time = timestampEl(); if(time) line.appendChild(time);
+  const time = timestampEl(opts.ts); if(time) line.appendChild(time);
   if(controls.childNodes.length) line.appendChild(controls);
   chatLog.appendChild(line);
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
 }
 
-function addActionLine(text){
+function addActionLine(text, ts=null){
   const line=el('div',{class:'line action'});
   line.textContent=text;
-  const time=timestampEl(); if(time) line.appendChild(time);
+  const time=timestampEl(ts); if(time) line.appendChild(time);
   chatLog.appendChild(line);
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
 }
 
-function addSystemMessage(text, {html=false}={}){
+function addSystemMessage(text, {html=false, ts=null}={}){
   const content = html ? sanitizeHtml(text) : escapeHtml(text);
   const line=el('div',{class:'line system'});
   line.appendChild(el('div',{class:'who'}, '⚙️ System'));
   line.appendChild(el('div',{class:'content', html:content}));
-  const time=timestampEl(); if(time) line.appendChild(time);
+  const time=timestampEl(ts); if(time) line.appendChild(time);
   chatLog.appendChild(line);
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
 }
 
-function addWhisper(target, text){
+function addWhisper(target, text, ts=null){
   const line=el('div',{class:'line whisper'},[
     el('div',{class:'who'}, `Whisper to ${escapeHtml(target)}`),
     el('div',{class:'content'}, escapeHtml(text))
   ]);
-  const time=timestampEl(); if(time) line.appendChild(time);
+  const time=timestampEl(ts); if(time) line.appendChild(time);
   chatLog.appendChild(line);
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
 }
@@ -761,7 +765,8 @@ function tryMoveCommand(t,gx,gy,isProgrammatic=false){
 
 /* ---------- SIMPLE DICE (chat-only) ---------- */
 function doRoll(expr, opts={}){
-  const p=expr.trim().toLowerCase().replace(/\s+/g,'').replace(/^d/,'1d');
+  let p=expr.trim().toLowerCase().replace(/\s+/g,'');
+  p=p.replace(/^d/,'1d').replace(/d%/g,'d100');
   const m=p.match(/^(\d+)d(\d+)([+-]\d+)?$/);
   if(!m){ addSystemMessage(`Bad roll: ${expr}`); return; }
   const n=Number(m[1]), sides=Number(m[2]), mod=Number(m[3]||0);
@@ -870,8 +875,30 @@ byId('btnAddScene').onclick=()=> addScene(byId('sceneTitle').value.trim()||'New 
 byId('btnSwitchScene2').onclick=()=> { const idx=Number(prompt('Switch to scene index (0..N-1)?', String(state.sceneIndex)))||0; switchScene(idx); hide('#modalScenes'); };
 function addScene(name){ state.scenes.push(newScene(name||'New Scene')); updateSceneList(); toast('Scene added'); }
 function switchScene(idx){ if(idx<0||idx>=state.scenes.length) return; state.sceneIndex=idx; renderAll(); toast('Switched scene'); }
-function updateSceneList(){ const wrap=byId('sceneList'); wrap.innerHTML=''; state.scenes.forEach((s,i)=> wrap.appendChild(el('div',{class:'row',style:'justify-content:space-between;align-items:center;margin:.25rem 0;'},
-  [el('div',{class:'meta small'},[el('div',{html:`<b>${escapeHtml(s.name)}</b>`}), el('div',{class:'ts'},[`ID: ${s.id}`])]), el('button',{class:'ghost',onclick:()=> switchScene(i)},'Switch')] ))); }
+function renameScene(i){
+  const name=prompt('New scene name', state.scenes[i].name);
+  if(name){ state.scenes[i].name=name; renderSceneName(); updateSceneList(); toast('Scene renamed'); }
+}
+function deleteScene(i){
+  if(state.scenes.length<=1){ toast('At least one scene required'); return; }
+  if(!confirm('Delete this scene?')) return;
+  state.scenes.splice(i,1);
+  if(state.sceneIndex>=state.scenes.length) state.sceneIndex=state.scenes.length-1;
+  renderAll();
+  updateSceneList();
+  toast('Scene deleted');
+}
+function updateSceneList(){
+  const wrap=byId('sceneList'); wrap.innerHTML='';
+  state.scenes.forEach((s,i)=> wrap.appendChild(el('div',{class:'row',style:'justify-content:space-between;align-items:center;margin:.25rem 0;'},[
+    el('div',{class:'meta small'},[el('div',{html:`<b>${escapeHtml(s.name)}</b>`}), el('div',{class:'ts'},[`ID: ${s.id}`])]),
+    el('div',{class:'row'},[
+      el('button',{class:'ghost',onclick:()=> switchScene(i)},'Switch'),
+      el('button',{class:'ghost',onclick:()=> renameScene(i)},'Rename'),
+      el('button',{class:'danger',onclick:()=> deleteScene(i)},'Delete')
+    ])
+  ])));
+}
 
 /* Party modal (+ voice & sheet controls) */
 function renderParty(){
@@ -1086,36 +1113,37 @@ function updateSlots(){
 function captureChat(){
   const lines=[];
   chatLog.querySelectorAll('.line').forEach(l=>{
-    if(l.classList.contains('action')){ lines.push({type:'action',text:l.textContent}); return; }
-    if(l.classList.contains('system')){ lines.push({type:'system',html:l.querySelector('.content')?.innerHTML||''}); return; }
+    const ts = l.querySelector('.timestamp')?.textContent || null;
+    if(l.classList.contains('action')){ lines.push({type:'action',text:l.textContent,ts}); return; }
+    if(l.classList.contains('system')){ lines.push({type:'system',html:l.querySelector('.content')?.innerHTML||'',ts}); return; }
     if(l.classList.contains('keeper')){
       const html=l.querySelector('.content')?.innerHTML||'';
       const speaker=(l.querySelector('.who')?.textContent||'').replace(/^👁️\s*/, '');
       const role=l.dataset.role || 'keeper';
-      lines.push({type:'keeper',html,speaker,role}); return;
+      lines.push({type:'keeper',html,speaker,role,ts}); return;
     }
-    if(l.classList.contains('you')){ lines.push({type:'you',text:l.querySelector('.content')?.textContent||''}); return; }
+    if(l.classList.contains('you')){ lines.push({type:'you',text:l.querySelector('.content')?.textContent||'',ts}); return; }
     if(l.classList.contains('whisper')){
       const target=(l.querySelector('.who')?.textContent||'').replace(/^Whisper to\s*/, '');
-      lines.push({type:'whisper',target,text:l.querySelector('.content')?.textContent||''});
+      lines.push({type:'whisper',target,text:l.querySelector('.content')?.textContent||'',ts});
       return;
     }
     const role=l.dataset.role || 'pc';
     const speaker=l.querySelector('.who')?.textContent||'';
     const text=l.querySelector('.content')?.textContent||'';
-    lines.push({type:'say',speaker,text,role});
+    lines.push({type:'say',speaker,text,role,ts});
   });
   return lines;
 }
 function restoreChat(lines){
   chatLog.innerHTML='';
   (lines||[]).forEach(l=>{
-    if(l.type==='action') addActionLine(l.text);
-    else if(l.type==='system') addSystemMessage(l.html, {html:true});
-    else if(l.type==='keeper') addLine(l.html,'keeper',{speaker:l.speaker,role:l.role||'keeper',html:true});
-    else if(l.type==='you') addLine(l.text,'you');
-    else if(l.type==='whisper') addWhisper(l.target,l.text);
-    else if(l.type==='say') addSay(l.speaker,l.text,l.role||'pc');
+    if(l.type==='action') addActionLine(l.text, l.ts);
+    else if(l.type==='system') addSystemMessage(l.html, {html:true, ts:l.ts});
+    else if(l.type==='keeper') addLine(l.html,'keeper',{speaker:l.speaker,role:l.role||'keeper',html:true,ts:l.ts});
+    else if(l.type==='you') addLine(l.text,'you',{ts:l.ts});
+    else if(l.type==='whisper') addWhisper(l.target,l.text,l.ts);
+    else if(l.type==='say') addSay(l.speaker,l.text,l.role||'pc',{ts:l.ts});
   });
 }
 function captureState(){
@@ -1877,7 +1905,10 @@ function fillSheet(t){
       el('button',{class:'danger',onclick:()=>{ t.sheet.inventory.splice(idx,1); fillSheet(t);} },'Drop')
     ]));
   });
-  byId('invWeight').textContent = `Weight: ${totalWt.toFixed(1)}`;
+  const maxWt = (Number(t.sheet.attrs?.Brawn)||10) * 5;
+  const wtEl = byId('invWeight');
+  wtEl.textContent = `Weight: ${totalWt.toFixed(1)} / ${maxWt}`;
+  wtEl.style.color = totalWt>maxWt ? 'var(--danger)' : '';
 }
 byId('btnAddSkill').onclick=()=>{
   if(!sheetTarget) return;
