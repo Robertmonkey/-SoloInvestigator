@@ -165,7 +165,7 @@ const state = {
   activeTurn:0,
   encounter:{on:false, movesLeft:0, actionsLeft:0, bonusLeft:0},
   browserVoices:[],
-  memory:'', // local summary to keep prompts small (no extra tokens)
+  memory:{summary:'', scenes:{}}, // local summary + per-scene memory
   aiThinking:false, // prevent concurrent AI calls
   lastRoll:null
 };
@@ -421,7 +421,7 @@ function endMeasure(){ if(measureEl){ measureEl.remove(); measureEl=null; } }
 function gridDistance(a,b){ const [ax,ay]=pxToGrid(a[0],a[1]), [bx,by]=pxToGrid(b[0],b[1]); return Math.max(Math.abs(ax-bx),Math.abs(ay-by)); }
 
 /* ---------- TOKENS ---------- */
-function addToken(t){ const sc=currentScene(); t.id=t.id||('t_'+Math.random().toString(36).slice(2,8)); t.x=clamp(t.x ?? 1,0,GRID_W-1); t.y=clamp(t.y ?? 1,0,GRID_H-1); t.type=t.type||'pc'; t.speed=t.speed ?? 4; t.sheet = t.sheet||defaultSheet(t); sc.tokens.push(t); applyDefaultVoices(); renderTokens(); renderTokenList(); }
+function addToken(t){ const sc=currentScene(); t.id=t.id||('t_'+Math.random().toString(36).slice(2,8)); t.x=clamp(t.x ?? 1,0,GRID_W-1); t.y=clamp(t.y ?? 1,0,GRID_H-1); t.type=t.type||'pc'; t.speed=t.speed ?? 4; t.sheet = t.sheet||defaultSheet(t); sc.tokens.push(t); updateTokenMemory(t); applyDefaultVoices(); renderTokens(); renderTokenList(); }
 function removeToken(id){ const sc=currentScene(); sc.tokens=sc.tokens.filter(x=>x.id!==id); renderTokens(); renderTokenList(); renderReach(); }
 function editTokenPrompt(t){
   const name=prompt('Name:', t.name||'');
@@ -595,6 +595,8 @@ function addLine(text, who='you', opts={}){
   if(controls.childNodes.length) line.appendChild(controls);
   chatLog.appendChild(line);
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
+  const speaker = who==='keeper' ? (opts.speaker||'Keeper') : (opts.speaker||'You');
+  recordEvent(`${speaker}: ${stripTags(text)}`);
 }
 function addSay(speaker, text, role='pc', opts={}){
   const line=el('div',{class:'line', 'data-role':role});
@@ -617,6 +619,7 @@ function addSay(speaker, text, role='pc', opts={}){
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
   const token=currentScene().tokens.find(t => t.name===speaker);
   if(token) token.lastSaid = stripTags(text);
+  recordEvent(`${speaker}: ${text}`);
 }
 
 function addActionLine(text, ts=null){
@@ -625,6 +628,7 @@ function addActionLine(text, ts=null){
   const time=timestampEl(ts); if(time) line.appendChild(time);
   chatLog.appendChild(line);
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
+  recordEvent(text);
 }
 
 function addSystemMessage(text, {html=false, ts=null}={}){
@@ -645,6 +649,7 @@ function addWhisper(target, text, ts=null){
   const time=timestampEl(ts); if(time) line.appendChild(time);
   chatLog.appendChild(line);
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
+  recordEvent(`Whisper to ${target}: ${text}`);
 }
 function speakerAvatar(name){
   const key=(name||'').trim().toLowerCase();
@@ -775,6 +780,7 @@ function tryMoveCommand(t,gx,gy,isProgrammatic=false){
 
   renderTokens();
   renderReach();
+  updateTokenMemory(t);
   updateTurnBanner();
   renderTokenList();
   if(!isProgrammatic) spawnFXAt(t.x,t.y);
@@ -1155,6 +1161,7 @@ function captureChat(){
   return lines;
 }
 function restoreChat(lines){
+  restoringChat=true;
   chatLog.innerHTML='';
   (lines||[]).forEach(l=>{
     if(l.type==='action') addActionLine(l.text, l.ts);
@@ -1164,6 +1171,7 @@ function restoreChat(lines){
     else if(l.type==='whisper') addWhisper(l.target,l.text,l.ts);
     else if(l.type==='say') addSay(l.speaker,l.text,l.role||'pc',{ts:l.ts});
   });
+  restoringChat=false;
 }
 function captureState(){
   return {
@@ -1191,7 +1199,7 @@ function applyState(data){
   state.initOrder=data.initOrder||[];
   state.activeTurn=data.activeTurn||0;
   state.encounter=data.encounter||{on:false,movesLeft:0,actionsLeft:0,bonusLeft:0};
-  state.memory=data.memory||'';
+  state.memory = (typeof data.memory==='string') ? {summary:data.memory, scenes:{}} : (data.memory||{summary:'',scenes:{}});
   state.chat=data.chat||[];
   loadSettings(); renderAll();
   restoreChat(state.chat);
@@ -1975,6 +1983,26 @@ document.addEventListener('click',e=>{
   if(t) hide(t.getAttribute('data-close'));
 });
 
+/* ---------- SCENE MEMORY HELPERS ---------- */
+let restoringChat=false;
+function sceneMemory(){
+  const scName = currentScene().name || `Scene${state.sceneIndex}`;
+  state.memory.scenes[scName] = state.memory.scenes[scName] || {events:[], positions:{}};
+  return state.memory.scenes[scName];
+}
+function recordEvent(text){
+  if(restoringChat) return;
+  const mem = sceneMemory();
+  if(text){
+    mem.events.push(text);
+    if(mem.events.length>20) mem.events = mem.events.slice(-20);
+  }
+}
+function updateTokenMemory(t){
+  const mem = sceneMemory();
+  mem.positions[t.id] = {name:t.name, x:t.x, y:t.y};
+}
+
 /* ---------- LOCAL MEMORY SUMMARIZATION (no API) ---------- */
 function maybeSummarizeLocal(){
   // After every ~12 Keeper lines, make a tiny stitched summary to shrink future prompts
@@ -1987,7 +2015,7 @@ function maybeSummarizeLocal(){
     if(!txt) return;
     if(points.length<10 && txt.length>6) points.push(`${who||'Narration'}: ${txt.slice(0,140)}`);
   });
-  state.memory = points.slice(-8).join(' | ');
+  state.memory.summary = points.slice(-8).join(' | ');
 }
 
 /* ---------- INIT ---------- */
