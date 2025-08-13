@@ -17,7 +17,7 @@ function extract(name){
   if(!fn) throw new Error(name + ' not found');
   vm.runInThisContext(fn[0]);
 }
-['el','sanitizeHtml','clamp','makeFog','escapeHtml','stripTags','cellStyle','pxToGrid','deepClone'].forEach(extract);
+['el','sanitizeHtml','clamp','makeFog','escapeHtml','stripTags','cellStyle','pxToGrid','deepClone','addSay','addWhisper'].forEach(extract);
 
 // ---- Tests ----
 
@@ -94,5 +94,22 @@ assert.deepStrictEqual(res,[6,4]);
 global.GRID_WPX = () => 0; global.GRID_HPX = () => 0;
 res = pxToGrid(50,50);
 assert.deepStrictEqual(res,[11,7]);
+
+// addSay and addWhisper should render apostrophes correctly
+global.chatLog = document.createElement('div');
+global.state = { settings:{autoScroll:false, ttsOn:false}, scenes:[{tokens:[]}], sceneIndex:0 };
+global.speakerAvatar = () => '';
+global.currentScene = () => state.scenes[state.sceneIndex];
+global.timestampEl = () => null;
+global.recordEvent = () => {};
+
+addSay('Eve', "I'm fine.");
+let content = chatLog.querySelector('.content');
+assert.strictEqual(content.textContent, "I'm fine.");
+
+chatLog.innerHTML = '';
+addWhisper('Eve', "Don't panic.");
+content = chatLog.querySelector('.content');
+assert.strictEqual(content.textContent, "Don't panic.");
 
 console.log('All UI helper tests passed.');
