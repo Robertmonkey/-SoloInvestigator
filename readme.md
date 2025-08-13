@@ -70,7 +70,7 @@ readme.md    - documentation
 - **Keeper Style/Max Tokens:** Control verbosity and token budget to reduce spend.
 - **Rules Pack:** Your own notes/house-rules (do not paste copyrighted text).
 
-> Settings are stored in `localStorage` under `si_settings_v8`.
+> Settings are stored in `localStorage` under `si_settings_v8`. API keys are kept separately under `si_key_openai` and `si_key_eleven`.
 
 ---
 
