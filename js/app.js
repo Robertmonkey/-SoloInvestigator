@@ -152,7 +152,7 @@ function makeFog(w,h,hidden){
 
 const state = {
   settings:{
-    openaiKey:'', openaiModel:'gpt-4o-mini', openaiTTSModel:'gpt-4o-mini-tts', openaiVoice:'alloy', keeperOn:true,
+    openaiKey:'', openaiModel:'gpt-4o-mini', openaiTTSModel:'gpt-4o-mini-tts', openaiVoice:'alloy', browserVoice:'', keeperOn:true,
     useImages:false, imageModel:'dall-e-3',
     ttsOn:false, ttsQueue:true, ttsProviderDefault:'browser',
     elevenKey:'', voiceId:'', elevenModel:'eleven_multilingual_v2',
@@ -276,6 +276,7 @@ function sanitizeSettings(s){
   if(!['light','dark'].includes(s.theme)) s.theme='dark';
   if(!['auto','manual'].includes(s.keeperTrigger)) s.keeperTrigger='auto';
   if(!['browser','eleven','openai','none'].includes(s.ttsProviderDefault)) s.ttsProviderDefault='browser';
+  if(typeof s.browserVoice !== 'string') s.browserVoice='';
 }
 function saveKeys(){
   try{
@@ -316,6 +317,7 @@ function loadSettings(){
   byId('openaiModel').value = state.settings.openaiModel;
   byId('openaiTTSModel').value = state.settings.openaiTTSModel || 'gpt-4o-mini-tts';
   byId('openaiVoice').value = state.settings.openaiVoice || 'alloy';
+  byId('browserVoice').value = state.settings.browserVoice || '';
   byId('keeperOn').checked = state.settings.keeperOn;
   byId('useImages').checked = state.settings.useImages;
   byId('imageModel').value = state.settings.imageModel;
@@ -941,6 +943,7 @@ byId('btnSaveSettings').onclick=()=>{
   state.settings.openaiModel=byId('openaiModel').value;
   state.settings.openaiTTSModel=byId('openaiTTSModel').value.trim();
   state.settings.openaiVoice=byId('openaiVoice').value.trim();
+  state.settings.browserVoice=byId('browserVoice').value;
   state.settings.keeperOn=byId('keeperOn').checked;
   state.settings.useImages=byId('useImages').checked;
   state.settings.imageModel=byId('imageModel').value;
@@ -1066,7 +1069,7 @@ function voiceControlsForName(actor){
   const testBtn=el('button',{class:'ghost',onclick:()=> speak(`It is I, ${name}.`, name, role)},'Test');
 
   // fill browser voices
-  const chosenId = state.settings.voiceMap?.[name]?.id || '';
+  const chosenId = state.settings.voiceMap?.[name]?.id || state.settings.browserVoice || '';
   function fillVoiceOptions(){
     voiceSel.innerHTML='';
     if(provSel.value==='browser'){
@@ -1462,6 +1465,7 @@ function voiceIdFor(speaker, role='pc'){
   if(m?.id) return m.id;
   if(prov==='eleven') return state.settings.voiceId;
   if(prov==='openai') return state.settings.openaiVoice;
+  if(prov==='browser') return state.settings.browserVoice || '';
   return '';
 }
 
@@ -1469,7 +1473,7 @@ function defaultVoiceFor(actor, provider){
   const sex = actor.sex || 'N';
   const age = actor.age || 30;
   provider = provider || state.settings.ttsProviderDefault || 'browser';
-  if(provider==='browser') return defaultBrowserVoice(sex, age);
+  if(provider==='browser') return state.settings.browserVoice || defaultBrowserVoice(sex, age);
   if(provider==='eleven') return defaultElevenVoice(sex, age);
   if(provider==='openai') return defaultOpenAIVoice(sex, age);
   return '';
@@ -1556,6 +1560,14 @@ async function fetchOpenAITTSBlob(text, voiceId){
 function refreshBrowserVoices(){
   state.browserVoices = (window.speechSynthesis.getVoices()||[])
     .filter(v=> !(v.name.includes('Microsoft') && v.name.includes('Natural') && !v.name.includes('English')));
+  const sel = byId('browserVoice');
+  if(sel){
+    const prev = state.settings.browserVoice || sel.value;
+    sel.innerHTML='';
+    state.browserVoices.forEach(v=> sel.appendChild(el('option',{value:v.name}, v.name)));
+    if(prev && state.browserVoices.some(v=> v.name===prev)) sel.value = prev;
+    else if(sel.options.length) sel.value = sel.options[0].value;
+  }
   applyDefaultVoices();
 }
 if('speechSynthesis' in window){ window.speechSynthesis.onvoiceschanged = refreshBrowserVoices; refreshBrowserVoices(); }
