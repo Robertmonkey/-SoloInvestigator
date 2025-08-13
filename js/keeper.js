@@ -9,6 +9,8 @@ function buildAIPrompt(actor){
     .map(l=> l.querySelector('.content')?.textContent || '')
     .filter(Boolean)
     .join('\n');
+  const sceneMem = state.memory.scenes?.[sc.name];
+  const sceneEvents = sceneMem?.events?.slice(-6).join(' | ') || '';
 
   const othersLast = sc.tokens
     .filter(t => t.id !== actor.id && t.lastSaid)
@@ -38,8 +40,9 @@ Your skills of note are: ${notableSkills || 'none'}.`;
 The scene is: ${sc.name}.
 ${dialogueContext}
 Your allies are: ${partyStr}. NPCs present: ${npcStr}.
-Story so far: ${state.memory || '(just beginning)'}
-Recent events:\n${recentChat}\n
+Recent events here: ${sceneEvents || 'none'}.
+Story so far: ${state.memory.summary || '(just beginning)'}
+Recent chat:\n${recentChat}\n
 Speak as if you are a player guiding ${actor.name}; use 1920s-appropriate language rich in sensory detail and refer to allies by name when it makes sense. Ensure your words feel fresh and distinct from prior lines.
 Based on your persona and the situation, decide what to do. Your goals are to survive and solve the mystery.
 Output ONLY a compact JSON object inside an <engine> tag.
@@ -123,6 +126,9 @@ function keeperSystem(){
   const npcs=sc.tokens.filter(t=>t.type==='npc').map(t=>t.name).join(', ');
   const you = sc.tokens.find(t=> t.id===state.youPCId);
   const enc = state.encounter.on ? `Encounter ON — ${getActiveToken()?.name||'n/a'} to act, moves ${state.encounter.movesLeft}.` : 'Free exploration';
+  const sceneMem = state.memory.scenes?.[sc.name] || {};
+  const sceneEvents = (sceneMem.events||[]).slice(-6).join(' | ') || '(none)';
+  const positions = Object.values(sceneMem.positions||{}).map(p=>`${p.name} at (${p.x},${p.y})`).join('; ') || '(none)';
   const style = state.settings.keeperStyle;
   const brevity = style==='brief' ? 'Use 1–3 sentences.' : (style==='verbose' ? 'Use 4–8 sentences.' : 'Use 2–5 sentences.');
   return `You are The Keeper (tutorial). Teach gently. ${brevity}
@@ -146,7 +152,9 @@ function keeperSystem(){
 Title: ${state.campaign?.title||'Scenario'}
 Acts: ${(state.campaign?.acts||[]).map(a=>a.name).join(' | ')}
 Mode: ${enc}
-Memory: ${state.memory||'(none)'}
+Memory: ${state.memory.summary||'(none)'}
+Scene positions: ${positions}
+Scene events: ${sceneEvents}
 </campaign>
 
 Players (PCs): ${party||'none yet'}
