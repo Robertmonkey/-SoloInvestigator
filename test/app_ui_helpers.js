@@ -17,7 +17,7 @@ function extract(name){
   if(!fn) throw new Error(name + ' not found');
   vm.runInThisContext(fn[0]);
 }
-['el','sanitizeHtml','clamp','deepClone','makeFog'].forEach(extract);
+['el','sanitizeHtml','clamp','makeFog','escapeHtml','stripTags','cellStyle','pxToGrid','deepClone'].forEach(extract);
 
 // ---- Tests ----
 
@@ -55,10 +55,19 @@ assert(!clean.includes('javascript:'));
 assert.strictEqual(clamp('5','10','1'),5); // swaps
 assert.strictEqual(clamp('bad',0,2),0); // invalid value
 assert.strictEqual(clamp(7,'a','b'),0); // invalid bounds default to 0
+assert.strictEqual(clamp(5,0,Infinity),5); // Infinity bound
 
-// deepClone should copy objects deeply and preserve Dates
+// escapeHtml and stripTags should preserve numbers
+assert.strictEqual(escapeHtml(0), '0');
+assert.strictEqual(stripTags(0), '0');
+assert.strictEqual(escapeHtml("<>&\"'"), '&lt;&gt;&amp;&quot;&#39;');
+
+// deepClone should copy objects deeply and preserve Dates even without structuredClone
+const savedSC = global.structuredClone;
+global.structuredClone = undefined;
 const obj = {a:1,b:{c:2},d:new Date(0)};
 const copy = deepClone(obj);
+global.structuredClone = savedSC;
 copy.b.c=5;
 assert.strictEqual(obj.b.c,2);
 assert.ok(copy.d instanceof Date);
@@ -69,5 +78,21 @@ const fog = makeFog(2.7,1.2,true);
 assert.deepStrictEqual(fog, [[true,true]]);
 const fog2 = makeFog(-3,2,false);
 assert.deepStrictEqual(fog2, [[],[]]);
+
+// cellStyle should clamp coordinates
+global.GRID_W = 12; global.GRID_H = 8;
+const cs = cellStyle(-5, 20);
+const left = parseFloat(cs.match(/left:(\d+(?:\.\d+)?)%/)[1]);
+const top = parseFloat(cs.match(/top:(\d+(?:\.\d+)?)%/)[1]);
+assert(Math.abs(left - ((0.5/12)*100)) < 1e-6);
+assert(Math.abs(top - ((7.5/8)*100)) < 1e-6);
+
+// pxToGrid should handle zero dimensions without NaN
+global.GRID_WPX = () => 120; global.GRID_HPX = () => 80;
+let res = pxToGrid(60,40);
+assert.deepStrictEqual(res,[6,4]);
+global.GRID_WPX = () => 0; global.GRID_HPX = () => 0;
+res = pxToGrid(50,50);
+assert.deepStrictEqual(res,[11,7]);
 
 console.log('All UI helper tests passed.');

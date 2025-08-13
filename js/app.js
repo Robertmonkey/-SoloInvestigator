@@ -215,9 +215,15 @@ function escapeHtml(s){
     '"': '&quot;',
     "'": '&#39;',
   };
-  return (s || '').replace(/[&<>"']/g, c => map[c]);
+  // Preserve valid falsy values like 0 while still handling null/undefined
+  return String(s ?? '').replace(/[&<>"']/g, c => map[c]);
 }
-function stripTags(s){ const d=document.createElement('div'); d.innerHTML=s||''; return d.textContent||d.innerText||''; }
+function stripTags(s){
+  const d=document.createElement('div');
+  // Convert to string so numeric values aren't dropped
+  d.innerHTML=String(s ?? '');
+  return d.textContent||d.innerText||'';
+}
 function sanitizeHtml(html){
   const t=document.createElement('template');
   t.innerHTML=html||'';
@@ -231,11 +237,12 @@ function sanitizeHtml(html){
 }
 function clamp(v,a,b){
   let min=Number(a), max=Number(b);
-  if(!Number.isFinite(min)) min=0;
-  if(!Number.isFinite(max)) max=0;
+  // Treat NaN bounds as 0 but allow Infinity/-Infinity
+  if(Number.isNaN(min)) min=0;
+  if(Number.isNaN(max)) max=0;
   if(min>max) [min,max] = [max,min];
   const num=Number(v);
-  if(!Number.isFinite(num)) return min;
+  if(Number.isNaN(num)) return min;
   return Math.max(min, Math.min(max, num));
 }
 // Safely clone simple objects, preserving null/undefined without throwing
@@ -244,7 +251,14 @@ function deepClone(o){
   if(typeof structuredClone==='function'){
     try{ return structuredClone(o); }catch{}
   }
-  return JSON.parse(JSON.stringify(o));
+  if(o instanceof Date) return new Date(o.getTime());
+  if(Array.isArray(o)) return o.map(deepClone);
+  if(typeof o === 'object'){
+    const out={};
+    for(const k in o) out[k]=deepClone(o[k]);
+    return out;
+  }
+  return o;
 }
 function timestampEl(ts=null){
   if(!state.settings.showTimestamps) return null;
@@ -326,7 +340,11 @@ function renderBackground(){
   }
   bgEl.style.backgroundImage=sc.bg?`url(${sc.bg})`:'none';
 }
-function cellStyle(x,y){ return `left:${((x+0.5)/GRID_W)*100}%; top:${((y+0.5)/GRID_H)*100}%`; }
+function cellStyle(x,y){
+  const gx = clamp(Number(x), 0, GRID_W-1);
+  const gy = clamp(Number(y), 0, GRID_H-1);
+  return `left:${((gx+0.5)/GRID_W)*100}%; top:${((gy+0.5)/GRID_H)*100}%`;
+}
 function initials(n){ return (n||'??').split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join(''); }
 function renderTokens(){
   [...mapEl.querySelectorAll('.token')].forEach(n=>n.remove());
@@ -361,8 +379,10 @@ function renderTokenList(){
 
 /* ---------- FOG ---------- */
 function pxToGrid(px,py){
-  const gx = Math.max(0, Math.min(GRID_W-1, Math.floor((px/GRID_WPX())*GRID_W)));
-  const gy = Math.max(0, Math.min(GRID_H-1, Math.floor((py/GRID_HPX())*GRID_H)));
+  const w = GRID_WPX() || 1;
+  const h = GRID_HPX() || 1;
+  const gx = clamp(Math.floor((px/w)*GRID_W),0,GRID_W-1);
+  const gy = clamp(Math.floor((py/h)*GRID_H),0,GRID_H-1);
   return [gx,gy];
 }
 function renderFog(){ const cv=fogCv, sc=currentScene(), ctx=cv.getContext('2d'); cv.width=GRID_WPX(); cv.height=GRID_HPX(); ctx.clearRect(0,0,cv.width,cv.height);
