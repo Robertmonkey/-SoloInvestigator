@@ -122,6 +122,7 @@
   #chatEntry{display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap}
   #chatEntry input{flex:1;min-width:220px}
   #chatEntry button{white-space:nowrap}
+  #btnSpeech.recording{background:var(--accent);color:#000}
 
   .note{font-size:.85rem;color:#a6b4cc}
 
