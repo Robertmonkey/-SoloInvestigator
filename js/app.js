@@ -227,8 +227,24 @@ function timestampEl(){ if(!state.settings.showTimestamps) return null; const t=
 
 /* ---------- PERSISTENCE ---------- */
 function saveSettings(showToast=true){
-  localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings));
-  if(showToast) toast('Settings saved');
+  try{
+    localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings));
+    if(showToast) toast('Settings saved');
+  }catch(e){
+    console.warn('Settings save failed', e);
+    if(e.name==='QuotaExceededError'){
+      try{
+        localStorage.removeItem(LS_SLOTS);
+        localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings));
+        toast('Old saves cleared; settings saved');
+      }catch(e2){
+        console.error('Settings still not saved', e2);
+        toast('Settings not saved: storage full');
+      }
+    } else {
+      toast('Settings not saved: see console');
+    }
+  }
 }
 function loadSettings(){
   const raw=localStorage.getItem(LS_SETTINGS); if(raw){ try{ Object.assign(state.settings, JSON.parse(raw)); }catch{} }
