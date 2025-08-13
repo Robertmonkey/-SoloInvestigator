@@ -10,6 +10,15 @@ function buildAIPrompt(actor){
     .filter(Boolean)
     .join('\n');
 
+  const othersLast = sc.tokens
+    .filter(t => t.id !== actor.id && t.lastSaid)
+    .map(t => `${t.name}: "${t.lastSaid}"`)
+    .join(' | ');
+  const dialogueContext = [
+    othersLast ? `Recent dialogue: ${othersLast}.` : '',
+    actor.lastSaid ? `Your last line: "${actor.lastSaid}".` : ''
+  ].filter(Boolean).join(' ');
+
   const notableSkills = Object
     .entries(actor.sheet?.skills || {})
     .filter(([k, v]) => v >= 50)
@@ -27,10 +36,11 @@ Your skills of note are: ${notableSkills || 'none'}.`;
   const moves = Math.max(0, Number(state.encounter?.movesLeft) || 0);
   const instructions = `It's your turn in an encounter. You have ${moves} movement tiles, 1 action, and 1 bonus action.
 The scene is: ${sc.name}.
+${dialogueContext}
 Your allies are: ${partyStr}. NPCs present: ${npcStr}.
 Story so far: ${state.memory || '(just beginning)'}
 Recent events:\n${recentChat}\n
-Speak as if you are a player guiding ${actor.name}; use 1920s-appropriate language rich in sensory detail and refer to allies by name when it makes sense.
+Speak as if you are a player guiding ${actor.name}; use 1920s-appropriate language rich in sensory detail and refer to allies by name when it makes sense. Ensure your words feel fresh and distinct from prior lines.
 Based on your persona and the situation, decide what to do. Your goals are to survive and solve the mystery.
 Output ONLY a compact JSON object inside an <engine> tag.
 The JSON can have up to four optional keys: "say" (a string of what you say), "move" (an object with a "to" key like {"to":[x,y]}), "perform" (a string describing your main action), and "bonus" (a quick secondary action).
@@ -56,7 +66,7 @@ async function executeAITurn(actor){
       const res=await fetch('https://api.openai.com/v1/chat/completions',{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-        body:JSON.stringify({model, messages, temperature:0.8, max_tokens:200})
+        body:JSON.stringify({model, messages, temperature:0.9, max_tokens:200})
       });
       if(!res.ok) throw new Error(await res.text());
       const data=await res.json();
