@@ -136,7 +136,17 @@ function newScene(name){
   return { id:'scn_'+Math.random().toString(36).slice(2,8), name:name||'Untitled Scene',
     bg:'', tokens:[], fog:makeFog(GRID_W,GRID_H,true), fogUndo:[] };
 }
-function makeFog(w,h,hidden){ const f=[]; for(let y=0;y<h;y++){const row=[]; for(let x=0;x<w;x++) row.push(!!hidden); f.push(row)} return f; }
+function makeFog(w,h,hidden){
+  w = Math.max(0, Math.floor(Number(w)));
+  h = Math.max(0, Math.floor(Number(h)));
+  const f=[];
+  for(let y=0;y<h;y++){
+    const row=[];
+    for(let x=0;x<w;x++) row.push(Boolean(hidden));
+    f.push(row);
+  }
+  return f;
+}
 
 const state = {
   settings:{
@@ -180,9 +190,11 @@ function el(tag,attrs={},children=[]){
   for(const k in attrs){
     if(k==='class') e.className=attrs[k];
     else if(k==='html') e.innerHTML=attrs[k];
-    else if(k==='onclick') e.onclick=attrs[k];
     else if(k==='value') e.value=attrs[k];
     else if(k==='checked' || k==='selected') e[k]=!!attrs[k];
+    else if(k==='style' && typeof attrs[k]==='object') Object.assign(e.style, attrs[k]);
+    else if(k==='dataset' && typeof attrs[k]==='object') Object.assign(e.dataset, attrs[k]);
+    else if(/^on/.test(k) && typeof attrs[k]==='function') e[k]=attrs[k];
     else e.setAttribute(k,attrs[k]);
   }
   if(!Array.isArray(children)) children=[children];
@@ -209,7 +221,7 @@ function stripTags(s){ const d=document.createElement('div'); d.innerHTML=s||'';
 function sanitizeHtml(html){
   const t=document.createElement('template');
   t.innerHTML=html||'';
-  t.content.querySelectorAll('script,style,iframe,object').forEach(el=>el.remove());
+  t.content.querySelectorAll('script,style,iframe,object,link,meta').forEach(el=>el.remove());
   t.content.querySelectorAll('*').forEach(el=>{
     [...el.attributes].forEach(a=>{
       if(/^on/i.test(a.name) || /javascript:/i.test(a.value)) el.removeAttribute(a.name);
@@ -218,7 +230,9 @@ function sanitizeHtml(html){
   return t.innerHTML;
 }
 function clamp(v,a,b){
-  let min=a, max=b;
+  let min=Number(a), max=Number(b);
+  if(!Number.isFinite(min)) min=0;
+  if(!Number.isFinite(max)) max=0;
   if(min>max) [min,max] = [max,min];
   const num=Number(v);
   if(!Number.isFinite(num)) return min;
@@ -226,7 +240,11 @@ function clamp(v,a,b){
 }
 // Safely clone simple objects, preserving null/undefined without throwing
 function deepClone(o){
-  return o == null ? o : JSON.parse(JSON.stringify(o));
+  if(o==null) return o;
+  if(typeof structuredClone==='function'){
+    try{ return structuredClone(o); }catch{}
+  }
+  return JSON.parse(JSON.stringify(o));
 }
 function timestampEl(ts=null){
   if(!state.settings.showTimestamps) return null;
