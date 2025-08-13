@@ -653,7 +653,7 @@ function addSay(speaker, text, role='pc', opts={}){
   av.appendChild(img);
   const whoEl=el('div',{class:'who'}, speaker);
   whoEl.style.color = role==='npc' ? '#e3b9ff' : '#b2ffda';
-  const content=el('div',{class:'content'}, escapeHtml(text));
+  const content=el('div',{class:'content', html: escapeHtml(text)});
   const controls=el('div',{class:'controls'});
   if(state.settings.ttsOn){
     controls.appendChild(el('button',{class:'ghost',title:'Replay voice',onclick:()=> speak(stripTags(text), speaker, role)},'▶'));
@@ -691,8 +691,8 @@ function addSystemMessage(text, {html=false, ts=null}={}){
 
 function addWhisper(target, text, ts=null){
   const line=el('div',{class:'line whisper'},[
-    el('div',{class:'who'}, `Whisper to ${escapeHtml(target)}`),
-    el('div',{class:'content'}, escapeHtml(text))
+    el('div',{class:'who', html:`Whisper to ${escapeHtml(target)}`}),
+    el('div',{class:'content', html: escapeHtml(text)})
   ]);
   const time=timestampEl(ts); if(time) line.appendChild(time);
   chatLog.appendChild(line);
