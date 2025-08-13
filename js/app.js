@@ -297,7 +297,17 @@ function GRID_WPX(){ return mapEl.clientWidth }
 function GRID_HPX(){ return mapEl.clientHeight }
 function renderAll(){ renderSceneName(); renderBackground(); renderFog(); renderReach(); renderTokens(); renderTokenList(); renderInit(); updateSlots(); updateTurnBanner(); }
 function renderSceneName(){ byId('sceneName').textContent=currentScene().name; }
-function renderBackground(){ const sc=currentScene(); bgEl.style.backgroundImage=sc.bg?`url(${sc.bg})`:'none'; }
+function renderBackground(){
+  const sc=currentScene();
+  if(!sc.bg){
+    const mem=sceneMemory();
+    if(mem.bgPrompt && state.settings.useImages && !sc.bgGenerating){
+      sc.bgGenerating=true;
+      generateBackground(mem.bgPrompt, sc).finally(()=>{ sc.bgGenerating=false; });
+    }
+  }
+  bgEl.style.backgroundImage=sc.bg?`url(${sc.bg})`:'none';
+}
 function cellStyle(x,y){ return `left:${((x+0.5)/GRID_W)*100}%; top:${((y+0.5)/GRID_H)*100}%`; }
 function initials(n){ return (n||'??').split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join(''); }
 function renderTokens(){
@@ -1264,7 +1274,30 @@ async function placeholderImage(prompt,size='1024x1024'){ const [w,h]=size.split
   ctx.globalAlpha=.1; for(let i=0;i<42;i++){ ctx.fillStyle='#7aa2ff'; const r=20+Math.random()*120; ctx.beginPath(); ctx.arc(Math.random()*w,Math.random()*h,r,0,Math.PI*2); ctx.fill(); } ctx.globalAlpha=1;
   ctx.fillStyle='#cfe1ff'; ctx.font='bold '+Math.floor(w*0.04)+'px ui-monospace,monospace'; ctx.fillText('SCENE',24,56); ctx.font=''+Math.floor(w*0.025)+'px ui-monospace,monospace'; ctx.fillText((prompt||'Moody scene').slice(0,64),24,90); return cv.toDataURL('image/png'); }
 async function genBGQuick(){ await generateBackground('Gloomy archive, dramatic slant light, painterly, film grain'); }
-async function generateBackground(prompt){ try{ const dataUrl=await openaiImage(prompt,'1024x1024'); currentScene().bg=dataUrl; renderBackground(); toast('Background ready'); }catch(e){ toast('Image error'); } }
+async function generateBackground(prompt, sc=currentScene()){
+  try{
+    const dataUrl=await openaiImage(prompt,'1024x1024');
+    sc.bg=dataUrl;
+    if(sc===currentScene()) renderBackground();
+    toast('Background ready');
+  }catch(e){
+    toast('Image error');
+  }
+}
+
+function maybeSetSceneBackground(desc){
+  if(!state.settings.useImages) return;
+  const prompt=(desc||'').split(/[\.\n]/)[0].trim();
+  if(!prompt) return;
+  const mem=sceneMemory();
+  if(mem.bgPrompt===prompt) return;
+  mem.bgPrompt=prompt;
+  const sc=currentScene();
+  sc.bgPrompt=prompt;
+  if(sc.bgGenerating) return;
+  sc.bgGenerating=true;
+  generateBackground(prompt, sc).finally(()=>{ sc.bgGenerating=false; });
+}
 
 /* ---------- TTS (Browser + ElevenLabs) ---------- */
 let ttsQueue=[], ttsPlaying=false, currentAudio=null, currentUrl=null;
@@ -1987,7 +2020,7 @@ document.addEventListener('click',e=>{
 let restoringChat=false;
 function sceneMemory(){
   const scName = currentScene().name || `Scene${state.sceneIndex}`;
-  state.memory.scenes[scName] = state.memory.scenes[scName] || {events:[], positions:{}};
+  state.memory.scenes[scName] = state.memory.scenes[scName] || {events:[], positions:{}, bgPrompt:''};
   return state.memory.scenes[scName];
 }
 function recordEvent(text){
