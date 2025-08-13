@@ -1229,15 +1229,22 @@ function playBlobImmediate(blob){
   currentAudio.play().catch(()=>{ if(ttsPlaying) playNextTTS(); });
 }
 
-function enqueueTTS(blob){
-  ttsQueue.push(blob);
+function playUtteranceImmediate(utter){
+  stopVoice(false);
+  utter.onend = () => { if(ttsPlaying) playNextTTS(); };
+  window.speechSynthesis.speak(utter);
+}
+
+function enqueueTTS(item){
+  ttsQueue.push(item);
   if(!ttsPlaying){ ttsPlaying = true; playNextTTS(); }
 }
 
 function playNextTTS(){
   if(ttsQueue.length===0){ ttsPlaying=false; return; }
-  const b = ttsQueue.shift();
-  playBlobImmediate(b);
+  const item = ttsQueue.shift();
+  if(item.blob) playBlobImmediate(item.blob);
+  else if(item.utter) playUtteranceImmediate(item.utter);
 }
 
 function stopVoice(clearQueue){
@@ -1252,13 +1259,13 @@ function stopVoice(clearQueue){
 
 function speakBrowser(text, speaker, role='pc'){
   try{
-    window.speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(text);
     const id=voiceIdFor(speaker, role);
     const v=state.browserVoices.find(v=> v.name===id) || state.browserVoices[0];
     if(v) u.voice=v;
     u.volume=state.settings.voiceVolume ?? 1;
-    window.speechSynthesis.speak(u);
+    if(state.settings.ttsQueue) enqueueTTS({utter:u});
+    else playUtteranceImmediate(u);
   }catch{}
 }
 
@@ -1326,8 +1333,8 @@ function applyDefaultVoices(){
 async function speak(text, speaker='Keeper', role='pc'){
   if(!state.settings.ttsOn || !text) return;
   const provider=providerFor(speaker, role);
-  if(provider==='eleven' && state.settings.elevenKey){ const {blob}=await getOrCreateTTS(text, speaker, role); if(state.settings.ttsQueue) enqueueTTS(blob); else playBlobImmediate(blob); }
-  else if(provider==='openai' && state.settings.openaiKey){ const {blob}=await getOrCreateOpenAITTS(text, speaker, role); if(state.settings.ttsQueue) enqueueTTS(blob); else playBlobImmediate(blob); }
+  if(provider==='eleven' && state.settings.elevenKey){ const {blob}=await getOrCreateTTS(text, speaker, role); if(state.settings.ttsQueue) enqueueTTS({blob}); else playBlobImmediate(blob); }
+  else if(provider==='openai' && state.settings.openaiKey){ const {blob}=await getOrCreateOpenAITTS(text, speaker, role); if(state.settings.ttsQueue) enqueueTTS({blob}); else playBlobImmediate(blob); }
   else if(provider==='browser'){ speakBrowser(text, speaker, role); }
 }
 async function getOrCreateTTS(text, speaker, role='pc'){
