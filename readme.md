@@ -18,6 +18,7 @@ A modular, client-only tabletop experience inspired by investigative horror RPGs
 - **System Messages:** Generic engine notices (start prompts, dice rolls, invalid moves) appear as ⚙️ lines, separate from the Keeper.
 - **Tactical Board:** Grid, fog of war (reveal/hide/undo), ruler, pings, tokens w/ portraits, active-turn highlight, movement budgets.
 - **Voices:** Queue-based TTS with **Browser voices (free)**, **ElevenLabs** (premium), or **OpenAI TTS**. Per-speaker voice selection, global volume control, and local caching for replays.
+- **Browser Default Voice:** Choose a default browser voice in Settings when using free TTS.
 - **Speech to Text:** Click the chat microphone to dictate messages hands-free.
 - **Asset-Full Saves:** Export/import includes scenes, portraits, and handouts as data URLs—no re-generation needed when you reload.
 - **Cost Controls:** Local asset cache, Keeper auto-trigger (switch to manual anytime), quick command picker, offline placeholders if you disable images.
@@ -119,6 +120,7 @@ See **`agents.md`** for full prompts and engine schema.
 
 - **Queue & Replay:** When TTS is on and queueing is enabled, lines won’t overlap. Each chat line has a ▶ replay button if a voice is available for that speaker.
 - **Per-Speaker Mapping:** Set provider and voice per speaker (Keeper + each PC/NPC) in **Party**.
+- **Browser Default Voice:** Pick your preferred browser voice in **Settings** when using free TTS.
 - **Cost Control:** Prefer **Browser** for routine chatter; reserve **ElevenLabs** or **OpenAI** for key moments. The app caches premium audio locally to avoid re-charges.
 
 ---
