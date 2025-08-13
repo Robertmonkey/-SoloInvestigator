@@ -10,7 +10,7 @@ A modular, client-only tabletop experience inspired by investigative horror RPGs
 
 - **Tutorial Wizard:** Step-by-step setup → story variety → pick your character + 4 companions → auto-build maps, portraits, NPCs, and handouts.
 - **Proactive AI Turns:** Companions/NPCs act automatically on their initiative. You watch the scene unfold, then take your turn.
-- **Persona-Driven Agents:** Each AI character gets a tailored prompt (skills, persona, map position, recent events) to feel distinct.
+- **Persona-Driven Agents:** Each AI character gets a tailored prompt (skills, persona, map position, recent events, and recent dialogue) to feel distinct and avoid parroting others.
 - **Shared Memory & Voice:** Keeper, companions, and NPCs recall past events and party members to speak in a more colorful, in-character way.
 - **Keeper Guidance:** A friendly tutorial Keeper that nudges you with clear next actions (manual or auto-trigger).
 - **Opening Introduction:** At the start of each story, the Keeper summarizes the characters and scene to set the stage.

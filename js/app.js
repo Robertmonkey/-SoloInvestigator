@@ -615,6 +615,8 @@ function addSay(speaker, text, role='pc', opts={}){
   if(controls.childNodes.length) line.appendChild(controls);
   chatLog.appendChild(line);
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
+  const token=currentScene().tokens.find(t => t.name===speaker);
+  if(token) token.lastSaid = stripTags(text);
 }
 
 function addActionLine(text, ts=null){
