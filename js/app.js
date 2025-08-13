@@ -685,6 +685,34 @@ byId('chatSend').onclick=sendChat;
 byId('chatInput').addEventListener('keydown',e=>{ if(e.key==='Enter') sendChat(); });
 byId('btnStopVoice').onclick=()=> stopVoice(true);
 byId('btnAskKeeper').onclick=()=> askKeeperFromInput();
+// Speech to text
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if(SpeechRecognition){
+  const rec = new SpeechRecognition();
+  rec.lang = 'en-US';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  rec.onresult = e => {
+    const text = e.results[0][0].transcript;
+    const input = byId('chatInput');
+    input.value = text;
+    sendChat();
+  };
+  rec.onend = ()=> byId('btnSpeech').classList.remove('recording');
+  rec.onerror = ()=> byId('btnSpeech').classList.remove('recording');
+  byId('btnSpeech').onclick = () => {
+    const btn = byId('btnSpeech');
+    if(btn.classList.contains('recording')){
+      rec.stop();
+      btn.classList.remove('recording');
+    }else{
+      btn.classList.add('recording');
+      rec.start();
+    }
+  };
+}else{
+  byId('btnSpeech').style.display='none';
+}
 byId('btnCopyChat').onclick=()=>{ const text=[...chatLog.querySelectorAll('.line')].map(l=>l.innerText.trim()).join('\n'); navigator.clipboard.writeText(text).then(()=>toast('Chat copied')); };
 byId('btnClearChat').onclick=()=>{ if(confirm('Clear chat log?')){ chatLog.innerHTML=''; state.chat=[]; }};
 function askKeeperFromInput(){
