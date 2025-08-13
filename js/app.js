@@ -186,7 +186,9 @@ function el(tag,attrs={},children=[]){
     else e.setAttribute(k,attrs[k]);
   }
   if(!Array.isArray(children)) children=[children];
-  children.filter(Boolean).forEach(c=> e.appendChild(typeof c==='string'? document.createTextNode(c): c));
+  // Preserve falsy-but-valid children like 0 while omitting only null/undefined
+  children.filter(c=> c!==null && c!==undefined)
+    .forEach(c=> e.appendChild(typeof c==='string'? document.createTextNode(c): c));
   return e;
 }
 function toast(msg){ const t=byId('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
@@ -222,7 +224,10 @@ function clamp(v,a,b){
   if(!Number.isFinite(num)) return min;
   return Math.max(min, Math.min(max, num));
 }
-function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
+// Safely clone simple objects, preserving null/undefined without throwing
+function deepClone(o){
+  return o == null ? o : JSON.parse(JSON.stringify(o));
+}
 function timestampEl(ts=null){
   if(!state.settings.showTimestamps) return null;
   const t = ts || new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
@@ -418,7 +423,17 @@ function gridDistance(a,b){ const [ax,ay]=pxToGrid(a[0],a[1]), [bx,by]=pxToGrid(
 /* ---------- TOKENS ---------- */
 function addToken(t){ const sc=currentScene(); t.id=t.id||('t_'+Math.random().toString(36).slice(2,8)); t.x=clamp(t.x ?? 1,0,GRID_W-1); t.y=clamp(t.y ?? 1,0,GRID_H-1); t.type=t.type||'pc'; t.speed=t.speed ?? 4; t.sheet = t.sheet||defaultSheet(t); sc.tokens.push(t); applyDefaultVoices(); renderTokens(); renderTokenList(); }
 function removeToken(id){ const sc=currentScene(); sc.tokens=sc.tokens.filter(x=>x.id!==id); renderTokens(); renderTokenList(); renderReach(); }
-function editTokenPrompt(t){ const name=prompt('Name:', t.name||''); if(name===null) return; const type=prompt('Type (pc|npc):', t.type||'pc'); if(type===null) return; t.name=name.trim(); t.type=(type==='npc')?'npc':'pc'; renderTokens(); renderTokenList(); }
+function editTokenPrompt(t){
+  const name=prompt('Name:', t.name||'');
+  if(name===null) return;
+  const type=prompt('Type (pc|npc):', t.type||'pc');
+  if(type===null) return;
+  t.name=name.trim();
+  // Accept case-insensitive NPC/PC input
+  t.type=(type.trim().toLowerCase()==='npc')?'npc':'pc';
+  renderTokens();
+  renderTokenList();
+}
 
 /* ---------- INITIATIVE & TURN MANAGEMENT ---------- */
 function isAI(tokenId){
@@ -631,9 +646,9 @@ function addWhisper(target, text, ts=null){
 }
 function speakerAvatar(name){
   const key=(name||'').trim().toLowerCase();
-  const t=currentScene().tokens.find(x=> (x.name||'').toLowerCase()===key);
+  const t=currentScene().tokens.find(x=> (x.name||'').trim().toLowerCase()===key);
   if(t?.portraitData) return t.portraitData;
-  const np=(state.campaign?.npcPortraits||[]).find(p=> (p.name||p.role||'').toLowerCase()===key);
+  const np=(state.campaign?.npcPortraits||[]).find(p=> ((p.name||p.role||'').trim().toLowerCase())===key);
   if(np?.portraitData) return np.portraitData;
   const cv=document.createElement('canvas');
   cv.width=64; cv.height=64;
@@ -1071,7 +1086,9 @@ function loadSlots(){
   if(!raw) return Array(6).fill(null);
   try{
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)? parsed: Array(6).fill(null);
+    if(!Array.isArray(parsed)) return Array(6).fill(null);
+    // Always return exactly six slots, padding or trimming as needed
+    return Array.from({length:6},(_,i)=> parsed[i] || null);
   }catch(e){
     console.warn('Could not parse save slots', e);
     return Array(6).fill(null);
