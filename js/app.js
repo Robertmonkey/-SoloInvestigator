@@ -267,7 +267,16 @@ function timestampEl(ts=null){
 }
 
 /* ---------- PERSISTENCE ---------- */
+function sanitizeSettings(s){
+  s.keeperMax = clamp(Number(s.keeperMax)||450, 1, 1000);
+  const vol = Number(s.voiceVolume);
+  s.voiceVolume = Number.isFinite(vol) ? clamp(vol, 0, 1) : 1;
+  if(!['light','dark'].includes(s.theme)) s.theme='dark';
+  if(!['auto','manual'].includes(s.keeperTrigger)) s.keeperTrigger='auto';
+  if(!['browser','eleven','openai','none'].includes(s.ttsProviderDefault)) s.ttsProviderDefault='browser';
+}
 function saveSettings(showToast=true){
+  sanitizeSettings(state.settings);
   try{
     localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings));
     if(showToast) toast('Settings saved');
@@ -289,6 +298,7 @@ function saveSettings(showToast=true){
 }
 function loadSettings(){
   const raw=localStorage.getItem(LS_SETTINGS); if(raw){ try{ Object.assign(state.settings, JSON.parse(raw)); }catch{} }
+  sanitizeSettings(state.settings);
   byId('openaiKey').value = state.settings.openaiKey;
   byId('openaiModel').value = state.settings.openaiModel;
   byId('openaiTTSModel').value = state.settings.openaiTTSModel || 'gpt-4o-mini-tts';
