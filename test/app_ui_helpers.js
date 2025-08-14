@@ -42,6 +42,10 @@ assert.strictEqual(hovered,true);
 assert.strictEqual(btn.style.color,'red');
 assert.strictEqual(btn.dataset.id,'123');
 
+// el should treat strings as single children
+const span = el('span', {}, 'hi');
+assert.strictEqual(span.childNodes.length,1);
+
 // sanitizeHtml should remove dangerous tags/attrs
 const dirty = '<div onclick="x()"><script>bad()</script><link /><meta /><a href="javascript:evil()">x</a></div>';
 const clean = sanitizeHtml(dirty);
@@ -138,6 +142,12 @@ logged = '';
 addWhisper('Eve', '<i>secret</i>');
 assert.strictEqual(logged, 'Whisper to Eve: secret');
 
+// addWhisper should sanitize target names in logs
+chatLog.innerHTML = '';
+logged = '';
+addWhisper('<b>Eve</b>', 'x');
+assert.strictEqual(logged, 'Whisper to Eve: x');
+
 // el should accept NodeList children
 document.body.innerHTML = '<span>A</span><span>B</span>';
 const nodes = document.querySelectorAll('span');
@@ -163,6 +173,11 @@ global.GRID_WPX = () => -120; global.GRID_HPX = () => -80;
 res = pxToGrid(60,40);
 assert.deepStrictEqual(res,[6,4]);
 
+// pxToGrid should handle NaN dimensions
+global.GRID_WPX = () => NaN; global.GRID_HPX = () => NaN;
+res = pxToGrid(60,40);
+assert.deepStrictEqual(res,[11,7]);
+
 // deepClone should copy Maps and Sets
 const m = new Map([['a',1]]);
 const mCopy = deepClone(m);
@@ -175,6 +190,14 @@ assert(sCopy instanceof Set);
 [...sCopy][0].k = 2;
 assert.strictEqual([...s][0].k,1);
 
+// deepClone should ignore prototype properties
+const proto = {p:1};
+const objWithProto = Object.create(proto);
+objWithProto.a = 2;
+const cloneNoProto = deepClone(objWithProto);
+assert.strictEqual(cloneNoProto.p, undefined);
+assert.strictEqual(cloneNoProto.a,2);
+
 // currentScene should handle out-of-range indices
 global.currentScene = realCurrentScene;
 state.scenes = [{name:'A'},{name:'B'}];
@@ -184,9 +207,16 @@ state.sceneIndex = -3;
 assert.strictEqual(currentScene().name,'A');
 
 // sanitizeSettings should clamp keeperMax even when zero provided
-const st = {keeperMax:0, voiceVolume:0.5, theme:'dark', keeperTrigger:'manual', ttsProviderDefault:'browser', browserVoice:'', speechAutoSend:true};
+const st = {keeperMax:0, voiceVolume:0.5, theme:'dark', keeperTrigger:'manual', ttsProviderDefault:'browser', browserVoice:'', speechAutoSend:'true', keeperOn:'false', useImages:'true', ttsOn:'true', ttsQueue:'false', showTimestamps:'1', autoScroll:'false'};
 sanitizeSettings(st);
 assert.strictEqual(st.keeperMax,1);
+assert.strictEqual(st.keeperOn,false);
+assert.strictEqual(st.useImages,true);
+assert.strictEqual(st.ttsOn,true);
+assert.strictEqual(st.ttsQueue,false);
+assert.strictEqual(st.showTimestamps,true);
+assert.strictEqual(st.autoScroll,false);
+assert.strictEqual(st.speechAutoSend,true);
 
 // timestampEl should honor falsy timestamps
 state.settings.showTimestamps = true;
