@@ -189,7 +189,11 @@ if(typeof director!=='undefined' && director.attachState){
 }
 
 const DEFAULT_SETTINGS = JSON.parse(JSON.stringify(state.settings));
-function currentScene(){ return state.scenes[state.sceneIndex]; }
+function currentScene(){
+  if(!Array.isArray(state.scenes) || state.scenes.length===0) return null;
+  const i = clamp(state.sceneIndex, 0, state.scenes.length-1);
+  return state.scenes[i] || null;
+}
 
 /* ---------- UI HELPERS ---------- */
 const byId=id=>document.getElementById(id);
@@ -242,7 +246,7 @@ function stripTags(s){
 function sanitizeHtml(html){
   const t=document.createElement('template');
   t.innerHTML=html||'';
-  t.content.querySelectorAll('script,style,iframe,object,link,meta,base,form').forEach(el=>el.remove());
+  t.content.querySelectorAll('script,style,iframe,object,link,meta,base,form,input,button,textarea,select').forEach(el=>el.remove());
   t.content.querySelectorAll('*').forEach(el=>{
     [...el.attributes].forEach(a=>{
       if(/^on/i.test(a.name) || /javascript:/i.test(a.value)) el.removeAttribute(a.name);
@@ -257,7 +261,7 @@ function clamp(v,a,b){
   if(Number.isNaN(max)) max=Infinity;
   if(min>max) [min,max] = [max,min];
   const num=Number(v);
-  if(Number.isNaN(num)) return min;
+  if(Number.isNaN(num)) return Number.isFinite(min) ? min : 0;
   return Math.max(min, Math.min(max, num));
 }
 // Safely clone simple objects, preserving null/undefined without throwing
@@ -279,13 +283,14 @@ function deepClone(o){
 }
 function timestampEl(ts=null){
   if(!state.settings.showTimestamps) return null;
-  const t = ts || new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-  return el('span',{class:'timestamp'}, t);
+  const t = ts ?? new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  return el('span',{class:'timestamp'}, String(t));
 }
 
 /* ---------- PERSISTENCE ---------- */
 function sanitizeSettings(s){
-  s.keeperMax = clamp(Number(s.keeperMax)||450, 1, 1000);
+  const km = Number(s.keeperMax);
+  s.keeperMax = clamp(Number.isFinite(km) ? km : 450, 1, 1000);
   const vol = Number(s.voiceVolume);
   s.voiceVolume = Number.isFinite(vol) ? clamp(vol, 0, 1) : 1;
   if(!['light','dark'].includes(s.theme)) s.theme='dark';
