@@ -1411,8 +1411,9 @@ async function placeholderImage(prompt,size='1024x1024'){ const [w,h]=size.split
   ctx.fillStyle='#cfe1ff'; ctx.font='bold '+Math.floor(w*0.04)+'px ui-monospace,monospace'; ctx.fillText('SCENE',24,56); ctx.font=''+Math.floor(w*0.025)+'px ui-monospace,monospace'; ctx.fillText((prompt||'Moody scene').slice(0,64),24,90); return cv.toDataURL('image/png'); }
 async function genBGQuick(){ await generateBackground('Gloomy archive, dramatic slant light, painterly, film grain'); }
 async function generateBackground(prompt, sc=currentScene()){
+  const fullPrompt=`${prompt}, wide shot of the environment, no people, no text`;
   try{
-    const dataUrl=await openaiImage(prompt,'1024x1024');
+    const dataUrl=await openaiImage(fullPrompt,'1024x1024');
     sc.bg=dataUrl;
     if(sc===currentScene()) renderBackground();
     toast('Background ready');
@@ -1421,18 +1422,23 @@ async function generateBackground(prompt, sc=currentScene()){
   }
 }
 
+const BG_SKIP_RE=/\b(he|she|they|him|her|them|his|hers|their|you|your|yours|i|my|we|us|our|face|eyes|hand|hands|gaze|smile)\b/i;
+const BG_LOC_RE=/\b(tent|room|hall|library|street|fairground|carnival|circus|maze|cavern|mine|outpost|camp|booth|stage|shop|office|warehouse|pier|ship|dock|boat|hotel|house|chapel|church|station|road|farm|barn|forest|woods|grove|mountain|beach|coast|desert|lab|laboratory|market|yard|grave|cemetery|mansion|corridor|cellar|basement|attic|subway|cabin|hut|field)\b/i;
+
 function maybeSetSceneBackground(desc){
   if(!state.settings.useImages) return;
-  const prompt=(desc||'').split(/[\.\n]/)[0].trim();
-  if(!prompt) return;
+  const line=(desc||'').split(/[\.\n]/)[0].trim();
+  if(!line) return;
+  if(BG_SKIP_RE.test(line)) return;
+  if(!BG_LOC_RE.test(line)) return;
   const mem=sceneMemory();
-  if(mem.bgPrompt===prompt) return;
-  mem.bgPrompt=prompt;
+  if(mem.bgPrompt===line) return;
+  mem.bgPrompt=line;
   const sc=currentScene();
-  sc.bgPrompt=prompt;
+  sc.bgPrompt=line;
   if(sc.bgGenerating) return;
   sc.bgGenerating=true;
-  generateBackground(prompt, sc).finally(()=>{ sc.bgGenerating=false; });
+  generateBackground(line, sc).finally(()=>{ sc.bgGenerating=false; });
 }
 
 /* ---------- TTS (Browser + ElevenLabs) ---------- */
