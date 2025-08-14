@@ -17,7 +17,7 @@ function extract(name){
   if(!fn) throw new Error(name + ' not found');
   vm.runInThisContext(fn[0]);
 }
-['el','sanitizeHtml','clamp','makeFog','escapeHtml','stripTags','cellStyle','pxToGrid','deepClone','addSay','addWhisper'].forEach(extract);
+['el','sanitizeHtml','clamp','makeFog','escapeHtml','stripTags','cellStyle','pxToGrid','deepClone','addSay','addWhisper','currentScene','sanitizeSettings','timestampEl'].forEach(extract);
 
 // ---- Tests ----
 
@@ -99,7 +99,9 @@ assert.deepStrictEqual(res,[11,7]);
 global.chatLog = document.createElement('div');
 global.state = { settings:{autoScroll:false, ttsOn:false}, scenes:[{tokens:[]}], sceneIndex:0 };
 global.speakerAvatar = () => '';
+const realCurrentScene = currentScene;
 global.currentScene = () => state.scenes[state.sceneIndex];
+const realTimestampEl = timestampEl;
 global.timestampEl = () => null;
 global.recordEvent = () => {};
 
@@ -119,13 +121,18 @@ const container = el('div', {}, nodes);
 assert.strictEqual(container.childNodes.length, 2);
 
 // sanitizeHtml should strip additional dangerous tags
-const dirty2 = '<form action="/"><input></form><base href="http://evil.com/">x';
+const dirty2 = '<form action="/"><input></form><base href="http://evil.com/"><button>hi</button><textarea>bad</textarea><select><option>1</option></select>x';
 const clean2 = sanitizeHtml(dirty2);
 assert(!clean2.includes('form'));
 assert(!clean2.includes('base'));
+assert(!clean2.includes('button'));
+assert(!clean2.includes('textarea'));
+assert(!clean2.includes('select'));
+assert(!clean2.includes('input'));
 
 // clamp should allow unspecified bounds
 assert.strictEqual(clamp(5), 5);
+assert.strictEqual(clamp('bad'), 0);
 
 // pxToGrid should handle negative dimensions
 global.GRID_WPX = () => -120; global.GRID_HPX = () => -80;
@@ -143,5 +150,25 @@ const sCopy = deepClone(s);
 assert(sCopy instanceof Set);
 [...sCopy][0].k = 2;
 assert.strictEqual([...s][0].k,1);
+
+// currentScene should handle out-of-range indices
+global.currentScene = realCurrentScene;
+state.scenes = [{name:'A'},{name:'B'}];
+state.sceneIndex = 5;
+assert.strictEqual(currentScene().name,'B');
+state.sceneIndex = -3;
+assert.strictEqual(currentScene().name,'A');
+
+// sanitizeSettings should clamp keeperMax even when zero provided
+const st = {keeperMax:0, voiceVolume:0.5, theme:'dark', keeperTrigger:'manual', ttsProviderDefault:'browser', browserVoice:'', speechAutoSend:true};
+sanitizeSettings(st);
+assert.strictEqual(st.keeperMax,1);
+
+// timestampEl should honor falsy timestamps
+state.settings.showTimestamps = true;
+global.timestampEl = realTimestampEl;
+const tsEl = timestampEl(0);
+assert.strictEqual(tsEl.textContent,'0');
+state.settings.showTimestamps = false;
 
 console.log('All UI helper tests passed.');
