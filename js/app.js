@@ -245,7 +245,8 @@ function stripTags(s){
 }
 function sanitizeHtml(html){
   const t=document.createElement('template');
-  t.innerHTML=html||'';
+  // Preserve falsy-but-valid values like 0 instead of defaulting to empty string
+  t.innerHTML=String(html ?? '');
   t.content.querySelectorAll('script,style,iframe,object,link,meta,base,form,input,button,textarea,select').forEach(el=>el.remove());
   t.content.querySelectorAll('*').forEach(el=>{
     [...el.attributes].forEach(a=>{
@@ -718,7 +719,8 @@ function addSay(speaker, text, role='pc', opts={}){
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
   const token=currentScene().tokens.find(t => t.name===speaker);
   if(token) token.lastSaid = stripTags(text);
-  recordEvent(`${speaker}: ${text}`);
+  // Strip any HTML before logging the event to avoid leaking markup
+  recordEvent(`${speaker}: ${stripTags(text)}`);
 }
 
 function addActionLine(text, ts=null){
@@ -748,7 +750,8 @@ function addWhisper(target, text, ts=null){
   const time=timestampEl(ts); if(time) line.appendChild(time);
   chatLog.appendChild(line);
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
-  recordEvent(`Whisper to ${target}: ${text}`);
+  // Sanitize text before recording the whisper event
+  recordEvent(`Whisper to ${target}: ${stripTags(text)}`);
 }
 function speakerAvatar(name){
   const key=(name||'').trim().toLowerCase();

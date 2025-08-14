@@ -51,6 +51,9 @@ assert(!clean.includes('link'));
 assert(!clean.includes('meta'));
 assert(!clean.includes('javascript:'));
 
+// sanitizeHtml should preserve numeric input like 0
+assert.strictEqual(sanitizeHtml(0), '0');
+
 // clamp should handle swapped bounds and invalid inputs
 assert.strictEqual(clamp('5','10','1'),5); // swaps
 assert.strictEqual(clamp('bad',0,2),0); // invalid value
@@ -113,6 +116,17 @@ chatLog.innerHTML = '';
 addWhisper('Eve', "Don't panic.");
 content = chatLog.querySelector('.content');
 assert.strictEqual(content.textContent, "Don't panic.");
+
+// addSay/addWhisper should strip tags before recording events
+let logged = '';
+global.recordEvent = msg => { logged = msg; };
+chatLog.innerHTML = '';
+addSay('Eve', '<b>hi</b>');
+assert.strictEqual(logged, 'Eve: hi');
+chatLog.innerHTML = '';
+logged = '';
+addWhisper('Eve', '<i>secret</i>');
+assert.strictEqual(logged, 'Whisper to Eve: secret');
 
 // el should accept NodeList children
 document.body.innerHTML = '<span>A</span><span>B</span>';

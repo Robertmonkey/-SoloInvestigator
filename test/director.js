@@ -27,4 +27,14 @@ director.remember('action', {type:'use', item:'Key'}, ['use','Key'], actor);
 assert.strictEqual(director.memory.length, memBefore + 1);
 assert.ok(director.getMemories('Key').length >= 1);
 
+// findToken should handle out-of-range scene indices
+state.sceneIndex = -5;
+assert.strictEqual(director.findToken('Bob').name, 'Bob');
+state.sceneIndex = 10;
+assert.strictEqual(director.findToken('Bob').name, 'Bob');
+
+// talking without a target shouldn't throw
+const res2 = director.handleAction(actor, {type:'talk', text:'Hello there'});
+assert.strictEqual(res2.narration, 'Hello there');
+
 console.log('director tests passed');

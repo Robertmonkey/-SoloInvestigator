@@ -56,7 +56,8 @@ class NarrationDirector {
         const convo = this.getConversation(action.target);
         this.remember('dialogue', action.text||'', [action.target].filter(Boolean), actor);
         this.advanceConversation(action.target, actor, action);
-        if(convo.needsRoll){
+        // Only check for rolls if a conversation context exists
+        if(convo && convo.needsRoll){
           res.rollRequests=[{character:actor.name, skill:convo.pendingSkill||'Charm', mod:action.mod||0}];
           convo.needsRoll=false;
         }
@@ -87,9 +88,12 @@ class NarrationDirector {
   }
   findToken(name){
     if(!this.state) return null;
-    let sc;
-    if(typeof currentScene==='function') sc=currentScene();
-    else if(this.state.scenes) sc=this.state.scenes[this.state.sceneIndex||0];
+    // Prefer the global currentScene() helper when available for accurate clamping
+    let sc = typeof currentScene==='function' ? currentScene() : null;
+    if(!sc && Array.isArray(this.state.scenes)){
+      const i = Math.min(Math.max(this.state.sceneIndex || 0, 0), this.state.scenes.length-1);
+      sc = this.state.scenes[i];
+    }
     return sc?.tokens?.find(t=>t.name===name);
   }
   getConversation(targetName){
