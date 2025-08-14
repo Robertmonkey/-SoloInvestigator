@@ -11,6 +11,7 @@ function buildAIPrompt(actor){
     .join('\n');
   const sceneMem = state.memory.scenes?.[sc.name];
   const sceneEvents = sceneMem?.events?.slice(-6).join(' | ') || '';
+  const sceneDesc = sceneMem?.desc || '';
 
   const othersLast = sc.tokens
     .filter(t => t.id !== actor.id && t.lastSaid)
@@ -38,6 +39,7 @@ Your skills of note are: ${notableSkills || 'none'}.`;
   const moves = Math.max(0, Number(state.encounter?.movesLeft) || 0);
   const instructions = `It's your turn in an encounter. You have ${moves} movement tiles, 1 action, and 1 bonus action.
 The scene is: ${sc.name}.
+Environment: ${sceneDesc || 'unknown'}.
 ${dialogueContext}
 Your allies are: ${partyStr}. NPCs present: ${npcStr}.
 Recent events here: ${sceneEvents || 'none'}.
@@ -128,6 +130,7 @@ function keeperSystem(){
   const enc = state.encounter.on ? `Encounter ON — ${getActiveToken()?.name||'n/a'} to act, moves ${state.encounter.movesLeft}.` : 'Free exploration';
   const sceneMem = state.memory.scenes?.[sc.name] || {};
   const sceneEvents = (sceneMem.events||[]).slice(-6).join(' | ') || '(none)';
+  const sceneDesc = sceneMem.desc || '(none)';
   const positions = Object.values(sceneMem.positions||{}).map(p=>`${p.name} at (${p.x},${p.y})`).join('; ') || '(none)';
   const style = state.settings.keeperStyle;
   const brevity = style==='brief' ? 'Use 1–3 sentences.' : (style==='verbose' ? 'Use 4–8 sentences.' : 'Use 2–5 sentences.');
@@ -153,6 +156,7 @@ Title: ${state.campaign?.title||'Scenario'}
 Acts: ${(state.campaign?.acts||[]).map(a=>a.name).join(' | ')}
 Mode: ${enc}
 Memory: ${state.memory.summary||'(none)'}
+Scene: ${sceneDesc}
 Scene positions: ${positions}
 Scene events: ${sceneEvents}
 </campaign>
@@ -283,7 +287,7 @@ async function keeperReply(userText){
       .trim();
     if(narr){
       addLine(narr,'keeper',{speaker:'Keeper', role:'npc'});
-      maybeSetSceneBackground(narr);
+      if(typeof sceneManager!=='undefined') sceneManager.updateFromNarration(narr);
     }
     const eng=parseEngine(text); if(eng) applyEngine(eng);
     if(state.settings.ttsOn && narr) speak(stripTags(narr),'Keeper','npc');
@@ -297,7 +301,7 @@ async function keeperReply(userText){
       .trim();
     if(narr){
       addLine(narr, 'keeper', { speaker: 'Keeper', role: 'npc' });
-      maybeSetSceneBackground(narr);
+      if(typeof sceneManager!=='undefined') sceneManager.updateFromNarration(narr);
     }
     const eng = parseEngine(demo);
     if(eng) applyEngine(eng);

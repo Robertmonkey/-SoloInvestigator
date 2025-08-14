@@ -1041,7 +1041,13 @@ byId('btnGenBG2').onclick=async()=>{ const p=byId('bgPrompt').value.trim()||'moo
 byId('btnAddScene').onclick=()=> addScene(byId('sceneTitle').value.trim()||'New Scene');
 byId('btnSwitchScene2').onclick=()=> { const idx=Number(prompt('Switch to scene index (0..N-1)?', String(state.sceneIndex)))||0; switchScene(idx); hide('#modalScenes'); };
 function addScene(name){ state.scenes.push(newScene(name||'New Scene')); updateSceneList(); toast('Scene added'); }
-function switchScene(idx){ if(idx<0||idx>=state.scenes.length) return; state.sceneIndex=idx; renderAll(); toast('Switched scene'); }
+function switchScene(idx){
+  if(idx<0||idx>=state.scenes.length) return;
+  state.sceneIndex=idx;
+  if(typeof sceneManager!=='undefined') sceneManager.onSceneChange();
+  renderAll();
+  toast('Switched scene');
+}
 function renameScene(i){
   const name=prompt('New scene name', state.scenes[i].name);
   if(name){ state.scenes[i].name=name; renderSceneName(); updateSceneList(); toast('Scene renamed'); }
@@ -1422,24 +1428,7 @@ async function generateBackground(prompt, sc=currentScene()){
   }
 }
 
-const BG_SKIP_RE=/\b(he|she|they|him|her|them|his|hers|their|you|your|yours|i|my|we|us|our|face|eyes|hand|hands|gaze|smile)\b/i;
-const BG_LOC_RE=/\b(tent|room|hall|library|street|fairground|carnival|circus|maze|cavern|mine|outpost|camp|booth|stage|shop|office|warehouse|pier|ship|dock|boat|hotel|house|chapel|church|station|road|farm|barn|forest|woods|grove|mountain|beach|coast|desert|lab|laboratory|market|yard|grave|cemetery|mansion|corridor|cellar|basement|attic|subway|cabin|hut|field)\b/i;
-
-function maybeSetSceneBackground(desc){
-  if(!state.settings.useImages) return;
-  const line=(desc||'').split(/[\.\n]/)[0].trim();
-  if(!line) return;
-  if(BG_SKIP_RE.test(line)) return;
-  if(!BG_LOC_RE.test(line)) return;
-  const mem=sceneMemory();
-  if(mem.bgPrompt===line) return;
-  mem.bgPrompt=line;
-  const sc=currentScene();
-  sc.bgPrompt=line;
-  if(sc.bgGenerating) return;
-  sc.bgGenerating=true;
-  generateBackground(line, sc).finally(()=>{ sc.bgGenerating=false; });
-}
+// scene background management moved to sceneManager.js
 
 /* ---------- TTS (Browser + ElevenLabs) ---------- */
 let ttsQueue=[], ttsPlaying=false, currentAudio=null, currentUrl=null;
@@ -2171,7 +2160,7 @@ document.addEventListener('click',e=>{
 let restoringChat=false;
 function sceneMemory(){
   const scName = currentScene().name || `Scene${state.sceneIndex}`;
-  state.memory.scenes[scName] = state.memory.scenes[scName] || {events:[], positions:{}, bgPrompt:''};
+  state.memory.scenes[scName] = state.memory.scenes[scName] || {events:[], positions:{}, bgPrompt:'', desc:''};
   return state.memory.scenes[scName];
 }
 function recordEvent(text){
