@@ -48,8 +48,8 @@ Recent chat:\n${recentChat}\n
 Speak as if you are a player guiding ${actor.name}; use 1920s-appropriate language rich in sensory detail and refer to allies by name when it makes sense. Ensure your words feel fresh and distinct from prior lines.
 Based on your persona and the situation, decide what to do. Your goals are to survive and solve the mystery.
 Output ONLY a compact JSON object inside an <engine> tag.
-The JSON can have up to four optional keys: "say" (a string of what you say), "move" (an object with a "to" key like {"to":[x,y]}), "perform" (a string describing your main action), and "bonus" (a quick secondary action).
-Example: <engine>{"say": "I'll check over there!", "move": {"to":[${actor.x+1},${actor.y}]}, "perform": "shines their flashlight into the dark corner", "bonus":"draws a pistol"}</engine>
+The JSON can have up to four optional keys: "say" (a string of what you say), "move" (an object with a "to" key like {"to":[x,y]}), "action" (an object describing your main action with keys like {"type":"inspect","target":"desk","skill":"Spot"}), and "bonus" (a quick secondary action using the same schema as "action").
+Example: <engine>{"say":"I'll check over there!","move":{"to":[${actor.x+1},${actor.y}]},"action":{"type":"inspect","target":"desk","skill":"Spot"},"bonus":{"type":"talk","target":"Bea"}}</engine>
 Be brief but expressive. Do not narrate. Just provide the JSON for your action.`;
 
   return [{role:'system',content:persona},{role:'user',content:instructions}];
@@ -77,11 +77,13 @@ async function executeAITurn(actor){
       const data=await res.json();
       text=data.choices?.[0]?.message?.content || '{}';
     }else{
-      text=`<engine>{"say":"I'm thinking…", "perform":"recalls recent events and scans the room"}</engine>`;
+      text=`<engine>{"say":"I'm thinking…", "action":{"type":"inspect","description":"recalls recent events and scans the room"}}</engine>`;
     }
 
     const eng=parseEngine(text);
-    if(eng) await applyEngineResponse(eng, actor);
+    let reviewed = director.reviewEngine ? director.reviewEngine(eng, actor) : eng;
+    reviewed = director.referee ? director.referee(reviewed, actor) : reviewed;
+    if(reviewed) await applyEngineResponse(reviewed, actor);
     maybeSummarizeLocal();
 
   }catch(err){
@@ -96,14 +98,26 @@ async function executeAITurn(actor){
 }
 
 async function applyEngineResponse(eng, actor){
-  if(eng.perform && state.encounter.actionsLeft>0){
-    addActionLine(`* ${actor.name} ${eng.perform} *`);
+  if(eng.action && state.encounter.actionsLeft>0){
+    const res = director.handleAction(actor, eng.action) || {};
+    if(res.narration){
+      addActionLine(`* ${actor.name} ${res.narration} *`);
+    }
+    if(res.rollRequests){
+      applyEngine({rollRequests: res.rollRequests});
+    }
     state.encounter.actionsLeft = Math.max(0, state.encounter.actionsLeft - 1);
     updateTurnBanner();
     await new Promise(r=>setTimeout(r,700));
   }
   if(eng.bonus && state.encounter.bonusLeft>0){
-    addActionLine(`* ${actor.name} ${eng.bonus} (bonus) *`);
+    const bres = director.handleAction(actor, eng.bonus) || {};
+    if(bres.narration){
+      addActionLine(`* ${actor.name} ${bres.narration} (bonus) *`);
+    }
+    if(bres.rollRequests){
+      applyEngine({rollRequests: bres.rollRequests});
+    }
     state.encounter.bonusLeft = Math.max(0, state.encounter.bonusLeft - 1);
     updateTurnBanner();
     await new Promise(r=>setTimeout(r,700));
@@ -118,6 +132,9 @@ async function applyEngineResponse(eng, actor){
   if(typeof eng.say === 'string'){
     addSay(actor.name, eng.say, actor.type);
     if(state.settings.ttsOn) speak(stripTags(eng.say), actor.name, actor.type);
+  }
+  if(eng.rollRequests){
+    applyEngine({rollRequests: eng.rollRequests});
   }
 }
 
@@ -289,7 +306,10 @@ async function keeperReply(userText){
       addLine(narr,'keeper',{speaker:'Keeper', role:'npc'});
       if(typeof sceneManager!=='undefined') sceneManager.updateFromNarration(narr);
     }
-    const eng=parseEngine(text); if(eng) applyEngine(eng);
+    const eng=parseEngine(text);
+    let checked = director.reviewEngine ? director.reviewEngine(eng, {name:'Keeper'}) : eng;
+    checked = director.referee ? director.referee(checked, {name:'Keeper'}) : checked;
+    if(checked) applyEngine(checked);
     if(state.settings.ttsOn && narr) speak(stripTags(narr),'Keeper','npc');
     maybeSummarizeLocal(); // keep memory fresh without extra tokens
   }catch(err){
@@ -304,7 +324,9 @@ async function keeperReply(userText){
       if(typeof sceneManager!=='undefined') sceneManager.updateFromNarration(narr);
     }
     const eng = parseEngine(demo);
-    if(eng) applyEngine(eng);
+    let checked = director.reviewEngine ? director.reviewEngine(eng, {name:'Keeper'}) : eng;
+    checked = director.referee ? director.referee(checked, {name:'Keeper'}) : checked;
+    if(checked) applyEngine(checked);
     maybeSummarizeLocal();
   }
 }

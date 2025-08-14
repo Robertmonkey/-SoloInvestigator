@@ -183,6 +183,11 @@ const state = {
   lastRoll:null
 };
 
+// give the Narration Director access to the live state
+if(typeof director!=='undefined' && director.attachState){
+  director.attachState(state);
+}
+
 const DEFAULT_SETTINGS = JSON.parse(JSON.stringify(state.settings));
 function currentScene(){ return state.scenes[state.sceneIndex]; }
 
