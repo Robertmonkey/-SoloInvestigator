@@ -1,5 +1,24 @@
 const BG_SKIP_RE=/\b(he|she|they|him|her|them|his|hers|their|you|your|yours|i|my|we|us|our|face|eyes|hand|hands|gaze|smile)\b/i;
-const BG_LOC_RE=/\b(tent|room|hall|library|street|fairground|carnival|circus|maze|cavern|mine|outpost|camp|booth|stage|shop|office|warehouse|pier|ship|dock|boat|hotel|house|chapel|church|station|road|farm|barn|forest|woods|grove|mountain|beach|coast|desert|lab|laboratory|market|yard|grave|cemetery|mansion|corridor|cellar|basement|attic|subway|cabin|hut|field)\b/i;
+
+const BASE_LOCATIONS=[
+  'tent','room','hall','library','street','fairground','carnival','circus','maze','cavern','mine',
+  'outpost','camp','booth','stage','shop','office','warehouse','pier','ship','dock','boat','hotel',
+  'house','chapel','church','station','road','farm','barn','forest','woods','grove','mountain',
+  'beach','coast','desert','lab','laboratory','market','yard','grave','cemetery','mansion',
+  'corridor','cellar','basement','attic','subway','cabin','hut','field'
+];
+
+const EXTRA_LOCATIONS=typeof LOCATION_WORDS!=='undefined'?LOCATION_WORDS:[];
+
+function escapeRe(s){
+  return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+}
+
+const BG_LOC_RE=new RegExp(
+  '\\b('+
+  Array.from(new Set([...BASE_LOCATIONS,...EXTRA_LOCATIONS])).map(escapeRe).join('|')+
+  ')\\b','i'
+);
 
 class SceneManager{
   updateFromNarration(desc){
