@@ -210,8 +210,8 @@ function el(tag,attrs={},children=[]){
     else e.setAttribute(k,attrs[k]);
   }
   if(!Array.isArray(children)){
-    // Accept NodeList/HTMLCollection or single node/string
-    if(children && typeof children.length==='number' && !children.nodeType){
+    // Accept NodeList/HTMLCollection but treat strings as single nodes
+    if(children && typeof children !== 'string' && typeof children.length==='number' && !children.nodeType){
       children = Array.from(children);
     } else {
       children=[children];
@@ -277,7 +277,7 @@ function deepClone(o){
   if(Array.isArray(o)) return o.map(deepClone);
   if(typeof o === 'object'){
     const out={};
-    for(const k in o) out[k]=deepClone(o[k]);
+    Object.keys(o).forEach(k=>{ out[k]=deepClone(o[k]); });
     return out;
   }
   return o;
@@ -298,7 +298,14 @@ function sanitizeSettings(s){
   if(!['auto','manual'].includes(s.keeperTrigger)) s.keeperTrigger='auto';
   if(!['browser','eleven','openai','none'].includes(s.ttsProviderDefault)) s.ttsProviderDefault='browser';
   if(typeof s.browserVoice !== 'string') s.browserVoice='';
-  s.speechAutoSend = !!s.speechAutoSend;
+  const toBool=v=> (v===true || v==='true' || v===1 || v==='1');
+  s.keeperOn = toBool(s.keeperOn);
+  s.useImages = toBool(s.useImages);
+  s.ttsOn = toBool(s.ttsOn);
+  s.ttsQueue = toBool(s.ttsQueue);
+  s.showTimestamps = toBool(s.showTimestamps);
+  s.autoScroll = !(s.autoScroll===false || s.autoScroll==='false');
+  s.speechAutoSend = toBool(s.speechAutoSend);
 }
 function saveKeys(){
   try{
@@ -431,8 +438,10 @@ function renderTokenList(){
 
 /* ---------- FOG ---------- */
 function pxToGrid(px,py){
-  const w = Math.max(1, Math.abs(GRID_WPX()));
-  const h = Math.max(1, Math.abs(GRID_HPX()));
+  let w = Math.abs(Number(GRID_WPX()));
+  let h = Math.abs(Number(GRID_HPX()));
+  w = w && Number.isFinite(w) ? w : 1;
+  h = h && Number.isFinite(h) ? h : 1;
   const gx = clamp(Math.floor((px/w)*GRID_W),0,GRID_W-1);
   const gy = clamp(Math.floor((py/h)*GRID_H),0,GRID_H-1);
   return [gx,gy];
@@ -750,8 +759,8 @@ function addWhisper(target, text, ts=null){
   const time=timestampEl(ts); if(time) line.appendChild(time);
   chatLog.appendChild(line);
   if(state.settings.autoScroll) chatLog.scrollTop=chatLog.scrollHeight;
-  // Sanitize text before recording the whisper event
-  recordEvent(`Whisper to ${target}: ${stripTags(text)}`);
+  // Sanitize target and text before logging the whisper
+  recordEvent(`Whisper to ${stripTags(target)}: ${stripTags(text)}`);
 }
 function speakerAvatar(name){
   const key=(name||'').trim().toLowerCase();
