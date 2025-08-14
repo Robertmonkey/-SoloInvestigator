@@ -205,7 +205,14 @@ function el(tag,attrs={},children=[]){
     else if(/^on/.test(k) && typeof attrs[k]==='function') e[k]=attrs[k];
     else e.setAttribute(k,attrs[k]);
   }
-  if(!Array.isArray(children)) children=[children];
+  if(!Array.isArray(children)){
+    // Accept NodeList/HTMLCollection or single node/string
+    if(children && typeof children.length==='number' && !children.nodeType){
+      children = Array.from(children);
+    } else {
+      children=[children];
+    }
+  }
   // Preserve falsy-but-valid children like 0 while omitting only null/undefined
   children.filter(c=> c!==null && c!==undefined)
     .forEach(c=> e.appendChild(typeof c==='string'? document.createTextNode(c): c));
@@ -235,7 +242,7 @@ function stripTags(s){
 function sanitizeHtml(html){
   const t=document.createElement('template');
   t.innerHTML=html||'';
-  t.content.querySelectorAll('script,style,iframe,object,link,meta').forEach(el=>el.remove());
+  t.content.querySelectorAll('script,style,iframe,object,link,meta,base,form').forEach(el=>el.remove());
   t.content.querySelectorAll('*').forEach(el=>{
     [...el.attributes].forEach(a=>{
       if(/^on/i.test(a.name) || /javascript:/i.test(a.value)) el.removeAttribute(a.name);
@@ -245,9 +252,9 @@ function sanitizeHtml(html){
 }
 function clamp(v,a,b){
   let min=Number(a), max=Number(b);
-  // Treat NaN bounds as 0 but allow Infinity/-Infinity
-  if(Number.isNaN(min)) min=0;
-  if(Number.isNaN(max)) max=0;
+  // Treat undefined/NaN bounds as infinite rather than 0
+  if(Number.isNaN(min)) min=-Infinity;
+  if(Number.isNaN(max)) max=Infinity;
   if(min>max) [min,max] = [max,min];
   const num=Number(v);
   if(Number.isNaN(num)) return min;
@@ -260,6 +267,8 @@ function deepClone(o){
     try{ return structuredClone(o); }catch{}
   }
   if(o instanceof Date) return new Date(o.getTime());
+  if(o instanceof Map) return new Map(Array.from(o.entries()).map(([k,v])=>[deepClone(k),deepClone(v)]));
+  if(o instanceof Set) return new Set(Array.from(o.values()).map(deepClone));
   if(Array.isArray(o)) return o.map(deepClone);
   if(typeof o === 'object'){
     const out={};
@@ -416,8 +425,8 @@ function renderTokenList(){
 
 /* ---------- FOG ---------- */
 function pxToGrid(px,py){
-  const w = GRID_WPX() || 1;
-  const h = GRID_HPX() || 1;
+  const w = Math.max(1, Math.abs(GRID_WPX()));
+  const h = Math.max(1, Math.abs(GRID_HPX()));
   const gx = clamp(Math.floor((px/w)*GRID_W),0,GRID_W-1);
   const gy = clamp(Math.floor((py/h)*GRID_H),0,GRID_H-1);
   return [gx,gy];

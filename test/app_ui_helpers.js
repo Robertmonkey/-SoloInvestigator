@@ -54,7 +54,7 @@ assert(!clean.includes('javascript:'));
 // clamp should handle swapped bounds and invalid inputs
 assert.strictEqual(clamp('5','10','1'),5); // swaps
 assert.strictEqual(clamp('bad',0,2),0); // invalid value
-assert.strictEqual(clamp(7,'a','b'),0); // invalid bounds default to 0
+assert.strictEqual(clamp(7,'a','b'),7); // invalid bounds treated as open
 assert.strictEqual(clamp(5,0,Infinity),5); // Infinity bound
 
 // escapeHtml and stripTags should preserve numbers
@@ -111,5 +111,37 @@ chatLog.innerHTML = '';
 addWhisper('Eve', "Don't panic.");
 content = chatLog.querySelector('.content');
 assert.strictEqual(content.textContent, "Don't panic.");
+
+// el should accept NodeList children
+document.body.innerHTML = '<span>A</span><span>B</span>';
+const nodes = document.querySelectorAll('span');
+const container = el('div', {}, nodes);
+assert.strictEqual(container.childNodes.length, 2);
+
+// sanitizeHtml should strip additional dangerous tags
+const dirty2 = '<form action="/"><input></form><base href="http://evil.com/">x';
+const clean2 = sanitizeHtml(dirty2);
+assert(!clean2.includes('form'));
+assert(!clean2.includes('base'));
+
+// clamp should allow unspecified bounds
+assert.strictEqual(clamp(5), 5);
+
+// pxToGrid should handle negative dimensions
+global.GRID_WPX = () => -120; global.GRID_HPX = () => -80;
+res = pxToGrid(60,40);
+assert.deepStrictEqual(res,[6,4]);
+
+// deepClone should copy Maps and Sets
+const m = new Map([['a',1]]);
+const mCopy = deepClone(m);
+assert(mCopy instanceof Map);
+mCopy.set('b',2);
+assert.strictEqual(m.size,1);
+const s = new Set([{k:1}]);
+const sCopy = deepClone(s);
+assert(sCopy instanceof Set);
+[...sCopy][0].k = 2;
+assert.strictEqual([...s][0].k,1);
 
 console.log('All UI helper tests passed.');
