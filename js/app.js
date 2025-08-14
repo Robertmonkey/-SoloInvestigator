@@ -239,15 +239,15 @@ function escapeHtml(s){
 }
 function stripTags(s){
   const d=document.createElement('div');
-  // Convert to string so numeric values aren't dropped
-  d.innerHTML=String(s ?? '');
+  // Sanitize first so script/style content is dropped entirely
+  d.innerHTML=sanitizeHtml(String(s ?? ''));
   return d.textContent||d.innerText||'';
 }
 function sanitizeHtml(html){
   const t=document.createElement('template');
   // Preserve falsy-but-valid values like 0 instead of defaulting to empty string
   t.innerHTML=String(html ?? '');
-  t.content.querySelectorAll('script,style,iframe,object,link,meta,base,form,input,button,textarea,select').forEach(el=>el.remove());
+  t.content.querySelectorAll('script,style,iframe,object,link,meta,base,form,input,button,textarea,select,noscript,video,audio,embed').forEach(el=>el.remove());
   t.content.querySelectorAll('*').forEach(el=>{
     [...el.attributes].forEach(a=>{
       if(/^on/i.test(a.name) || /javascript:/i.test(a.value)) el.removeAttribute(a.name);

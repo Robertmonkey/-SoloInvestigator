@@ -51,6 +51,14 @@ assert(!clean.includes('link'));
 assert(!clean.includes('meta'));
 assert(!clean.includes('javascript:'));
 
+// sanitizeHtml should strip additional media and noscript tags
+const dirty3 = '<noscript>bad</noscript><video></video><audio></audio><embed></embed>';
+const clean3 = sanitizeHtml(dirty3);
+assert(!clean3.includes('noscript'));
+assert(!clean3.includes('video'));
+assert(!clean3.includes('audio'));
+assert(!clean3.includes('embed'));
+
 // sanitizeHtml should preserve numeric input like 0
 assert.strictEqual(sanitizeHtml(0), '0');
 
@@ -63,6 +71,8 @@ assert.strictEqual(clamp(5,0,Infinity),5); // Infinity bound
 // escapeHtml and stripTags should preserve numbers
 assert.strictEqual(escapeHtml(0), '0');
 assert.strictEqual(stripTags(0), '0');
+// stripTags should drop script/style content entirely
+assert.strictEqual(stripTags('<script>alert(1)</script>hello'), 'hello');
 assert.strictEqual(escapeHtml("<>&\"'"), '&lt;&gt;&amp;&quot;&#39;');
 
 // deepClone should copy objects deeply and preserve Dates even without structuredClone

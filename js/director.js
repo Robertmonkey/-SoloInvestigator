@@ -84,7 +84,9 @@ class NarrationDirector {
   }
   hasItem(actor, item){
     const inv = actor.sheet?.inventory || [];
-    return inv.some(i=>i.name===item && (i.qty||0)>0);
+    if(typeof item!== 'string') return false;
+    const name = item.toLowerCase();
+    return inv.some(i=> (i.name||'').toLowerCase()===name && (i.qty||0)>0);
   }
   findToken(name){
     if(!this.state) return null;
@@ -94,10 +96,10 @@ class NarrationDirector {
       const i = Math.min(Math.max(this.state.sceneIndex || 0, 0), this.state.scenes.length-1);
       sc = this.state.scenes[i];
     }
-    return sc?.tokens?.find(t=>t.name===name);
+    return sc?.tokens?.find(t=>t.name===name || t.id===name) || null;
   }
   getConversation(targetName){
-    if(!targetName) return null;
+    if(typeof targetName !== 'string' || !targetName) return null;
     this.conversations[targetName]=this.conversations[targetName]||{stage:'start',history:[],pendingSkill:null,needsRoll:false};
     return this.conversations[targetName];
   }
