@@ -4,7 +4,7 @@
   "description": "A modular, client-only tabletop experience inspired by investigative horror RPGs. It teaches the basics through a guided wizard, runs entirely in your browser (or GitHub Pages), and can optionally use OpenAI for story/asset generation and ElevenLabs, OpenAI TTS, or your browser for voices.",
   "main": "index.js",
   "scripts": {
-    "test": "node test/app_ui_helpers.js && node test/scene_manager.js && node --check js/locationWords.js && node --check js/app.js && node --check js/keeper.js && node --check js/sceneManager.js"
+    "test": "node test/app_ui_helpers.js && node test/scene_manager.js && node test/director.js && node --check js/locationWords.js && node --check js/director.js && node --check js/app.js && node --check js/keeper.js && node --check js/sceneManager.js"
   },
   "keywords": [],
   "author": "",
