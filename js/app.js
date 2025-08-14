@@ -163,6 +163,7 @@ const state = {
     theme:'dark',
     showTimestamps:false,
     autoScroll:true,
+    speechAutoSend:true,
     voiceVolume:1,
     showGrid:true,
     voiceMap:{} // { name: {provider:'browser'|'eleven'|'openai'|'none', id:'VoiceNameOrId'} }
@@ -277,6 +278,7 @@ function sanitizeSettings(s){
   if(!['auto','manual'].includes(s.keeperTrigger)) s.keeperTrigger='auto';
   if(!['browser','eleven','openai','none'].includes(s.ttsProviderDefault)) s.ttsProviderDefault='browser';
   if(typeof s.browserVoice !== 'string') s.browserVoice='';
+  s.speechAutoSend = !!s.speechAutoSend;
 }
 function saveKeys(){
   try{
@@ -334,6 +336,7 @@ function loadSettings(){
   byId('theme').value = state.settings.theme || 'dark';
   byId('showTimestamps').checked = state.settings.showTimestamps || false;
   byId('autoScroll').checked = state.settings.autoScroll !== false;
+  byId('speechAutoSend').checked = state.settings.speechAutoSend !== false;
   byId('voiceVolume').value = state.settings.voiceVolume ?? 1;
   applyTheme();
   applyGridVisibility();
@@ -753,6 +756,37 @@ byId('chatInput').addEventListener('keydown',e=>{ if(e.key==='Enter') sendChat()
 byId('btnStopVoice').onclick=()=> stopVoice(true);
 byId('btnAskKeeper').onclick=()=> askKeeperFromInput();
 // Speech to text
+const wave = byId('speechWave');
+let waveStream, waveCtx, waveAnalyser, waveData, waveRAF;
+function startWave(){
+  if(!wave) return;
+  wave.classList.add('show');
+  if(!navigator.mediaDevices) return;
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    waveStream=stream;
+    waveCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const src=waveCtx.createMediaStreamSource(stream);
+    waveAnalyser=waveCtx.createAnalyser();
+    waveAnalyser.fftSize=256;
+    src.connect(waveAnalyser);
+    waveData=new Uint8Array(waveAnalyser.fftSize);
+    const bars=[...wave.children];
+    (function draw(){
+      waveAnalyser.getByteTimeDomainData(waveData);
+      let sum=0; for(let i=0;i<waveData.length;i++){ const v=(waveData[i]-128)/128; sum+=v*v; }
+      const rms=Math.sqrt(sum/waveData.length);
+      bars.forEach(b=> b.style.height = (4 + rms*16*Math.random())+'px');
+      waveRAF=requestAnimationFrame(draw);
+    })();
+  }).catch(()=> wave.classList.remove('show'));
+}
+function stopWave(){
+  if(!wave) return;
+  wave.classList.remove('show');
+  cancelAnimationFrame(waveRAF);
+  if(waveStream){ waveStream.getTracks().forEach(t=>t.stop()); waveStream=null; }
+  if(waveCtx){ waveCtx.close(); waveCtx=null; }
+}
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if(SpeechRecognition){
   const rec = new SpeechRecognition();
@@ -763,22 +797,25 @@ if(SpeechRecognition){
     const text = e.results[0][0].transcript;
     const input = byId('chatInput');
     input.value = text;
-    sendChat();
+    if(state.settings.speechAutoSend) sendChat();
   };
-  rec.onend = ()=> byId('btnSpeech').classList.remove('recording');
-  rec.onerror = ()=> byId('btnSpeech').classList.remove('recording');
+  rec.onend = ()=> { byId('btnSpeech').classList.remove('recording'); stopWave(); };
+  rec.onerror = ()=> { byId('btnSpeech').classList.remove('recording'); stopWave(); };
   byId('btnSpeech').onclick = () => {
     const btn = byId('btnSpeech');
     if(btn.classList.contains('recording')){
       rec.stop();
       btn.classList.remove('recording');
+      stopWave();
     }else{
       btn.classList.add('recording');
+      startWave();
       rec.start();
     }
   };
 }else{
   byId('btnSpeech').style.display='none';
+  if(wave) wave.style.display='none';
 }
 byId('btnCopyChat').onclick=()=>{ const text=[...chatLog.querySelectorAll('.line')].map(l=>l.innerText.trim()).join('\n'); navigator.clipboard.writeText(text).then(()=>toast('Chat copied')); };
 byId('btnClearChat').onclick=()=>{ if(confirm('Clear chat log?')){ chatLog.innerHTML=''; state.chat=[]; }};
@@ -960,6 +997,7 @@ byId('btnSaveSettings').onclick=()=>{
   state.settings.theme=byId('theme').value;
   state.settings.showTimestamps=byId('showTimestamps').checked;
   state.settings.autoScroll=byId('autoScroll').checked;
+  state.settings.speechAutoSend=byId('speechAutoSend').checked;
   state.settings.voiceVolume=Number(byId('voiceVolume').value);
   applyTheme();
   applyDefaultVoices();
