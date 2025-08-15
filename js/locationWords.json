@@ -1,4 +1,4 @@
-const LOCATION_WORDS = [
+[
   "abattoir",
   "abyssal feature",
   "academy",
@@ -656,6 +656,4 @@ const LOCATION_WORDS = [
   "workshop",
   "zoo",
   "zoological garden"
-] 
-if(typeof module!=="undefined") module.exports = LOCATION_WORDS;
-if(typeof window!=="undefined") window.LOCATION_WORDS = LOCATION_WORDS;
+]

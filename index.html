@@ -80,7 +80,7 @@
       </div>
       <button id="btnUndo" class="ghost">Undo Fog (U)</button>
       <button id="btnToggleGrid" class="ghost">Toggle Grid (G)</button>
-      <span class="pill">Grid: 12 × 8</span>
+      <span class="pill">Grid: <span id="gridSize"></span></span>
     </div>
   </section>
 
@@ -150,6 +150,11 @@
           <option value="gpt-image-1">gpt-image-1</option>
           <option value="placeholders">Placeholders only (offline)</option>
         </select>
+        <label>Background Image Size</label>
+        <select id="bgImageSize">
+          <option value="512x512">512×512</option>
+          <option value="1024x1024" selected>1024×1024</option>
+        </select>
         <label><input type="checkbox" id="useImages" /> Enable Image Generation</label>
         <label><input type="checkbox" id="keeperOn" checked/> Keeper AI On</label>
         <label>Keeper Trigger</label>
@@ -165,6 +170,10 @@
         </select>
         <label>Keeper Max Tokens</label>
         <input id="keeperMax" type="number" min="128" max="2000" value="450"/>
+        <label>Grid Width</label>
+        <input id="gridW" type="number" min="1" max="50" value="12"/>
+        <label>Grid Height</label>
+        <input id="gridH" type="number" min="1" max="50" value="8"/>
         <label>Theme</label>
         <select id="theme">
           <option value="dark" selected>Dark</option>
@@ -465,7 +474,6 @@
 
 <div id="toast"></div>
 
-<script src="js/locationWords.js"></script>
 <script src="js/sceneManager.js"></script>
 <script src="js/director.js"></script>
 <script src="js/keeper.js"></script>
