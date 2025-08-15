@@ -98,13 +98,16 @@ class NarrationDirector {
     }
     return sc?.tokens?.find(t=>t.name===name || t.id===name) || null;
   }
-  getConversation(targetName){
-    if(typeof targetName !== 'string' || !targetName) return null;
-    this.conversations[targetName]=this.conversations[targetName]||{stage:'start',history:[],pendingSkill:null,needsRoll:false};
-    return this.conversations[targetName];
+  getConversation(target){
+    const token = typeof target === 'string' ? this.findToken(target) : target;
+    const id = token && token.id;
+    if(!id) return null;
+    this.conversations[id]=this.conversations[id]||{stage:'start',history:[],pendingSkill:null,needsRoll:false};
+    return this.conversations[id];
   }
-  advanceConversation(targetName, actor, action){
-    const convo=this.getConversation(targetName);
+  advanceConversation(target, actor, action){
+    const token = typeof target === 'string' ? this.findToken(target) : target;
+    const convo=this.getConversation(token);
     if(!convo) return;
     convo.history.push({from:actor.name,text:action.text||'',intent:action.intent});
     if(action.intent==='persuade' && !convo.pendingSkill){
@@ -120,10 +123,12 @@ class NarrationDirector {
   referee(eng, actor){
     if(!eng) return eng;
     if(actor && actor.name==='Keeper'){
-      for(const name in this.conversations){
-        const c=this.conversations[name];
+      for(const id in this.conversations){
+        const c=this.conversations[id];
         if(c.needsRoll){
           eng.rollRequests=eng.rollRequests||[];
+          const t=this.findToken(id);
+          const name=t?.name||id;
           eng.rollRequests.push({character:name, skill:c.pendingSkill||'Charm', mod:0});
           c.needsRoll=false;
         }

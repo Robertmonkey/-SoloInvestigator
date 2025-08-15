@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
-const LOCATION_WORDS = require('../js/locationWords.js');
+const LOCATION_WORDS = require('../js/locationWords.json');
 
 const code = fs.readFileSync(path.join(__dirname, '../js/sceneManager.js'), 'utf8');
 const sandbox = { LOCATION_WORDS };

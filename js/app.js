@@ -11,7 +11,7 @@ const LS_WIZARD     = 'si_wizard_done_v6';
 const LS_ARC_FP     = 'si_recent_arc_fps_v2';
 const LS_OPENAI_KEY = 'si_key_openai';
 const LS_ELEVEN_KEY = 'si_key_eleven';
-const GRID_W = 12, GRID_H = 8;
+let GRID_W = 12, GRID_H = 8;
 
 /* Ten core investigators (as before) */
 const INVESTIGATORS = [
@@ -150,38 +150,45 @@ function makeFog(w,h,hidden){
   return f;
 }
 
-const state = {
-  settings:{
-    openaiKey:'', openaiModel:'gpt-4o-mini', openaiTTSModel:'gpt-4o-mini-tts', openaiVoice:'alloy', browserVoice:'', keeperOn:true,
-    useImages:false, imageModel:'dall-e-3',
-    ttsOn:false, ttsQueue:true, ttsProviderDefault:'browser',
-    elevenKey:'', voiceId:'', elevenModel:'eleven_multilingual_v2',
-    rulesPack:'',
-    keeperTrigger:'auto',
-    keeperStyle:'normal',
-    keeperMax:450,
-    theme:'dark',
-    showTimestamps:false,
-    autoScroll:true,
-    speechAutoSend:true,
-    voiceVolume:1,
-    showGrid:true,
-    voiceMap:{} // { name: {provider:'browser'|'eleven'|'openai'|'none', id:'VoiceNameOrId'} }
-  },
-  campaign:null,
-  npcCatalog:[],
-  youPCId:null,
-  sceneIndex:0,
-  scenes:[newScene('Intro')],
-  chat:[],
-  initOrder:[],
-  activeTurn:0,
-  encounter:{on:false, movesLeft:0, actionsLeft:0, bonusLeft:0},
-  browserVoices:[],
-  memory:{summary:'', scenes:{}}, // local summary + per-scene memory
-  aiThinking:false, // prevent concurrent AI calls
-  lastRoll:null
-};
+function createState(){
+  return {
+    settings:{
+      openaiKey:'', openaiModel:'gpt-4o-mini', openaiTTSModel:'gpt-4o-mini-tts', openaiVoice:'alloy', browserVoice:'', keeperOn:true,
+      useImages:false, imageModel:'dall-e-3',
+      ttsOn:false, ttsQueue:true, ttsProviderDefault:'browser',
+      elevenKey:'', voiceId:'', elevenModel:'eleven_multilingual_v2',
+      rulesPack:'',
+      keeperTrigger:'auto',
+      keeperStyle:'normal',
+      keeperMax:450,
+      theme:'dark',
+      showTimestamps:false,
+      autoScroll:true,
+      speechAutoSend:true,
+      voiceVolume:1,
+      showGrid:true,
+      gridW:12,
+      gridH:8,
+      bgImageSize:'1024x1024',
+      voiceMap:{}
+    },
+    campaign:null,
+    npcCatalog:[],
+    youPCId:null,
+    sceneIndex:0,
+    scenes:[newScene('Intro')],
+    chat:[],
+    initOrder:[],
+    activeTurn:0,
+    encounter:{on:false, movesLeft:0, actionsLeft:0, bonusLeft:0},
+    browserVoices:[],
+    memory:{summary:'', scenes:{}},
+    aiThinking:false,
+    lastRoll:null
+  };
+}
+const state = createState();
+const sceneManager = typeof SceneManager !== 'undefined' ? new SceneManager(state) : null;
 
 // give the Narration Director access to the live state
 if(typeof director!=='undefined' && director.attachState){
@@ -189,10 +196,10 @@ if(typeof director!=='undefined' && director.attachState){
 }
 
 const DEFAULT_SETTINGS = JSON.parse(JSON.stringify(state.settings));
-function currentScene(){
-  if(!Array.isArray(state.scenes) || state.scenes.length===0) return null;
-  const i = clamp(state.sceneIndex, 0, state.scenes.length-1);
-  return state.scenes[i] || null;
+function currentScene(st=state){
+  if(!Array.isArray(st.scenes) || st.scenes.length===0) return null;
+  const i = clamp(st.sceneIndex, 0, st.scenes.length-1);
+  return st.scenes[i] || null;
 }
 
 /* ---------- UI HELPERS ---------- */
@@ -225,6 +232,18 @@ function el(tag,attrs={},children=[]){
 function toast(msg){ const t=byId('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
 function applyTheme(){ document.body.classList.toggle('light', state.settings.theme==='light'); }
 function applyGridVisibility(){ byId('grid').style.display = state.settings.showGrid ? '' : 'none'; }
+function applyGridSize(){
+  GRID_W = clamp(Math.floor(Number(state.settings.gridW)||12),1,50);
+  GRID_H = clamp(Math.floor(Number(state.settings.gridH)||8),1,50);
+  const label = byId('gridSize');
+  if(label) label.textContent = `${GRID_W} × ${GRID_H}`;
+  state.scenes.forEach(sc=>{
+    sc.fog = makeFog(GRID_W, GRID_H, true);
+    sc.tokens.forEach(t=>{ t.x = clamp(t.x,0,GRID_W-1); t.y = clamp(t.y,0,GRID_H-1); });
+  });
+  renderFog();
+  renderTokens();
+}
 function toggleGrid(){ state.settings.showGrid=!state.settings.showGrid; applyGridVisibility(); saveSettings(false); }
 function escapeHtml(s){
   const map = {
@@ -294,6 +313,11 @@ function sanitizeSettings(s){
   s.keeperMax = clamp(Number.isFinite(km) ? km : 450, 1, 1000);
   const vol = Number(s.voiceVolume);
   s.voiceVolume = Number.isFinite(vol) ? clamp(vol, 0, 1) : 1;
+  const gw = Number(s.gridW);
+  s.gridW = Number.isFinite(gw) ? clamp(Math.floor(gw),1,50) : 12;
+  const gh = Number(s.gridH);
+  s.gridH = Number.isFinite(gh) ? clamp(Math.floor(gh),1,50) : 8;
+  if(!['256x256','512x512','1024x1024'].includes(s.bgImageSize)) s.bgImageSize='1024x1024';
   if(!['light','dark'].includes(s.theme)) s.theme='dark';
   if(!['auto','manual'].includes(s.keeperTrigger)) s.keeperTrigger='auto';
   if(!['browser','eleven','openai','none'].includes(s.ttsProviderDefault)) s.ttsProviderDefault='browser';
@@ -350,6 +374,7 @@ function loadSettings(){
   byId('keeperOn').checked = state.settings.keeperOn;
   byId('useImages').checked = state.settings.useImages;
   byId('imageModel').value = state.settings.imageModel;
+  byId('bgImageSize').value = state.settings.bgImageSize || '1024x1024';
   byId('elevenKey').value = state.settings.elevenKey;
   byId('voiceId').value = state.settings.voiceId;
   byId('elevenModel').value = state.settings.elevenModel || 'eleven_multilingual_v2';
@@ -360,12 +385,15 @@ function loadSettings(){
   byId('keeperTrigger').value = state.settings.keeperTrigger || 'auto';
   byId('keeperStyle').value = state.settings.keeperStyle || 'normal';
   byId('keeperMax').value = state.settings.keeperMax || 450;
+  byId('gridW').value = state.settings.gridW || 12;
+  byId('gridH').value = state.settings.gridH || 8;
   byId('theme').value = state.settings.theme || 'dark';
   byId('showTimestamps').checked = state.settings.showTimestamps || false;
   byId('autoScroll').checked = state.settings.autoScroll !== false;
   byId('speechAutoSend').checked = state.settings.speechAutoSend !== false;
   byId('voiceVolume').value = state.settings.voiceVolume ?? 1;
   applyTheme();
+  applyGridSize();
   applyGridVisibility();
 }
 
@@ -1015,6 +1043,7 @@ byId('btnSaveSettings').onclick=()=>{
   state.settings.keeperOn=byId('keeperOn').checked;
   state.settings.useImages=byId('useImages').checked;
   state.settings.imageModel=byId('imageModel').value;
+  state.settings.bgImageSize=byId('bgImageSize').value;
   state.settings.elevenKey=byId('elevenKey').value.trim();
   state.settings.voiceId=byId('voiceId').value.trim();
   state.settings.elevenModel=byId('elevenModel').value.trim();
@@ -1025,12 +1054,15 @@ byId('btnSaveSettings').onclick=()=>{
   state.settings.keeperTrigger=byId('keeperTrigger').value;
   state.settings.keeperStyle=byId('keeperStyle').value;
   state.settings.keeperMax=Number(byId('keeperMax').value)||450;
+  state.settings.gridW=Number(byId('gridW').value)||12;
+  state.settings.gridH=Number(byId('gridH').value)||8;
   state.settings.theme=byId('theme').value;
   state.settings.showTimestamps=byId('showTimestamps').checked;
   state.settings.autoScroll=byId('autoScroll').checked;
   state.settings.speechAutoSend=byId('speechAutoSend').checked;
   state.settings.voiceVolume=Number(byId('voiceVolume').value);
   applyTheme();
+  applyGridSize();
   applyDefaultVoices();
   saveSettings(); hide('#modalSettings');
 };
@@ -1450,7 +1482,7 @@ async function genBGQuick(){ await generateBackground('Gloomy archive, dramatic 
 async function generateBackground(prompt, sc=currentScene()){
   const fullPrompt=`${prompt}, wide shot of the environment, no people, no text`;
   try{
-    const dataUrl=await openaiImage(fullPrompt,'1024x1024');
+    const dataUrl=await openaiImage(fullPrompt,state.settings.bgImageSize||'1024x1024');
     sc.bg=dataUrl;
     if(sc===currentScene()) renderBackground();
     toast('Background ready');
@@ -1928,7 +1960,7 @@ async function wizardAutoBuildEverything(){
         state.scenes[i].bg = arc.backgrounds[i];
       }else{
         const prompt=(arc.imagePrompts&&arc.imagePrompts[i])||arc.imagePrompts?.[0]||`${arc.setting} — ${arc.acts[i].name}`;
-        try{ const dataUrl=await openaiImage(prompt,'1024x1024'); state.scenes[i].bg=dataUrl; }catch{}
+        try{ const dataUrl=await openaiImage(prompt,state.settings.bgImageSize||'1024x1024'); state.scenes[i].bg=dataUrl; }catch{}
       }
     }
     renderBackground();
@@ -2189,10 +2221,11 @@ document.addEventListener('click',e=>{
 
 /* ---------- SCENE MEMORY HELPERS ---------- */
 let restoringChat=false;
-function sceneMemory(){
-  const scName = currentScene().name || `Scene${state.sceneIndex}`;
-  state.memory.scenes[scName] = state.memory.scenes[scName] || {events:[], positions:{}, bgPrompt:'', desc:''};
-  return state.memory.scenes[scName];
+function sceneMemory(st=state){
+  const sc = currentScene(st);
+  const scName = sc?.name || `Scene${st.sceneIndex}`;
+  st.memory.scenes[scName] = st.memory.scenes[scName] || {events:[], positions:{}, bgPrompt:'', desc:''};
+  return st.memory.scenes[scName];
 }
 function recordEvent(text){
   if(restoringChat) return;
@@ -2255,3 +2288,4 @@ async function greetAndStart(){
 
 /* Boot */
 loadSettings(); initialSeed(); renderAll(); renderInitButtons(); if(!localStorage.getItem(LS_WIZARD)) startWizard(false);
+if(typeof module!== 'undefined') module.exports={createState};
