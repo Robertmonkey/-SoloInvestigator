@@ -1678,7 +1678,28 @@ async function hashKey(s){ const buf=new TextEncoder().encode(s); const hash=awa
 const wizard={step:0, arc:null, youIndex:null, companions:[], rolls:{}, variety:{ era:'1920s', locale:'Inland city', theme:'Investigative', avoidCoast:true, seed:Math.floor(Math.random()*1e9)}};
 byId('btnWizardNext').onclick=()=> wizardNext();
 byId('btnWizardBack').onclick=()=> wizardBack();
-function startWizard(force=false){ if(!force && localStorage.getItem(LS_WIZARD)) return; wizard.step=0; wizard.arc=null; wizard.youIndex=null; wizard.companions=[]; wizard.rolls={}; renderWizard(); show('#modalWizard'); }
+function resetForNewGame(){
+  const settings = JSON.parse(JSON.stringify(state.settings));
+  const voices = state.browserVoices;
+  Object.assign(state, createState());
+  state.settings = settings;
+  state.browserVoices = voices;
+  if(typeof director !== 'undefined'){
+    director.memory = [];
+    director.conversations = {};
+  }
+}
+function startWizard(force=false){
+  if(!force && localStorage.getItem(LS_WIZARD)) return;
+  resetForNewGame();
+  renderAll();
+  renderClues();
+  renderHandouts();
+  restoreChat(state.chat);
+  wizard.step=0; wizard.arc=null; wizard.youIndex=null; wizard.companions=[]; wizard.rolls={};
+  renderWizard();
+  show('#modalWizard');
+}
 function setStepPills(){ for(let i=0;i<5;i++){ const elB=byId('wStep'+i+'B'); if(elB) elB.classList.toggle('active', i===wizard.step); } }
 function renderWizard(){
   setStepPills(); const body=byId('wizardBody'); body.innerHTML='';
@@ -1778,7 +1799,9 @@ function renderWizard(){
       el('div',{class:'card'},[
         el('h3',{},'4) Auto‑build your game (with progress)'),
         el('div',{class:'small'},'Creates scenes per act, backgrounds (or placeholders), spawns your chosen party + NPCs, portraits, handouts, and an NPC portrait catalog.'),
-        el('div',{class:'row'},[ el('button',{class:'primary',onclick:()=> wizardAutoBuildEverything()},'Build Everything Now') ]),
+        el('div',{class:'row'},[
+          el('button',{class:'primary',onclick:async ()=>{ await wizardAutoBuildEverything(); wizardNext(); }},'Build Everything Now')
+        ]),
         el('div',{id:'buildStatus',class:'note',style:'margin-top:.5rem'}, 'Not built yet.')
       ]),
       el('div',{class:'card'},[
@@ -2288,4 +2311,4 @@ async function greetAndStart(){
 
 /* Boot */
 loadSettings(); initialSeed(); renderAll(); renderInitButtons(); if(!localStorage.getItem(LS_WIZARD)) startWizard(false);
-if(typeof module!== 'undefined') module.exports={createState};
+if(typeof module!== 'undefined') module.exports={createState, resetForNewGame};
