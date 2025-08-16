@@ -6,7 +6,7 @@
 
 /* ---------- CONSTANTS ---------- */
 const LS_SETTINGS   = 'si_settings_v8';
-const LS_SLOTS      = 'si_slots_v6';
+const LS_SLOTS      = 'si_settings_slots_v1';
 const LS_WIZARD     = 'si_wizard_done_v6';
 const LS_ARC_FP     = 'si_recent_arc_fps_v2';
 const LS_OPENAI_KEY = 'si_key_openai';
@@ -1301,7 +1301,7 @@ byId('btnAddClue').onclick=()=>{
   renderClues();
 };
 
-/* ---------- SAVE/LOAD (assets included) ---------- */
+/* ---------- SETTINGS SAVE SLOTS ---------- */
 function loadSlots(){
   const raw = localStorage.getItem(LS_SLOTS);
   if(!raw) return Array(6).fill(null);
@@ -1336,7 +1336,7 @@ function updateSlots(){
     const row = el('div',{class:'slot'+(used?' used':'')},[
       el('div',{class:'meta'},[
         el('div',{class:'slotname'},`Slot ${i+1}`),
-        el('div',{class:'title'}, used? (slot.meta?.name||'Campaign') : 'Empty'),
+        el('div',{class:'title'}, used? (slot.meta?.name||'Settings') : 'Empty'),
         el('div',{class:'ts'}, used? new Date(slot.meta?.ts||Date.now()).toLocaleString(): '')
       ]),
       el('div',{class:'row buttons'},[
@@ -1348,6 +1348,19 @@ function updateSlots(){
     wrap.appendChild(row);
   }
 }
+
+function captureSettingsSlot(){
+  return { meta:{ts:Date.now(), name:'Settings'}, settings: deepClone(state.settings) };
+}
+function applySettingsSlot(data){
+  Object.assign(state.settings, data.settings||{});
+  saveSettings(false);
+  loadSettings();
+  renderAll();
+}
+
+/* ---------- FULL STATE EXPORT/IMPORT (assets included) ---------- */
+
 function captureChat(){
   const lines=[];
   chatLog.querySelectorAll('.line').forEach(l=>{
@@ -1422,13 +1435,19 @@ function applyState(data){
   renderHandouts();
 }
 function saveToSlot(i){
+  saveSettings(false);
   const slots = loadSlots();
-  slots[i] = captureState();
+  slots[i] = captureSettingsSlot();
   const ok = saveSlots(slots);
   updateSlots();
   if(ok) toast('Saved.');
 }
-function loadFromSlot(i){ const slots=loadSlots(); if(!slots[i]){ toast('Empty slot'); return; } applyState(slots[i]); toast('Loaded.'); }
+function loadFromSlot(i){
+  const slots=loadSlots();
+  if(!slots[i]){ toast('Empty slot'); return; }
+  applySettingsSlot(slots[i]);
+  toast('Loaded.');
+}
 function clearSlot(i){ const slots=loadSlots(); slots[i]=null; saveSlots(slots); updateSlots(); }
 byId('btnExport').onclick=()=>{ const blob=new Blob([JSON.stringify(captureState(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='solo-investigator-save.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 2000); };
 byId('btnExportSlots').onclick=()=>{ const blob=new Blob([JSON.stringify(loadSlots(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='solo-investigator-slots.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 2000); };

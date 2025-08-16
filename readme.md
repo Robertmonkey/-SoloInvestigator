@@ -107,10 +107,9 @@ See **`agents.md`** for full prompts and engine schema.
 
 ## 💾 Saving & Loading
 
-- **Slots**: 6 rotating `localStorage` slots (`si_slots_v6`).
+- **Slots**: 6 rotating settings slots (`si_settings_slots_v1`) that store your preferences and API keys.
 - **Export**: One JSON file containing the full state **including assets** (portraits, handouts, backgrounds) as Data URLs.
 - **Import**: Paste JSON in the Save/Load modal to restore your table exactly as you left it.
-- **Continuity**: Slots now preserve chat logs, initiative order, encounter state, and memory so reloading feels seamless.
 
 > Saves made before the “asset-full save” upgrade may lack images. Re-generate assets once and re-save.
 
